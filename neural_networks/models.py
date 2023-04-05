@@ -66,22 +66,31 @@ class ModelDescription:
             [Variable_Lev_Metadata.parse_var_name(p) for p in inputs],
             key=lambda x: self.setup.input_order_list.index(x),
         )
+            
         self.model_type = model_type
         self.pc_alpha = pc_alpha
         self.threshold = threshold
         if hasattr(setup, 'sherpa_hyper'):
             self.setup.hidden_layers = [setup.num_nodes] * setup.num_layers
             # TODO: setup activation coefficient
-        self.model = self._build_model()
+
         self.input_vars_dict = ModelDescription._build_vars_dict(self.inputs)
         self.output_vars_dict = ModelDescription._build_vars_dict([self.output])
+        
+        setup.input_pca_vars_dict = self.input_pca_vars_dict = False
+        if setup.do_pca_nn: 
+            setup.inputs_pca          = self.inputs_pca = self.inputs[:int(setup.n_components)]
+            setup.input_pca_vars_dict = self.input_pca_vars_dict = ModelDescription._build_vars_dict(setup.inputs_pca)
 
+        self.model = self._build_model()
+        
     def _build_model(self):
         """ Build a Keras model with the given information.
         
         Some parameters are not configurable, taken from Rasp et al.
         """
         input_shape = len(self.inputs)
+        if self.model_type == "pcaNN": input_shape = len(self.inputs_pca)
         input_shape = (input_shape,)
         model = dense_nn(
             input_shape=input_shape,
@@ -171,6 +180,14 @@ class ModelDescription:
             path = path / Path(
                 cfg_str.format(pc_alpha=self.pc_alpha, threshold=self.threshold)
             )
+        elif self.model_type == "pcaNN":
+            if self.setup.area_weighted:
+                cfg_str = "pcs{n_components}-latwts/" 
+            else: 
+                cfg_str = "pcs{n_components}/"
+            path = path / Path(
+                cfg_str.format(n_components=self.setup.n_components)
+            )
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
         path = path / Path(
@@ -212,7 +229,9 @@ class ModelDescription:
 
     def get_input_list(self):
         """ Generate input list """
-        return [int(var in self.inputs) for var in self.setup.input_order_list]
+        input_list = self.inputs
+        if self.model_type == "pcaNN": input_list = self.inputs_pca
+        return [int(var in input_list) for var in self.setup.input_order_list]
 
     def __str__(self):
         name = f"{self.model_type}: {self.output}"
@@ -248,7 +267,10 @@ def dense_nn(input_shape, output_shape, hidden_layers, activation):
 
 
 def generate_all_single_nn(setup):
-    """ Generate all NN with one output and all inputs specified in the setup"""
+    """ 
+    SingleNN: Generate all NN with one output and all inputs specified in the setup 
+    pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
+    """
     model_descriptions = list()
 
     inputs = list()  # TODO Parents and levels
@@ -277,7 +299,7 @@ def generate_all_single_nn(setup):
 
     for output in output_list:
         model_description = ModelDescription(
-            output, inputs, "SingleNN", pc_alpha=None, threshold=None, setup=setup,
+            output, inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup,
         )
         model_descriptions.append(model_description)
     return model_descriptions
@@ -309,7 +331,7 @@ def generate_models(setup, threshold_dict=False):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
-    if setup.do_single_nn:
+    if setup.do_single_nn or setup.do_pca_nn:
         model_descriptions.extend(generate_all_single_nn(setup))
 
     if setup.do_random_single_nn:

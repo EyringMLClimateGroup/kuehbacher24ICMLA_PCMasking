@@ -15,6 +15,14 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
         path = path / Path(
             cfg_str.format(pc_alpha=pc_alpha, threshold=threshold)
         )
+    elif model_type == "pcaNN":
+        if setup.area_weighted:
+            cfg_str = "pcs{n_components}-latwts/" 
+        else: 
+            cfg_str = "pcs{n_components}/"
+        path = path / Path(
+            cfg_str.format(n_components=setup.n_components)
+        )
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")
     path = path / Path(
@@ -74,8 +82,8 @@ def load_models(setup):
     models = collections.defaultdict(dict)
     
     output_list = get_var_list(setup, setup.spcam_outputs)
-    if setup.do_single_nn or setup.do_random_single_nn:
-        nn_type = setup.nn_type if setup.do_random_single_nn else 'SingleNN'
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn:
+        nn_type = setup.nn_type #if setup.do_random_single_nn else 'SingleNN'
         for output in output_list:
             output = Variable_Lev_Metadata.parse_var_name(output)
             models[nn_type][output] = get_model(
