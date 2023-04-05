@@ -44,11 +44,6 @@ class ModelDiagnostics():
         self.lat_weights = np.cos(self.latitudes*pi/180.)
 
         
-#     def get_weights(self, latitudes, norm=False):
-#         AreaWeight = np.cos(latitudes[:]*pi/180.)
-#         return AreaWeight
-        
-        
     def reshape_ngeo(self, x, nTime=False):
 #        return x.reshape(self.nlat, self.nlon, -1)
         if nTime:
@@ -72,6 +67,12 @@ class ModelDiagnostics():
         )
         self.input_vars_dict  = ModelDiagnostics._build_vars_dict(self.inputs)
         
+        # self.save_dir=False
+        self.input_pca_vars_dict = False
+        if self.setup.do_pca_nn:
+            self.inputs_pca = self.inputs[:int(self.setup.n_components)]
+            self.input_pca_vars_dict = ModelDiagnostics._build_vars_dict(self.inputs_pca)
+        
         self.output = Variable_Lev_Metadata.parse_var_name(var)
         self.output_vars_dict = ModelDiagnostics._build_vars_dict([self.output])
         
@@ -79,7 +80,9 @@ class ModelDiagnostics():
             self.input_vars_dict, 
             self.output_vars_dict, 
             self.setup,
-            test=True
+            test=True,
+            # save_dir=self.save_dir, 
+            input_pca_vars_dict=self.input_pca_vars_dict
         )
         with self.valid_gen as valid_gen:
             
@@ -369,10 +372,10 @@ class ModelDiagnostics():
                 vmin=0; vmax=3.5e-8
                 cmap='Spectral_r'
                 extend='max'
-            elif lab_to_plot == 'rmse':
-#                 vmin=0; vmax=np.max(stats[1])
+            elif lab_to_plot == 'mse':
+                vmin=0; vmax=np.max(stats[1])
 #                 vmin=0; vmax=1.e-4 # tphystnd
-                vmin=0; vmax=1.5e-7  # phq
+                # vmin=0; vmax=1.5e-7  # phq
                 cmap='magma_r'
                 extend='max'
 #             else:
@@ -689,6 +692,38 @@ class ModelDiagnostics():
                     df.loc[var, stat_name] = ma.mean(stat[..., self.get_output_var_idx(var)])
         self.stats_df = df
         return df
+    
+    
+    def get_path(self):
+        """ Generate a path based on this model metadata """
+        base_path = self.setup.nn_output_path
+        path = Path(base_path, self.setup.model_type)
+        if self.setup.model_type == "CausalSingleNN" or self.setup.model_type == "CorrSingleNN":
+            if self.setup.area_weighted:
+                cfg_str = "a{pc_alpha}-t{threshold}-latwts/" 
+            else: 
+                cfg_str = "a{pc_alpha}-t{threshold}/"
+            path = path / Path(
+                cfg_str.format(pc_alpha=self.setup.pc_alpha, threshold=self.setup.threshold)
+            )
+        elif self.setup.model_type == "pcaNN":
+            if self.setup.area_weighted:
+                cfg_str = "pcs{n_components}-latwts/" 
+            else: 
+                cfg_str = "pcs{n_components}/"
+            path = path / Path(
+                cfg_str.format(n_components=self.setup.n_components)
+            )
+        str_hl = str(self.setup.hidden_layers).replace(", ", "_")
+        str_hl = str_hl.replace("[", "").replace("]", "")
+        path = path / Path(
+            "hl_{hidden_layers}-act_{activation}-e_{epochs}/".format(
+                hidden_layers=str_hl,
+                activation=self.setup.activation,
+                epochs=self.setup.epochs,
+            )
+        )
+        return path
     
     
     @staticmethod

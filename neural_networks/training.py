@@ -29,10 +29,13 @@ def train_save_model(
     input_vars_dict = model_description.input_vars_dict
     output_vars_dict = model_description.output_vars_dict
     
+    # save_dir=str(model_description.get_path(setup.nn_output_path))
+    # Path(save_dir).mkdir(parents=True, exist_ok=True)
+    
     with build_train_generator(
-        input_vars_dict, output_vars_dict, setup
+        input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict, 
     ) as train_gen, build_valid_generator(
-        input_vars_dict, output_vars_dict, setup
+        input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
     ) as valid_gen:
         
         lrs = LearningRateScheduler(
@@ -76,10 +79,11 @@ def train_save_model(
         model_description.save_model(setup.nn_output_path)
         # Saving norm after saving the model avoids having to create
         # the folder ourserlves
-        save_norm(
-            input_transform=train_gen.input_transform,
-            output_transform=train_gen.output_transform,
-            save_dir=str(model_description.get_path(setup.nn_output_path)),
-            filename=model_description.get_filename(),
-        )
+        if model_description.model_type != "pcaNN":
+            save_norm(
+                input_transform=train_gen.input_transform,
+                output_transform=train_gen.output_transform,
+                save_dir=save_dir,
+                filename=model_description.get_filename(),
+            )
 
