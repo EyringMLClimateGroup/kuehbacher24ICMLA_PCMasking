@@ -8,6 +8,7 @@ from tensorflow.keras.layers import Dense, Activation
 from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
+from neural_networks.sklearn_lasso import sklasso
 
 
 class ModelDescription:
@@ -81,6 +82,8 @@ class ModelDescription:
         if setup.do_pca_nn: 
             setup.inputs_pca          = self.inputs_pca = self.inputs[:int(setup.n_components)]
             setup.input_pca_vars_dict = self.input_pca_vars_dict = ModelDescription._build_vars_dict(setup.inputs_pca)
+        
+        if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
         self.model = self._build_model()
         
@@ -320,10 +323,66 @@ def generate_all_causal_single_nn(setup, aggregated_results):
             var_names = np.array(pc_alpha_results["var_names"])
             for threshold, parent_idxs in pc_alpha_results["parents"].items():
                 parents = var_names[parent_idxs]
+                # print(f"output: {output}")
+                # print(f"parents: {parents}")
+                # print(f"var_names[parent_idxs]: {var_names[parent_idxs]}")
+                # print(f"parent_idxs: {parent_idxs}")
                 model_description = ModelDescription(
                     output, parents, setup.nn_type, pc_alpha, threshold, setup=setup,
                 )
                 model_descriptions.append(model_description)
+    return model_descriptions
+
+
+def generate_sklasso_single_nn(setup):
+    """ 
+    sklassoNN: Generate all NN with one output and Lasso (L1) as inputs
+    """
+    model_descriptions = list()
+
+    inputs = list()
+    for spcam_var in setup.spcam_inputs:
+        if spcam_var.dimensions == 3:
+            for level, _ in setup.parents_idx_levs:
+                # There's enough info to build a Variable_Lev_Metadata list
+                # However, it could be better to do a bigger reorganization
+                var_name = f"{spcam_var.name}-{round(level, 2)}"
+                inputs.append(var_name)
+        elif spcam_var.dimensions == 2:
+            var_name = spcam_var.name
+            inputs.append(var_name)
+    inputs = sorted(
+        [Variable_Lev_Metadata.parse_var_name(p) for p in inputs],
+        key=lambda x: setup.input_order_list.index(x),
+    )
+            
+    output_list = list()
+    for spcam_var in setup.spcam_outputs:
+        if spcam_var.dimensions == 3:
+            for level, _ in setup.children_idx_levs:
+                # There's enough info to build a Variable_Lev_Metadata list
+                # However, it could be better to do a bigger reorganization
+                var_name = f"{spcam_var.name}-{round(level, 2)}"
+                output_list.append(var_name)
+        elif spcam_var.dimensions == 2:
+            var_name = spcam_var.name
+        output_list.append(var_name)
+    
+    for output in output_list:
+        output = Variable_Lev_Metadata.parse_var_name(output)
+        lasso_inputs, lasso_coefs = sklasso(
+            inputs=inputs,
+            output=output,
+            data_fn=Path(setup.train_data_folder, setup.train_data_fn),
+            norm_fn=Path(setup.normalization_folder, setup.normalization_fn),
+            setup=setup,
+        )
+        setup.lasso_coefs = lasso_coefs
+        print(f"lasso_inputs: {lasso_inputs}")
+        model_description = ModelDescription(
+            output, lasso_inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup,
+        )
+        model_descriptions.append(model_description)
     return model_descriptions
 
 
@@ -356,7 +415,10 @@ def generate_models(setup, threshold_dict=False):
         model_descriptions.extend(
             generate_all_causal_single_nn(setup, aggregated_results)
         )
-
+        
+    if setup.do_sklasso_nn:
+        model_descriptions.extend(generate_sklasso_single_nn(setup))
+        
     return model_descriptions
 
 
