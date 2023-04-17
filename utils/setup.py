@@ -169,12 +169,15 @@ class SetupNeuralNetworks(Setup):
 
     def _setup_neural_networks(self, yml_cfg):
         self.nn_type = yml_cfg["nn_type"]
-        self.do_single_nn = self.do_pca_nn = self.do_causal_single_nn = self.do_random_single_nn = False
+        self.do_single_nn = self.do_pca_nn = self.do_causal_single_nn = self.do_random_single_nn = self.do_sklasso_nn = False
         if self.nn_type == "SingleNN":
             self.do_single_nn = True
-        if self.nn_type == "pcaNN":
+        elif self.nn_type == "pcaNN":
             self.do_pca_nn = True
             self.n_components = yml_cfg["n_components"]
+        elif self.nn_type == "sklassoNN":
+            self.do_sklasso_nn = True
+            self.alpha_lasso = yml_cfg["alpha_lasso"]
         elif self.nn_type == "RandomSingleNN" or self.nn_type == "RandCorrSingleNN":
             self.do_random_single_nn = True
         elif self.nn_type == "CausalSingleNN" or self.nn_type == "CorrSingleNN":

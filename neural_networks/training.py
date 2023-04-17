@@ -7,6 +7,7 @@ from .cbrain.save_weights import save_norm
 from .data_generator import build_train_generator, build_valid_generator
 from datetime import datetime
 import os
+import numpy as np
 
 
 def train_all_models(model_descriptions, setup):
@@ -29,8 +30,8 @@ def train_save_model(
     input_vars_dict = model_description.input_vars_dict
     output_vars_dict = model_description.output_vars_dict
     
-    # save_dir=str(model_description.get_path(setup.nn_output_path))
-    # Path(save_dir).mkdir(parents=True, exist_ok=True)
+    save_dir=str(model_description.get_path(setup.nn_output_path))
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
     
     with build_train_generator(
         input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict, 
@@ -79,7 +80,7 @@ def train_save_model(
         model_description.save_model(setup.nn_output_path)
         # Saving norm after saving the model avoids having to create
         # the folder ourserlves
-        if model_description.model_type != "pcaNN":
+        if "pca" not in model_description.model_type:
             save_norm(
                 input_transform=train_gen.input_transform,
                 output_transform=train_gen.output_transform,
@@ -87,3 +88,11 @@ def train_save_model(
                 filename=model_description.get_filename(),
             )
 
+        if setup.do_sklasso_nn:
+            np.savetxt(
+                save_dir + f"/{model_description.get_filename()}_sklasso_coefs.txt",
+                model_description.lasso_coefs,
+                fmt='%1.6e',
+                delimiter=",",
+            )
+            

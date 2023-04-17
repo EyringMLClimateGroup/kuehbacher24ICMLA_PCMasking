@@ -27,7 +27,7 @@ analysis       : 'single' # 'single': gridpoints individually;
                           #           single time-series;
 spcam_parents  : ['tbp','qbp','vbp','ps','solin','shflx','lhflx']
 # spcam_children : ['tphystnd','phq','fsns','flns','fsnt','flnt','prect']
-spcam_children : ['fsnt']
+spcam_children : ['fsns','fsnt']
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"

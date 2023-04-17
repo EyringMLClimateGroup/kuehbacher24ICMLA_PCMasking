@@ -19,7 +19,8 @@ def build_train_generator(
     input_transform = (setup.input_sub, setup.input_div)
 
     if setup.ind_test_name == "pca":
-        pca_data_fn = setup.train_data_fn.split('.')[0]+f"_pca{setup.n_components}."+setup.train_data_fn.split('.')[-1]
+        # pca_data_fn = setup.train_data_fn.split('.')[0]+f"_pca{setup.n_components}."+setup.train_data_fn.split('.')[-1]
+        pca_data_fn = setup.train_data_fn.split('.')[0]+"_pca."+setup.train_data_fn.split('.')[-1]
         if not os.path.exists(Path(setup.train_data_folder, pca_data_fn)):
             print(f"Creating training PC-components...")
             pca(
@@ -31,12 +32,16 @@ def build_train_generator(
                 # save_dir=save_dir,
                 setup=setup,
             )
-        setup.train_data_fn = pca_data_fn
+        # setup.train_data_fn = pca_data_fn
+        train_data_fn = pca_data_fn
         input_transform = None
         input_vars_dict = input_pca_vars_dict
+    else:
+        train_data_fn = setup.train_data_fn
     
     train_gen = DataGenerator(
-        data_fn=Path(setup.train_data_folder, setup.train_data_fn),
+        # data_fn=Path(setup.train_data_folder, setup.train_data_fn),
+        data_fn=Path(setup.train_data_folder, train_data_fn),
         input_vars_dict=input_vars_dict,
         output_vars_dict=output_vars_dict,
         norm_fn=Path(setup.normalization_folder, setup.normalization_fn),
@@ -72,7 +77,7 @@ def build_valid_generator(
     ngeo = nlat * nlon
     
     if setup.ind_test_name == "pca":
-        pca_data_fn = filenm.split('.')[0]+f"_pca{setup.n_components}."+filenm.split('.')[-1]
+        pca_data_fn = filenm.split('.')[0]+"_pca."+filenm.split('.')[-1]
         if not os.path.exists(Path(setup.train_data_folder, pca_data_fn)):
             print(f"Creating validating/test PC-components...")
             pca(
