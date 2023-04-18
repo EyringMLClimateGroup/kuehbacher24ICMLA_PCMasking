@@ -30,16 +30,21 @@ def pca(
     
     # Input (X) & output (Y) data
     X = data_ds["vars"][:,var_idxs]
-    # print(f"X: {X}")
+    print(f"X.shape: {X.shape}")
     Y = data_ds["vars"][:,-(len(data_ds.var_names)-len(var_idxs)):]
-    # print(f"Y: {Y}")
+    print(f"Y.shape: {Y.shape}")
     
     # Normalize
-    print(f"... normalizing data...")
-    X_scaler=StandardScaler()
-    X_scaler.fit(X)
-    X_norm = X_scaler.transform(X)
+    # print(f"... normalizing data...")
+    # X_scaler=StandardScaler()
+    # X_scaler.fit(X)
+    # X_norm = X_scaler.transform(X)
     # print(f"X_norm.shape: {X_norm.shape}")
+    print(f"... normalizing data...")
+    sub, div = pca_norm(input_vars_dict, var_idxs, norm_ds, setup)
+    X_norm = (X - sub) / div
+
+    
     
     # PCA
     if load_pca_model:
@@ -61,14 +66,14 @@ def pca(
         print(f"... saving pca model: {pca_fn}...")
         dump(pca, pca_fn)
     PCs = pca.transform(X_norm)
-    print(F"PCs.shape:{PCs.shape}")
+    # print(F"PCs.shape:{PCs.shape}")
     
     # Save data
     print(f"... saving PC-components...")
     # zero_inputs = np.zeros([len(PCs[:,0]),num_inputs-len(PCs[0])])
     # vars_data = np.concatenate((PCs,zero_inputs,Y),axis=1)
     vars_data = np.concatenate((PCs,Y),axis=1)
-    # print(f"vars_data.shape: {vars_data.shape}")
+    print(f"vars_data.shape: {vars_data.shape}")
     
     # define data with variable attributes
     data_vars = {
@@ -97,3 +102,34 @@ def pca(
     
     norm_ds.close()
     data_ds.close()
+
+    
+def pca_norm(
+    input_vars_dict,
+    var_idxs,
+    norm_ds,
+    setup,
+):
+    
+    div = setup.input_div
+    sub = norm_ds[setup.input_sub].values[var_idxs]
+    
+    if div == "maxrs":
+        rang = norm_ds["max"][var_idxs] - norm_ds["min"][var_idxs]
+        std_by_var = rang.copy()
+        for v in input_vars_dict.keys():
+            std_by_var[std_by_var.var_names == v] = norm_ds["std_by_var"][
+                norm_ds.var_names_single == v
+            ]
+        div = np.maximum(rang, std_by_var).values
+    elif div == "std_by_var":
+        # SR: Total mess. Should be handled better
+        tmp_var_names = norm_ds.var_names[var_idxs]
+        div = np.zeros(len(tmp_var_names))
+        for v in input_vars_dict.keys():
+            std_by_var = norm_ds["std_by_var"][norm_ds.var_names_single == v]
+            div[tmp_var_names == v] = std_by_var
+    else:
+        div = norm_ds[div].values[var_idxs]
+    
+    return sub, div

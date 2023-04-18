@@ -184,13 +184,16 @@ class ModelDescription:
                 cfg_str.format(pc_alpha=self.pc_alpha, threshold=self.threshold)
             )
         elif self.model_type == "pcaNN":
-            if self.setup.area_weighted:
-                cfg_str = "pcs{n_components}-latwts/" 
-            else: 
-                cfg_str = "pcs{n_components}/"
+            cfg_str = "pcs{n_components}/"
             path = path / Path(
                 cfg_str.format(n_components=self.setup.n_components)
             )
+        elif "lasso" in self.model_type:
+            cfg_str = "a{alpha_lasso}/"
+            path = path / Path(
+                cfg_str.format(alpha_lasso=self.setup.alpha_lasso)
+            )
+            
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
         path = path / Path(
