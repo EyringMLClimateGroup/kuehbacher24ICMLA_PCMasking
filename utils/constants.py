@@ -1,4 +1,6 @@
 from enum import Enum
+from pathlib import Path
+import os
 
 
 class SPCAM_Vars(Enum):
@@ -44,9 +46,12 @@ class SPCAM_Vars(Enum):
     prect = (2, "out", "Precipitation")
 
 
-#EXPERIMENT = "002_train_1_year"
-#DATA_FOLDER = "/work/bd0854/b309172/data/SPCAM_recons"
-ANCIL_FILE = "./data/ancil_spcam.nc"
+# EXPERIMENT = "002_train_1_year"
+# DATA_FOLDER = "/work/bd0854/b309172/data/SPCAM_recons"
+# Make this path relative:
+# We are in iglesias-suarez2yxx_spuriouslinks/utils so we need to go back
+# one directory to be in the project root directory
+ANCIL_FILE = os.path.join(Path(__file__).parent.parent.resolve(), "data", "ancil_spcam.nc")
 FILENAME_PATTERN = "{var_name}_{level}_{experiment}.nc"
 AGGREGATE_PATTERN = "{var_name}_{ind_test_name}_{experiment}"
 TAU_MIN = 1
