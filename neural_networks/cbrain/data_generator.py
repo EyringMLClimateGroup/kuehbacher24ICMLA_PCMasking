@@ -21,16 +21,17 @@ class DataGenerator(tf.keras.utils.Sequence):
     """
 
     def __init__(
-        self,
-        data_fn,
-        input_vars_dict,
-        output_vars_dict,
-        norm_fn=None,
-        input_transform=None,
-        output_transform=None,
-        batch_size=1024,
-        shuffle=True,
-        xarray=False,
+            self,
+            data_fn,
+            input_vars_dict,
+            output_vars_dict,
+            norm_fn=None,
+            input_transform=None,
+            output_transform=None,
+            batch_size=1024,
+            shuffle=True,
+            xarray=False,
+            do_castle=False
     ):
         # Just copy over the attributes
         self.data_fn, self.norm_fn = data_fn, norm_fn
@@ -42,10 +43,11 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.input_transform = input_transform
         self.output_transform = output_transform
         self.xarray = xarray
+        self.do_castle = do_castle
 
     def __len__(self):
         return self.n_batches
-    
+
     def __getitem__(self, index):
         # Compute start and end indices for batch
         start_idx = index * self.batch_size
@@ -61,6 +63,11 @@ class DataGenerator(tf.keras.utils.Sequence):
         # Normalize
         X = self.input_transform.transform(X)
         Y = self.output_transform.transform(Y)
+
+        # When training CASTLE networks, we need the y labels and x variables
+        # concatenated as one array which serves both as input as well as true output
+        if self.do_castle:
+            return np.concatenate([Y, X], axis=1)
 
         return X, Y
 

@@ -7,8 +7,8 @@ from .pca import pca
 
 
 def build_train_generator(
-    input_vars_dict, 
-    output_vars_dict, 
+    input_vars_dict,
+    output_vars_dict,
     setup,
     # save_dir=False,
     input_pca_vars_dict=False
@@ -38,7 +38,7 @@ def build_train_generator(
         input_vars_dict = input_pca_vars_dict
     else:
         train_data_fn = setup.train_data_fn
-    
+
     train_gen = DataGenerator(
         # data_fn=Path(setup.train_data_folder, setup.train_data_fn),
         data_fn=Path(setup.train_data_folder, train_data_fn),
@@ -49,16 +49,17 @@ def build_train_generator(
         output_transform=out_scale_dict,
         batch_size=setup.batch_size,
         shuffle=True,  # This feature doesn't seem to work
+        do_castle=setup.do_castle_nn,
     )
     return train_gen
 
 
 def build_valid_generator(
-    input_vars_dict, 
-    output_vars_dict, 
-    setup, 
-    nlat=64, 
-    nlon=128, 
+    input_vars_dict,
+    output_vars_dict,
+    setup,
+    nlat=64,
+    nlon=128,
     test=False,
     # save_dir=False,
     input_pca_vars_dict=False
@@ -75,7 +76,8 @@ def build_valid_generator(
         filenm  = setup.valid_data_fn
     
     ngeo = nlat * nlon
-    
+    print(f"Validation batch size 'ngeo'={ngeo}.", flush=True)
+
     if setup.ind_test_name == "pca":
         pca_data_fn = filenm.split('.')[0]+"_pca."+filenm.split('.')[-1]
         if not os.path.exists(Path(setup.train_data_folder, pca_data_fn)):
@@ -92,7 +94,7 @@ def build_valid_generator(
         filenm = pca_data_fn
         input_transform = None
         input_vars_dict = input_pca_vars_dict
-            
+
     valid_gen = DataGenerator(
         data_fn=Path(data_fn, filenm),
         input_vars_dict=input_vars_dict,
@@ -103,5 +105,6 @@ def build_valid_generator(
         batch_size=ngeo,
         shuffle=False,
         # xarray=True,
+        do_castle=setup.do_castle_nn,
     )
     return valid_gen

@@ -9,6 +9,7 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
+from neural_networks.castle import build_castle
 
 
 class ModelDescription:
@@ -67,7 +68,7 @@ class ModelDescription:
             [Variable_Lev_Metadata.parse_var_name(p) for p in inputs],
             key=lambda x: self.setup.input_order_list.index(x),
         )
-            
+
         self.model_type = model_type
         self.pc_alpha = pc_alpha
         self.threshold = threshold
@@ -77,16 +78,22 @@ class ModelDescription:
 
         self.input_vars_dict = ModelDescription._build_vars_dict(self.inputs)
         self.output_vars_dict = ModelDescription._build_vars_dict([self.output])
-        
+
         setup.input_pca_vars_dict = self.input_pca_vars_dict = False
         if setup.do_pca_nn: 
             setup.inputs_pca          = self.inputs_pca = self.inputs[:int(setup.n_components)]
             setup.input_pca_vars_dict = self.input_pca_vars_dict = ModelDescription._build_vars_dict(setup.inputs_pca)
-        
+
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        self.model = self._build_model()
-        
+        if setup.do_castle_nn:
+            self.model = build_castle(num_inputs=len(self.inputs),
+                                      hidden_layers=self.setup.hidden_layers,
+                                      activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
+                                      lambda_=self.setup.lambda_)
+        else:
+            self.model = self._build_model()
+
     def _build_model(self):
         """ Build a Keras model with the given information.
         
@@ -101,7 +108,7 @@ class ModelDescription:
             hidden_layers=self.setup.hidden_layers,
             activation=self.setup.activation,
         )
-        
+
         optimizer = tf.keras.optimizers.Adam(
             learning_rate=0.001,
             beta_1=0.9,
@@ -128,7 +135,6 @@ class ModelDescription:
         )
         return model
 
-    
     @staticmethod
     def _build_vars_dict(list_variables):
         """ Convert the given list of Variable_Lev_Metadata into a
@@ -160,7 +166,6 @@ class ModelDescription:
                 levels.append(variable.level_idx)
                 vars_dict[ds_name] = levels
         return vars_dict
-        
 
     def fit_model(self, x, validation_data, epochs, callbacks, verbose=1):
         """ Train the model """
@@ -177,8 +182,8 @@ class ModelDescription:
         path = Path(base_path, self.model_type)
         if self.model_type == "CausalSingleNN" or self.model_type == "CorrSingleNN":
             if self.setup.area_weighted:
-                cfg_str = "a{pc_alpha}-t{threshold}-latwts/" 
-            else: 
+                cfg_str = "a{pc_alpha}-t{threshold}-latwts/"
+            else:
                 cfg_str = "a{pc_alpha}-t{threshold}/"
             path = path / Path(
                 cfg_str.format(pc_alpha=self.pc_alpha, threshold=self.threshold)
@@ -193,7 +198,11 @@ class ModelDescription:
             path = path / Path(
                 cfg_str.format(alpha_lasso=self.setup.alpha_lasso)
             )
-            
+        elif self.model_type == "castleNN":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
+            path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
+                                              lambda_=self.setup.lambda_))
+
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
         path = path / Path(
@@ -276,6 +285,7 @@ def generate_all_single_nn(setup):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
+    castleNN: Generate all NN with one output and all inputs specified in the setup
     """
     model_descriptions = list()
 
@@ -358,7 +368,7 @@ def generate_sklasso_single_nn(setup):
         [Variable_Lev_Metadata.parse_var_name(p) for p in inputs],
         key=lambda x: setup.input_order_list.index(x),
     )
-            
+
     output_list = list()
     for spcam_var in setup.spcam_outputs:
         if spcam_var.dimensions == 3:
@@ -370,7 +380,7 @@ def generate_sklasso_single_nn(setup):
         elif spcam_var.dimensions == 2:
             var_name = spcam_var.name
         output_list.append(var_name)
-    
+
     for output in output_list:
         output = Variable_Lev_Metadata.parse_var_name(output)
         lasso_inputs, lasso_coefs = sklasso(
@@ -393,13 +403,13 @@ def generate_models(setup, threshold_dict=False):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
-    if setup.do_single_nn or setup.do_pca_nn:
+    if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
         model_descriptions.extend(generate_all_single_nn(setup))
 
     if setup.do_random_single_nn:
         collected_results, errors = aggregation.collect_results(setup, reuse=True)
         aggregation.print_errors(errors)
-        
+
         aggregated_results, var_names_parents = aggregation.aggregate_results_for_numparents(
             collected_results, setup, thresholds_dict=setup.thrs_argv, random=setup.random
         )
@@ -409,7 +419,7 @@ def generate_models(setup, threshold_dict=False):
         model_descriptions.extend(
             generate_all_causal_single_nn(setup, aggregated_results)
         )
-    
+
     if setup.do_causal_single_nn:
         collected_results, errors = aggregation.collect_results(setup, reuse=True)
         aggregation.print_errors(errors)
@@ -418,10 +428,10 @@ def generate_models(setup, threshold_dict=False):
         model_descriptions.extend(
             generate_all_causal_single_nn(setup, aggregated_results)
         )
-        
+
     if setup.do_sklasso_nn:
         model_descriptions.extend(generate_sklasso_single_nn(setup))
-        
+
     return model_descriptions
 
 
@@ -430,7 +440,7 @@ def generate_model_sherpa(setup, parents=False, pc_alpha=None, threshold=None):
 
     if setup.do_causal_single_nn and parents == False:
         parents = get_parents_sherpa(setup)
-        
+
     model_description = ModelDescription(
         setup.output, parents, setup.nn_type, pc_alpha, threshold, setup=setup,
     )

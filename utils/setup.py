@@ -1,12 +1,17 @@
-from .constants import SPCAM_Vars, ANCIL_FILE # DATA_FOLDER 
-from .constants import SIGNIFICANCE           # EXPERIMENT
-from .variable import Variable_Lev_Metadata
-from . import utils
 import getopt
-import yaml
+import os
+import sys
 from pathlib import Path
-from tigramite.independence_tests import ParCorr, GPDC
-from scipy.stats                  import pearsonr
+
+import yaml
+from scipy.stats import pearsonr
+from tigramite.independence_tests.gpdc import GPDC
+from tigramite.independence_tests.parcorr import ParCorr
+
+from . import utils
+from .constants import SIGNIFICANCE  # EXPERIMENT
+from .constants import SPCAM_Vars, ANCIL_FILE  # DATA_FOLDER
+from .variable import Variable_Lev_Metadata
 
 
 class Setup:
@@ -25,10 +30,12 @@ class Setup:
             elif opt in ("-a", "--add"):
                 pass
 
+        self.project_root = Path(__file__).parent.parent.resolve()
+
         # YAML config file
         self.yml_filename = yml_cfgFilenm
-        yml_cfgFile = open(self.yml_filename)
-        self.yml_cfg = yaml.load(yml_cfgFile, Loader=yaml.FullLoader)
+        with open(self.yml_filename, "r") as yml_cfgFile:
+            self.yml_cfg = yaml.load(yml_cfgFile, Loader=yaml.FullLoader)
 
         self._setup_common(self.yml_cfg)
 
@@ -40,7 +47,7 @@ class Setup:
         self.output_folder = yml_cfg["output_folder"]
         self.output_file_pattern = yml_cfg["output_file_pattern"][self.analysis]
         self.experiment  = yml_cfg["experiment"]
-        self.data_folder = yml_cfg["data_folder"]
+        self.data_folder = self._evaluate_symlink(yml_cfg["data_folder"])
 
         self.region     = yml_cfg["region"]
         self.gridpoints = _calculate_gridpoints(self.region)
@@ -75,15 +82,20 @@ class Setup:
         # # Note the parenthesis, INDEPENDENCE_TESTS returns functions
         # self.cond_ind_test = INDEPENDENCE_TESTS[self.ind_test_name]()
 
+    def _evaluate_symlink(self, path):
+        if Path(path).is_symlink():
+            return os.path.realpath(path)
+        else:
+            return Path(self.project_root, path)
+
 
 class SetupPCAnalysis(Setup):
-
     INDEPENDENCE_TESTS = {
         "parcorr": lambda: ParCorr(significance=SIGNIFICANCE),
         "gpdc": lambda: GPDC(recycle_residuals=True),
         "gpdc_torch": lambda: _build_GPDCtorch(recycle_residuals=True),
         # "gpdc_torch" : lambda: _build_GPDCtorch(recycle_residuals=False),
-        "pearsonr": lambda: pearsonr, 
+        "pearsonr": lambda: pearsonr,
     }
 
     def __init__(self, argv):
@@ -137,6 +149,7 @@ class SetupPCAnalysis(Setup):
 
         self.shifting = yml_cfg["shifting"]
 
+
 class SetupPCMCIAggregation(Setup):
     def __init__(self, argv):
         super().__init__(argv)
@@ -147,7 +160,7 @@ class SetupPCMCIAggregation(Setup):
         self.thresholds    = yml_cfg["thresholds"]
         self.area_weighted = yml_cfg["area_weighted"]
         self.pdf           = yml_cfg["pdf"]
-        self.aggregate_folder = yml_cfg["aggregate_folder"]
+        self.aggregate_folder = self._evaluate_symlink(yml_cfg["aggregate_folder"])
 
     def _setup_plots(self, yml_cfg):
         self.plots_folder = yml_cfg["plots_folder"]
@@ -158,34 +171,60 @@ class SetupPCMCIAggregation(Setup):
 class SetupNeuralNetworks(Setup):
     def __init__(self, argv):
         super().__init__(argv)
+        self._setup_neural_network_type(self.yml_cfg)
         self._setup_results_aggregation(self.yml_cfg)
         self._setup_neural_networks(self.yml_cfg)
+
+    def _setup_neural_network_type(self, yml_cfg):
+        self.nn_type = yml_cfg["nn_type"]
+
+        # Set all possible types to False
+        self.do_single_nn = False
+        self.do_pca_nn = False
+        self.do_causal_single_nn = False
+        self.do_random_single_nn = False
+        self.do_sklasso_nn = False
+        self.do_castle_nn = False
+
+        if self.nn_type == "SingleNN":
+            self.do_single_nn = True
+
+        elif self.nn_type == "pcaNN":
+            self.do_pca_nn = True
+            self.n_components = yml_cfg["n_components"]
+
+        elif self.nn_type == "sklassoNN":
+            self.do_sklasso_nn = True
+            self.alpha_lasso = yml_cfg["alpha_lasso"]
+
+        elif self.nn_type == "RandomSingleNN" or self.nn_type == "RandCorrSingleNN":
+            self.do_random_single_nn = True
+
+        elif self.nn_type == "CausalSingleNN" or self.nn_type == "CorrSingleNN":
+            self.do_causal_single_nn = True
+
+        elif self.nn_type == "castleNN":
+            self.do_castle_nn = True
+            self.rho = yml_cfg["rho"]
+            self.alpha = yml_cfg["alpha"]
+            self.beta = yml_cfg["beta"]
+            self.lambda_ = yml_cfg["lambda"]
+
+        elif self.nn_type == "all":
+            self.do_single_nn = True
+            self.do_causal_single_nn = True
+
+        else:
+            raise ValueError(f"Unknown Network type: {self.nn_type}")
 
     def _setup_results_aggregation(self, yml_cfg):
         self.thresholds = yml_cfg["thresholds"]
         self.area_weighted = yml_cfg["area_weighted"]
-        self.pdf           = yml_cfg["pdf"]
-        self.aggregate_folder = yml_cfg["aggregate_folder"]
+        self.pdf = yml_cfg["pdf"]
+        self.aggregate_folder = self._evaluate_symlink(yml_cfg["aggregate_folder"])
 
     def _setup_neural_networks(self, yml_cfg):
-        self.nn_type = yml_cfg["nn_type"]
-        self.do_single_nn = self.do_pca_nn = self.do_causal_single_nn = self.do_random_single_nn = self.do_sklasso_nn = False
-        if self.nn_type == "SingleNN":
-            self.do_single_nn = True
-        elif self.nn_type == "pcaNN":
-            self.do_pca_nn = True
-            self.n_components = yml_cfg["n_components"]
-        elif self.nn_type == "sklassoNN":
-            self.do_sklasso_nn = True
-            self.alpha_lasso = yml_cfg["alpha_lasso"]
-        elif self.nn_type == "RandomSingleNN" or self.nn_type == "RandCorrSingleNN":
-            self.do_random_single_nn = True
-        elif self.nn_type == "CausalSingleNN" or self.nn_type == "CorrSingleNN":
-            self.do_causal_single_nn = True
-        elif self.nn_type == "all":
-            self.do_single_nn = self.do_causal_single_nn = True
-
-        self.nn_output_path = yml_cfg["nn_output_path"]
+        self.nn_output_path = self._evaluate_symlink(yml_cfg["nn_output_path"])
 
         input_order = yml_cfg["input_order"]
         self.input_order = [
@@ -204,16 +243,16 @@ class SetupNeuralNetworks(Setup):
         self.train_verbose = yml_cfg["train_verbose"]
         self.tensorboard_folder = yml_cfg["tensorboard_folder"]
 
-        self.train_data_folder = yml_cfg["train_data_folder"]
+        self.train_data_folder = self._evaluate_symlink(yml_cfg["train_data_folder"])
         self.train_data_fn = yml_cfg["train_data_fn"]
         self.valid_data_fn = yml_cfg["valid_data_fn"]
 
-        self.normalization_folder = yml_cfg["normalization_folder"]
+        self.normalization_folder = self._evaluate_symlink(yml_cfg["normalization_folder"])
         self.normalization_fn = yml_cfg["normalization_fn"]
 
         self.input_sub = yml_cfg["input_sub"]
         self.input_div = yml_cfg["input_div"]
-        self.out_scale_dict_folder = yml_cfg["out_scale_dict_folder"]
+        self.out_scale_dict_folder = self._evaluate_symlink(yml_cfg["out_scale_dict_folder"])
         self.out_scale_dict_fn = yml_cfg["out_scale_dict_fn"]
         self.batch_size = yml_cfg["batch_size"]
 
@@ -228,9 +267,9 @@ class SetupDiagnostics(SetupNeuralNetworks):
     def __init__(self, argv):
         super().__init__(argv)
         self._setup_diagnostics(self.yml_cfg)
-    
+
     def _setup_diagnostics(self, yml_cfg):
-        self.test_data_folder = yml_cfg["test_data_folder"]
+        self.test_data_folder = self._evaluate_symlink(yml_cfg["test_data_folder"])
         self.test_data_fn     = yml_cfg["test_data_fn"]
         self.diagnostics      = yml_cfg["diagnostics"]
         self.diagnostics_time = yml_cfg["diagnostics_time"]
@@ -240,7 +279,7 @@ class SetupSherpa(SetupNeuralNetworks):
     def __init__(self, argv):
         super().__init__(argv)
         self._setup_sherpa(self.yml_cfg)
-    
+
     def _setup_sherpa(self, yml_cfg):
         self.sherpa_hyper      = yml_cfg["sherpa_hyper"]
         self.nn_type           = yml_cfg["sherpa_nn_type"]
