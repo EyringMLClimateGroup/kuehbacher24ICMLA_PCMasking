@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from neural_networks.castle import build_castle
+from notebooks_castle.test.testing_utils import set_memory_growth_gpu
 
 
 class TestCastle(unittest.TestCase):
@@ -19,6 +20,14 @@ class TestCastle(unittest.TestCase):
         self.rho = 1.0
         self.alpha = 1.0
         self.lambda_ = 1.0
+
+        try:
+            set_memory_growth_gpu()
+        except RuntimeError:
+            logging.warning("GPU growth could not be enabled. "
+                            "When running multiple tests, this may be because the physical drivers are already "
+                            "initialized, in which case memory growth may already be enabled. "
+                            "If memory growth is not enabled, the tests may fail with CUDA error.")
 
     def test_castle_model(self):
         logging.info("Testing building and compiling CASTLE model.")

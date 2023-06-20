@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 import unittest
 from mock import patch
 
@@ -9,6 +8,7 @@ import tensorflow as tf
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
+from notebooks_castle.test.testing_utils import delete_dir, set_memory_growth_gpu
 from utils.setup import SetupNeuralNetworks
 
 
@@ -25,7 +25,13 @@ class TestCastleSetup(unittest.TestCase):
         self.nn_output_path = self.castle_setup.nn_output_path
         self.tensorboard_folder = self.castle_setup.tensorboard_folder
 
-        set_memory_growth_gpu()
+        try:
+            set_memory_growth_gpu()
+        except RuntimeError:
+            logging.warning("GPU growth could not be enabled. "
+                            "When running multiple tests, this may be because the physical drivers are already "
+                            "initialized, in which case memory growth may already be enabled. "
+                            "If memory growth is not enabled, the tests may fail with CUDA error.")
 
     def test_create_castle_model_description(self):
         logging.info("Testing creating model descriptions with CASTLE models.")
@@ -115,13 +121,3 @@ class TestCastleSetup(unittest.TestCase):
             self.assertTrue(os.path.isdir(self.tensorboard_folder))
 
 
-def delete_dir(folder):
-    if os.path.isdir(folder):
-        shutil.rmtree(folder)
-
-
-def set_memory_growth_gpu():
-    physical_devices = tf.config.list_physical_devices("GPU")
-    print(f"Number of GPUs: {len(physical_devices)}", flush=True)
-    for device in physical_devices:
-        tf.config.experimental.set_memory_growth(device, True)

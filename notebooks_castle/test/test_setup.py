@@ -5,7 +5,6 @@ import yaml
 
 from utils.setup import SetupNeuralNetworks
 
-
 class TestCastleSetup(unittest.TestCase):
     logging.basicConfig(level=logging.INFO)
 
