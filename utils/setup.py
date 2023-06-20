@@ -209,6 +209,7 @@ class SetupNeuralNetworks(Setup):
             self.alpha = yml_cfg["alpha"]
             self.beta = yml_cfg["beta"]
             self.lambda_ = yml_cfg["lambda"]
+            self.do_mirrored_strategy = yml_cfg["do_mirrored_strategy"]
 
         elif self.nn_type == "all":
             self.do_single_nn = True

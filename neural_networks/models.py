@@ -1,8 +1,9 @@
 import numpy as np
 import tensorflow as tf
+import pickle
 from pathlib import Path
 
-from tensorflow.keras        import Sequential, Input
+from tensorflow.keras import Sequential, Input
 from tensorflow.keras.layers import Dense, Activation
 
 from utils.constants import SPCAM_Vars
@@ -80,17 +81,20 @@ class ModelDescription:
         self.output_vars_dict = ModelDescription._build_vars_dict([self.output])
 
         setup.input_pca_vars_dict = self.input_pca_vars_dict = False
-        if setup.do_pca_nn: 
-            setup.inputs_pca          = self.inputs_pca = self.inputs[:int(setup.n_components)]
+        if setup.do_pca_nn:
+            setup.inputs_pca = self.inputs_pca = self.inputs[:int(setup.n_components)]
             setup.input_pca_vars_dict = self.input_pca_vars_dict = ModelDescription._build_vars_dict(setup.inputs_pca)
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
         if setup.do_castle_nn:
+            # Setup distributed training
+            self.strategy = tf.distribute.MirroredStrategy() if setup.do_mirrored_strategy else None
+
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,
                                       activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_=self.setup.lambda_)
+                                      lambda_=self.setup.lambda_, strategy=self.strategy)
         else:
             self.model = self._build_model()
 
@@ -117,16 +121,16 @@ class ModelDescription:
             amsgrad=False,
             name="Adam",
         )
-        
-#         optimizer = tf.keras.optimizers.RMSprop(
-#             learning_rate=0.001,
-#             rho=0.9,
-#             momentum=0.0,
-#             epsilon=1e-07,
-#             centered=False,
-#             name="RMSprop",
-#         )
-        
+
+        #         optimizer = tf.keras.optimizers.RMSprop(
+        #             learning_rate=0.001,
+        #             rho=0.9,
+        #             momentum=0.0,
+        #             epsilon=1e-07,
+        #             centered=False,
+        #             name="RMSprop",
+        #         )
+
         model.compile(
             # TODO? Move to configuration
             optimizer=optimizer,
@@ -167,7 +171,7 @@ class ModelDescription:
                 vars_dict[ds_name] = levels
         return vars_dict
 
-    def fit_model(self, x, validation_data, epochs, callbacks, verbose=1):
+    def fit_model(self, x, validation_data, epochs, callbacks, verbose=1, steps_per_epoch=None, validation_steps=None):
         """ Train the model """
         self.model.fit(
             x=x,
@@ -175,6 +179,8 @@ class ModelDescription:
             epochs=epochs,
             callbacks=callbacks,
             verbose=verbose,
+            steps_per_epoch=steps_per_epoch,
+            validation_steps=validation_steps,
         )
 
     def get_path(self, base_path):
@@ -271,9 +277,9 @@ def dense_nn(input_shape, output_shape, hidden_layers, activation):
     model.add(Input(shape=input_shape))
 
     for n_layer_nodes in hidden_layers:
-        act = tf.keras.layers.LeakyReLU(alpha=0.3) if activation=='LeakyReLU' else Activation(activation)
-#         act = tf.keras.layers.LeakyReLU(alpha=0.3) if activation=='LeakyReLU' else activation
-#         model.add(Dense(n_layer_nodes, activation=act))
+        act = tf.keras.layers.LeakyReLU(alpha=0.3) if activation == 'LeakyReLU' else Activation(activation)
+        #         act = tf.keras.layers.LeakyReLU(alpha=0.3) if activation=='LeakyReLU' else activation
+        #         model.add(Dense(n_layer_nodes, activation=act))
         model.add(Dense(n_layer_nodes))
         model.add(act)
 
@@ -319,6 +325,7 @@ def generate_all_single_nn(setup):
         )
         model_descriptions.append(model_description)
     return model_descriptions
+
 
 
 def generate_all_causal_single_nn(setup, aggregated_results):
@@ -403,6 +410,12 @@ def generate_models(setup, threshold_dict=False):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
+    if setup.do_mirrored_strategy:
+        if setup.do_mirrored_strategy and not tf.config.get_visible_devices('GPU'):
+            raise EnvironmentError(f"Cannot build and compile models with tf.distribute.MirroredStrategy "
+                  f"because Tensorflow found no GPUs.")
+        print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)
+
     if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
         model_descriptions.extend(generate_all_single_nn(setup))
 
@@ -459,7 +472,7 @@ def generate_input_list(setup):
             var_name = spcam_var.name
             inputs.append(var_name)
     return inputs
-            
+
 
 def generate_output_list(setup):
     """ Generate output list for hyperparameter tuning via Sherpa """
@@ -476,21 +489,21 @@ def generate_output_list(setup):
 
 
 def get_parents_sherpa(setup):
-    
     collected_results, errors = aggregation.collect_results(setup, reuse=True)
     aggregation.print_errors(errors)
     aggregated_results, var_names_parents = aggregation.aggregate_results(
         collected_results, setup
     )
-    output      = list(aggregated_results.keys())[0]
+    output = list(aggregated_results.keys())[0]
     if str(setup.output) == str(output):
         pass
     else:
         print(f"output from output_list and output from aggregated results do not match; stop")
-        import pdb; pdb.set_trace()
-    pc_alpha    = list(aggregated_results[output].keys())[0]
-    threshold   = list(aggregated_results[output][pc_alpha]['parents'].keys())[0]
-    var_names   = np.array(aggregated_results[output][pc_alpha]['var_names'])
+        import pdb;
+        pdb.set_trace()
+    pc_alpha = list(aggregated_results[output].keys())[0]
+    threshold = list(aggregated_results[output][pc_alpha]['parents'].keys())[0]
+    var_names = np.array(aggregated_results[output][pc_alpha]['var_names'])
     parent_idxs = aggregated_results[output][pc_alpha]['parents'][threshold]
-    parents     = var_names[parent_idxs]    
+    parents = var_names[parent_idxs]
     return parents, pc_alpha, threshold
