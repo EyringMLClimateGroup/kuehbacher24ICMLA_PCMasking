@@ -37,6 +37,7 @@ if __name__ == "__main__":
     Path(out_file_inputs.parent).mkdir(parents=True, exist_ok=True)
     Path(out_file_outputs.parent).mkdir(parents=True, exist_ok=True)
 
-    print(f"Creating .txt files for input and output variables for CASTLE training.", flush=True)
+    print(f"\nCreating .txt files for input and output variables for CASTLE training.", flush=True)
+    print(f"Using config file: {yaml_config_file}\n", flush=True)
 
     create_inputs_outputs_files(yaml_config_file, out_file_inputs, out_file_outputs)
