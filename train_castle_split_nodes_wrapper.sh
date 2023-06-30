@@ -38,19 +38,44 @@ display_help() {
   exit 0
 }
 
+compute_nn_per_node() {
+  NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
+  NN_PER_NODE=$((($NUM_OUTPUTS + $NUM_NODES - 1) / $NUM_NODES))
+
+  # Test if we have to use different number of nodes than specified
+  TEMP=$((($NUM_OUTPUTS + $NN_PER_NODE - 1) / $NN_PER_NODE))
+
+  if [ $NUM_NODES -ne $TEMP ]; then
+    echo -e "\nInfo: Could not evenly split $NUM_OUTPUTS networks across $NUM_NODES nodes. Using $TEMP nodes."
+    read -r -e -p "Do you want to continue? [y]/n: " input
+    answer=${input:-"y"}
+    if [[ $answer == "n" ]]; then
+      graceful_exit
+    fi
+
+    NUM_NODES=$TEMP
+  fi
+}
+
 print_variables() {
+  echo -e "\n================================================================="
   echo ""
-  echo "================================================================="
-  echo ""
-  echo "  NN inputs file: $NN_INPUTS"
-  echo "  NN outputs file: $NN_OUTPUTS"
-  echo "  NN config file: $NN_CONFIG"
+  echo "  NN inputs file:           $NN_INPUTS"
+  echo "  NN outputs file:          $NN_OUTPUTS"
+  echo "  NN config file:           $NN_CONFIG"
   echo "  Number of training nodes: $NUM_NODES"
-  echo "  Number of NNs: $1"
-  echo "  Number of NNs per node: $(($2 + 1))"
   echo ""
-  echo "================================================================="
+  echo -e "=================================================================\n\n"
+}
+
+print_computed_variables() {
+  echo -e "\n================================================================="
   echo ""
+  echo "  Number of NNs:            $NUM_OUTPUTS"
+  echo "  Number of training nodes: $NUM_NODES"
+  echo "  Number of NNs per node:   $NN_PER_NODE"
+  echo ""
+  echo -e "=================================================================\n\n"
 }
 
 error_exit_help() {
@@ -73,16 +98,9 @@ graceful_exit() {
 # No arguments are given #
 ##########################
 if [ $# -eq 0 ]; then
-  ###########################
-  # Compute number of nodes #
-  ###########################
-  NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
-  NN_PER_NODE=$(($NUM_OUTPUTS / $NUM_NODES))
-
-  echo -e "\nNo arguments were given. Default values are:"
-  print_variables $NUM_OUTPUTS $NN_PER_NODE
-  echo "Type 'y' if you want to use default values. Type 'n' to exit the script."
-  echo -e "For more information use option -h.\n"
+  echo -e "\nNo arguments were given. Using default values.\nFor more information about arguments use option -h."
+  echo -e "\n\nDefault values are:"
+  print_variables
 
   read -r -e -p "Do you wish to proceed with defaults [y]/n: " input
   answer=${input:-"y"}
@@ -92,6 +110,14 @@ if [ $# -eq 0 ]; then
   if [ $answer == "n" ]; then
     graceful_exit
   fi
+
+  ###########################
+  # Compute number of nodes #
+  ###########################
+  compute_nn_per_node
+
+  echo -e "\n\nRunning script with the following variables:"
+  print_computed_variables
 
 else
   ############################
@@ -253,24 +279,23 @@ else
   ###########################
   # Compute number of nodes #
   ###########################
-  NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
-  NN_PER_NODE=$(($NUM_OUTPUTS / $NUM_NODES))
+  compute_nn_per_node
 
   echo -e "\n\nRunning script with the following variables:"
-  print_variables $NUM_OUTPUTS $NN_PER_NODE
+  print_computed_variables
 fi
 
 #####################
 # Start SLURM nodes #
 #####################
-for ((i = 0; i < $NUM_OUTPUTS; i += $(($NN_PER_NODE + 1)))); do
-  END_INDEX=$(($i + $NN_PER_NODE))
-  # Test if we've gone to far
-  END_INDEX=$(($(($NUM_OUTPUTS - 1)) < $END_INDEX ? $(($NUM_OUTPUTS)) : $END_INDEX))
+for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
+  END_INDEX=$(($i + $NN_PER_NODE - 1))
+  # Test if we've gone too far
+  END_INDEX=$(($((($NUM_OUTPUTS - 1) < $END_INDEX)) ? $(($NUM_OUTPUTS - 1)) : $END_INDEX))
   TRAIN_INDICES="$i-$END_INDEX"
   echo "Starting batch script with output indices $TRAIN_INDICES"
 
-  #sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
+  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
 done
 
 echo -e "\nFinished starting batch scripts.\n"
