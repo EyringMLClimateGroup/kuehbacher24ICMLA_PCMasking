@@ -21,12 +21,13 @@ documentation:
 
 # Common
 # ======
+# Note: Specify all directories/files from the project root
 # Specifications
 analysis: 'single' # 'single': gridpoints individually;
 # 'concat': gridpoints contatenated into a
 #           single time-series;
-spcam_parents: [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ] #[ 'qbp' ]
-spcam_children: [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ] # [ 'fsns', 'fsnt' ]
+spcam_parents: [ 'ps' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
+spcam_children: [ 'phq' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
@@ -68,12 +69,12 @@ plot_file_pattern:
 
 nn_type: "castleNN" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "castleNN"
 
-nn_output_path: output_castle/models_castle
+nn_output_path: output_castle/test/models_castle
 
-input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ] # [ qbp ]
-output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ] #[ fsnt, fsns ]
+input_order: [ ps ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
+output_order: [ phq ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
-hidden_layers:  [ 256,256,256,256,256,256,256,256,256 ]
+hidden_layers:  [32, 32]  # [ 256,256,256,256,256,256,256,256,256 ]
 activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 
 
@@ -81,24 +82,24 @@ activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 # ----------------------
 ## DATASETS.
 # Tom's: SPCAM_tb_prepoc
-train_data_folder: "./SPCAM_tb_preproc"  #"./SPCAM_tb_preproc", "./notebooks_castle/test_data/"
+train_data_folder: "./notebooks_castle/test_data/"  #"./SPCAM_tb_preproc", "./notebooks_castle/test_data/"
 # Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TRAIN_For_Nando_shuffle.nc
 #                                 2021_09_02_VALID_For_Nando.nc
-train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle.nc  # 2021_09_02_TRAIN_For_Nando_shuffle.nc
-valid_data_fn: 2021_09_02_VALID_For_Nando.nc  #2021_09_02_VALID_For_Nando.nc
-epochs: 15
+train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle_perc0-0001.nc  # 2021_09_02_TRAIN_For_Nando_shuffle.nc
+valid_data_fn: 2021_09_02_VALID_For_Nando_perc0-0002.nc  #2021_09_02_VALID_For_Nando.nc
+epochs: 2
 train_verbose: 1 # 0:Silent; 1:Continuous update; 2:Summary on epochs
 tensorboard_folder: output_castle/tensorboard
 
 # From Tom https://github.com/tbeucler/CBRAIN-CAM/tree/master/notebooks/tbeucler_devlog/UW_DATA
-normalization_folder: "./SPCAM_tb_preproc"  #./SPCAM_tb_preproc, "./notebooks_castle/test_data/"
+normalization_folder: "./notebooks_castle/test_data/"  #./SPCAM_tb_preproc, "./notebooks_castle/test_data/"
 normalization_fn: 001_norm_for_tb_dataset.nc
 
 input_sub: mean
 input_div: maxrs
-out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
+out_scale_dict_folder: ./nn_config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
-batch_size: 1024  #1024
+batch_size: 256  #1024
 
 # Learning Rate Scheduler
 init_lr: 0.001 # From train.py (default)
