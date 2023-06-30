@@ -45,6 +45,7 @@ def generate_models(setup, inputs, outputs):
     else:
         raise NotImplementedError("Splitting training over SLURM nodes only implemented for "
                                   "single NN, PCA NN, CASTLE NN.")
+    return model_descriptions
 
 
 def _build_spcam_var_list(spcam_vars, levels_idxs):
