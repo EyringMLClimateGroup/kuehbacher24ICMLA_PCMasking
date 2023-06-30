@@ -37,7 +37,7 @@ def _read_txt_to_list(txt_file):
 
 def set_memory_growth_gpu():
     physical_devices = tf.config.list_physical_devices("GPU")
-    print(f"Number of GPUs: {len(physical_devices)}", flush=True)
+    print(f"\nNumber of GPUs: {len(physical_devices)}", flush=True)
     for device in physical_devices:
         tf.config.experimental.set_memory_growth(device, True)
 
@@ -45,7 +45,7 @@ def set_memory_growth_gpu():
 if __name__ == "__main__":
     # Allow memory growth for GPUs (this seems to be very important, because errors occur otherwise)
     if len(tf.config.list_physical_devices("GPU")):
-        print(f"Allow memory growth on GPUs.", flush=True)
+        print(f"\nAllow memory growth on GPUs.", flush=True)
         set_memory_growth_gpu()
 
     parser = argparse.ArgumentParser(description="Generates .txt files for neural network input and output "
@@ -64,10 +64,10 @@ if __name__ == "__main__":
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
 
-    print(f"{yaml_config_file=}")
-    print(f"{inputs_file=}")
-    print(f"{outputs_file=}")
-    print(f"{train_idx=}")
+    print(f"\nYAML config file:      {yaml_config_file}")
+    print(f"Input list .txt file:  {inputs_file}")
+    print(f"Output list .txt file: {outputs_file}")
+    print(f"Train indices:         {train_idx}\n")
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -76,18 +76,15 @@ if __name__ == "__main__":
     if not outputs_file.suffix == ".txt":
         parser.error(f"File with neural network outputs must be .txt file. Got {outputs_file}")
 
-    print(train_idx)
     start, end = train_idx.split("-")
     train_idx = list(range(int(start), int(end) + 1))
     if not train_idx:
         raise ValueError("Given train indices were incorrect. Start indices must be smaller than end index. ")
 
-    print(f"Start CASTLE training over multiple SLURM nodes.", flush=True)
+    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    print(train_idx)
-
-    # train_castle(yaml_config_file, inputs_file, outputs_file, train_idx)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
-    print(f"{datetime.datetime.now()} Finished. Time: {t_total}")
+    print(f"\n{datetime.datetime.now()} --- Finished. Ellapsed time: {t_total}")
