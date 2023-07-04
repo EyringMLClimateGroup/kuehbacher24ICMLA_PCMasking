@@ -17,7 +17,7 @@ class TestCastleSetup(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
 
-        self.argv = ["-c", "cfg_castle_NN_Creation_test.yml"]
+        self.argv = ["-c", "cfg_castle_NN_Creation_test_1.yml"]
 
         self.castle_setup = SetupNeuralNetworks(self.argv)
 
