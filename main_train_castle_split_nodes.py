@@ -81,6 +81,12 @@ if __name__ == "__main__":
     if not train_idx:
         raise ValueError("Given train indices were incorrect. Start indices must be smaller than end index. ")
 
+    set_tf_random_seed = True
+    if set_tf_random_seed:
+        seed = 42
+        print(f"\n\nSet Tensorflow random seed for reproducibility: seed={seed}", flush=True)
+        tf.random.set_seed(seed)
+
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
