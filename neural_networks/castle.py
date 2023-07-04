@@ -172,8 +172,8 @@ def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
     for i, n_hidden_layer_nodes in enumerate(hidden_layers):
         shared_hidden_layers.append(
             keras.layers.Dense(n_hidden_layer_nodes, activation=act, name=f"shared_hidden_layer_{i}",
-                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=1.0, seed=seed),
-                               bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=1.0, seed=seed)))
+                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1, seed=seed),
+                               bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1, seed=seed)))
 
     # Output sub-layers: One sub-layer for each input. Each output layer outputs one value, i.e.
     #   reconstructs one input.
@@ -182,8 +182,8 @@ def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
         output_sub_layers.append(
             # No activation function, i.e. linear
             keras.layers.Dense(num_outputs, activation="linear", name=f"output_sub_layer_{i}",
-                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=1.0, seed=seed),
-                               bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=1.0, seed=seed)))
+                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1, seed=seed),
+                               bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1, seed=seed)))
 
     # 2. Create network graph
     inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in input_sub_layers]
@@ -218,6 +218,7 @@ def _compile_castle(model, eager_execution, strategy=None):
         epsilon=1e-07,
         amsgrad=False,
         name="Adam",
+        jit_compile=True
     )
 
     model.compile(
@@ -266,6 +267,7 @@ def _compute_h(matrix, castle_computation=True):
             dag_l += 1. / coff * tf.linalg.trace(z_in)
             coff = coff * (i + 1)
 
+        # tf.print(f"dag loss = {dag_l}")
         return dag_l - d
 
     # Else: Compute using tf.linalg.expm
