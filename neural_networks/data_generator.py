@@ -85,7 +85,7 @@ def build_valid_generator(
 
     ngeo = nlat * nlon
     if setup.do_mirrored_strategy:
-S        batch_size = ngeo * strategy.num_replicas_in_sync
+        batch_size = ngeo * strategy.num_replicas_in_sync
     else:
         batch_size = ngeo
     print(f"Validation batch size {batch_size}.", flush=True)
