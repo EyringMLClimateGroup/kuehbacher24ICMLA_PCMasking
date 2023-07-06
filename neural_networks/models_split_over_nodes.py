@@ -1,11 +1,12 @@
 import tensorflow as tf
 
 from neural_networks.models import ModelDescription
+from utils.variable import Variable_Lev_Metadata
 
 
-def generate_inputs_and_outputs(setup, inputs_file, outputs_file):
-    inputs_list = _build_spcam_var_list(setup.spcam_inputs, setup.parents_idx_levs)
-    outputs_list = _build_spcam_var_list(setup.spcam_outputs, setup.children_idx_levs)
+def write_inputs_and_outputs_lists(setup, inputs_file, outputs_file):
+    inputs_list = _build_spcam_var_list('in', setup)
+    outputs_list = _build_spcam_var_list('out', setup)
 
     with open(inputs_file, 'w') as i_file:
         for var in inputs_list:
@@ -48,7 +49,38 @@ def generate_models(setup, inputs, outputs):
     return model_descriptions
 
 
-def _build_spcam_var_list(spcam_vars, levels_idxs):
+# These files would be better placed in utils.utils but Variable_Lev_Metadata causes a circular import
+def write_outputs_mapping(setup, txt_file):
+    output_var_list = _build_spcam_var_list('out', setup)
+
+    def _get_filename(output_var):
+        """ Generate a filename to save the model """
+        i_var = setup.output_order.index(output_var.var)
+        i_level = output_var.level_idx
+        if i_level is None:
+            i_level = 0
+        return f"{i_var}_{i_level}"
+
+    output_vars_dict = {_get_filename(variable): str(variable) for variable in output_var_list}
+
+    with open(txt_file, 'w') as file:
+        for key, value in output_vars_dict.items():
+            file.write(f"{key}: {value}\n")
+    print(f"Successfully wrote output variables mapping to {txt_file}.")
+
+
+def _build_spcam_var_list(var_type, setup):
+    if var_type == 'in':
+        spcam_vars = setup.spcam_inputs
+        levels_idxs = setup.parents_idx_levs
+        order_list = setup.input_order_list
+    elif var_type == 'out':
+        spcam_vars = setup.spcam_outputs
+        levels_idxs = setup.children_idx_levs
+        order_list = None
+    else:
+        raise ValueError(f"Unkown variable type {var_type}. Must be one of ['in', 'out']")
+
     var_list = list()
 
     for spcam_var in spcam_vars:
@@ -61,4 +93,11 @@ def _build_spcam_var_list(spcam_vars, levels_idxs):
         elif spcam_var.dimensions == 2:
             var_name = spcam_var.name
             var_list.append(var_name)
+
+    if var_type == 'in':
+        var_list = sorted([Variable_Lev_Metadata.parse_var_name(p) for p in var_list],
+                          key=lambda x: order_list.index(x))
+    else:
+        var_list = [Variable_Lev_Metadata.parse_var_name(p) for p in var_list]
+
     return var_list
