@@ -30,7 +30,7 @@ def train_all_models(model_descriptions, setup):
 
 def train_save_model(model_description, setup, timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
     """ Train a model and save all information necessary for CAM """
-    print(f"\n\nDistributed training of model {model_description}", flush=True)
+    print(f"\n\nDistributed training of model {model_description}\n", flush=True)
 
     input_vars_dict = model_description.input_vars_dict
     output_vars_dict = model_description.output_vars_dict

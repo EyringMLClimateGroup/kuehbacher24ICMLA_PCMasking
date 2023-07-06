@@ -232,7 +232,7 @@ class ModelDescription:
         """ Save model, weights and input list """
         folder = self.get_path(base_path)
         filename = self.get_filename()
-        print(f"Using filename {filename}.")
+        print(f"\nUsing filename {filename}.\n")
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
         self.model.save(Path(folder, f"{filename}_model.h5"))

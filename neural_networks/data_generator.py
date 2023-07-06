@@ -44,7 +44,7 @@ def build_train_generator(
         batch_size = setup.batch_size * strategy.num_replicas_in_sync
     else:
         batch_size = setup.batch_size
-    print(f"Training batch size {batch_size}.", flush=True)
+    print(f"Training batch size = {batch_size}.", flush=True)
 
     train_gen = DataGenerator(
         # data_fn=Path(setup.train_data_folder, setup.train_data_fn),
@@ -88,7 +88,7 @@ def build_valid_generator(
         batch_size = ngeo * strategy.num_replicas_in_sync
     else:
         batch_size = ngeo
-    print(f"Validation batch size {batch_size}.", flush=True)
+    print(f"Validation batch size = {batch_size}.", flush=True)
 
     if setup.ind_test_name == "pca":
         pca_data_fn = filenm.split('.')[0]+"_pca."+filenm.split('.')[-1]
