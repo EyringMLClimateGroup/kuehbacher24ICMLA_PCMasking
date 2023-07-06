@@ -12,7 +12,7 @@ NN_INPUTS="output_castle/training_3/inputs_list.txt"
 NN_OUTPUTS="output_castle/training_3/outputs_list.txt"
 NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
-DISTRIBUTED=true
+DISTRIBUTED=false
 
 MAX_RUNNING_JOBS=20
 
@@ -44,10 +44,11 @@ display_help() {
 print_variables() {
   echo -e "\n================================================================="
   echo ""
-  echo "  NN inputs file:                  $NN_INPUTS"
-  echo "  NN outputs file:                 $NN_OUTPUTS"
-  echo "  NN config file:                  $NN_CONFIG"
-  echo "  Number of training nodes/jobs:   $NUM_NODES"
+  echo "  NN inputs file:                 $NN_INPUTS"
+  echo "  NN outputs file:                $NN_OUTPUTS"
+  echo "  NN config file:                 $NN_CONFIG"
+  echo "  Number of training nodes/jobs:  $NUM_NODES"
+  echo "  Distributed training:           $DISTRIBUTED"
   echo ""
   echo -e "=================================================================\n\n"
 }
@@ -55,10 +56,15 @@ print_variables() {
 print_computed_variables() {
   echo -e "\n================================================================="
   echo ""
-  echo "  Number of NNs:               $NUM_OUTPUTS"
-  echo "  Number of training nodes:    $NUM_NODES"
-  echo "  Number of NNs per node/job:  $NN_PER_NODE"
-  echo "  Using distributed training:  $DISTRIBUTED"
+  echo "  NN inputs file:                 $NN_INPUTS"
+  echo "  NN outputs file:                $NN_OUTPUTS"
+  echo "  NN config file:                 $NN_CONFIG"
+  echo "  Number of training nodes/jobs:  $NUM_NODES"
+  echo "  Distributed training:           $DISTRIBUTED"
+  echo ""
+  echo "  Number of NNs:                  $NUM_OUTPUTS"
+  echo "  Number of training nodes:       $NUM_NODES"
+  echo "  Number of NNs per node/job:     $NN_PER_NODE"
   echo ""
   echo -e "=================================================================\n\n"
 }
@@ -100,6 +106,25 @@ more_nodes_than_jobs() {
 
 }
 
+want_to_continue() {
+  echo ""
+  counter=0
+  while [ $counter -lt 3 ]; do
+    read -r -e -p "Do you want to continue? [y]/n: " input
+    answer=${input:-"y"}
+
+    if [[ $answer == "y" ]]; then
+      NUM_NODES=$TEMP
+      break
+    elif [[ $answer == "n" ]]; then
+      graceful_exit
+    else
+      case_counter $counter
+    fi
+    counter=$(($counter + 1))
+  done
+}
+
 compute_nn_per_node() {
   NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
   NN_PER_NODE=$((($NUM_OUTPUTS + $NUM_NODES - 1) / $NUM_NODES))
@@ -109,21 +134,7 @@ compute_nn_per_node() {
 
   if [ $NUM_NODES -ne $TEMP ]; then
     echo -e "\nInfo: Could not evenly split $NUM_OUTPUTS networks across $NUM_NODES nodes. Using $TEMP nodes."
-    counter=0
-    while [ $counter -lt 3 ]; do
-      read -r -e -p "Do you want to continue? [y]/n: " input
-      answer=${input:-"y"}
-
-      if [[ $answer == "y" ]]; then
-        NUM_NODES=$TEMP
-        break
-      elif [[ $answer == "n" ]]; then
-        graceful_exit
-      else
-        case_counter $counter
-      fi
-      counter=$(($counter + 1))
-    done
+    want_to_continue
   fi
 }
 
@@ -141,6 +152,10 @@ error_exit() {
 graceful_exit() {
   echo -e "Exiting script.\n"
   exit 0
+}
+
+timestamp() {
+  date +"%T" # current time
 }
 
 ##########################
@@ -177,9 +192,10 @@ else
   found_o=0
   found_n=0
   found_c=0
+  found_d=0
 
   # Parse options
-  while getopts "i:o:n:c:h" opt; do
+  while getopts "i:o:n:c:d:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -217,7 +233,18 @@ else
       if [[ $OPTARG == *.yml ]]; then
         NN_CONFIG=$OPTARG
       else
-        echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file"
+        echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
+        error_exit
+      fi
+      ;;
+    d)
+      found_d=1
+      if [[ $OPTARG == "y" ]]; then
+        DISTRIBUTED=true
+      elif [[ $OPTARG == "n" ]]; then
+        DISTRIBUTED=false
+      else
+        echo -e "\nError: Invalid value for option -d (using distributed training). Must be either 'y' (yes) or 'n' (no)."
         error_exit
       fi
       ;;
@@ -425,6 +452,29 @@ else
     done
   fi
 
+  # using distributed strategy
+  if [[ $found_d == 0 ]]; then
+    counter=0
+    echo ""
+    while [ $counter -lt 3 ]; do
+      read -r -e -p "Is training done using distributed MirroredStrategy? [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        DISTRIBUTED=true
+        break
+      elif [[ $answer == "n" ]]; then
+        DISTRIBUTED=false
+        break
+      else
+        #Unknown input
+        case_counter $counter
+      fi
+      counter=$(($counter + 1))
+    done
+  fi
+
   ###########################
   # Compute number of nodes #
   ###########################
@@ -433,6 +483,10 @@ else
   echo -e "\n\nRunning script with the following variables:"
   print_computed_variables
 fi
+###################################
+# Check: Do you want to continue? #
+###################################
+want_to_continue
 
 ##########################
 # Exceeding compute time #
@@ -485,13 +539,13 @@ if (($NN_PER_NODE > $NETS_IN_TIME)); then
     fi
     outer_counter=$(($outer_counter + 1))
   done
+
+  echo -e "\n\nRunning script with the following variables:"
+  print_computed_variables
+  want_to_continue
 fi
 
-echo -e "\n\n================================================================="
-echo ""
-echo " Starting batch jobs..."
-echo ""
-echo -e "=================================================================\n"
+echo -e "\n\n$(timestamp) --- Starting SLURM jobs.\n"
 
 #####################
 # Start SLURM nodes #
@@ -506,5 +560,5 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
 done
 
-echo -e "\nFinished starting batch scripts.\n"
+echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
 exit 0
