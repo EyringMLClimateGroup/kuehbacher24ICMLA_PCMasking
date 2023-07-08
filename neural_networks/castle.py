@@ -113,7 +113,8 @@ def _compute_loss(alpha, input_sub_layers, inputs, lambda_, nn_inputs, outputs, 
     # Acyclicity loss is computed using the Lagrangian scheme with penalty parameter rho and
     # Lagrangian multiplier alpha.
     h_squared = tf.math.square(h, name="h_squared")
-    acyclicity_loss = tf.math.add(tf.math.multiply(0.5 * rho, h_squared), tf.math.multiply(alpha, h),
+    acyclicity_loss = tf.math.add(tf.math.multiply(0.5 * rho, h_squared, name="lagrangian_penalty"),
+                                  tf.math.multiply(alpha, h, name="lagrangian_optimizer"),
                                   name="acyclicity_loss")
     # tf.print(f"acyclicity loss = {acyclicity_loss}")
 
@@ -133,14 +134,12 @@ def _compute_loss(alpha, input_sub_layers, inputs, lambda_, nn_inputs, outputs, 
     # tf.print(f"sparsity regularizer = {sparsity_regularizer}")
 
     # Add everything up to form overall loss
-    regularization_loss = tf.math.add(tf.cast(reconstruction_loss, dtype=tf.float64),
-                                      tf.math.add(acyclicity_loss, tf.cast(sparsity_regularizer, dtype=tf.float64)),
+    regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
                                       name="regularization_loss")
     # tf.print(f"regularization loss = {regularization_loss}\n\n")
-    lambda_ = tf.cast(lambda_, dtype=tf.float64)
-    overall_loss = tf.math.add(tf.cast(prediction_loss, dtype=tf.float64),
+    overall_loss = tf.math.add(prediction_loss,
                                tf.math.multiply(lambda_, regularization_loss, name="weighted_regularization"),
-                               name="loss")
+                               name="overall_loss")
     return overall_loss
 
 
@@ -250,17 +249,16 @@ def _compute_h(matrix, castle_computation=True):
     Returns:
         float tensor: Value of the acyclicity constraint function.
     """
-    matrix = tf.cast(matrix, dtype=tf.float64)
-    d = tf.cast(matrix.shape[0], dtype=tf.float64)
+    d = matrix.shape[0]
 
     if castle_computation:
         # Truncated power series from https://github.com/trentkyono/CASTLE
-        coff = tf.cast(1.0, dtype=tf.float64)
+        coff = 1.0
 
         z = tf.math.multiply(matrix, matrix)
-        dag_l = tf.cast(d, tf.float64)
+        dag_l = tf.cast(d, tf.float32)
 
-        z_in = tf.eye(d, dtype=tf.float64)
+        z_in = tf.eye(d)
         for i in range(1, 10):
             z_in = tf.matmul(z_in, z)
 
@@ -268,11 +266,11 @@ def _compute_h(matrix, castle_computation=True):
             coff = coff * (i + 1)
 
         # tf.print(f"dag loss = {dag_l}")
-        return dag_l - d
+        return dag_l - tf.cast(d, dtype=tf.float32)
 
     # Else: Compute using tf.linalg.expm
     hadamard_product = tf.math.multiply(matrix, matrix)
     # tf.print(f"Hadamard product = {hadamard_product}")
     matrix_exp = tf.linalg.expm(hadamard_product)
     # tf.print(f"matrix exponential = {matrix_exp}")
-    return tf.linalg.trace(matrix_exp) - d
+    return tf.linalg.trace(matrix_exp) - tf.cast(d, dtype=tf.float32)
