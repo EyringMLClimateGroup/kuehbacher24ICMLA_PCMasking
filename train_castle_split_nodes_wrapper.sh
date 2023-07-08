@@ -8,11 +8,10 @@
 ###########################
 # Default argument values #
 ###########################
-NN_INPUTS="output_castle/training_3/inputs_list.txt"
-NN_OUTPUTS="output_castle/training_3/outputs_list.txt"
+NN_INPUTS="output_castle/training_1/inputs_list.txt"
+NN_OUTPUTS="output_castle/training_1/outputs_list.txt"
 NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
-DISTRIBUTED=false
 
 MAX_RUNNING_JOBS=20
 
@@ -48,7 +47,6 @@ print_variables() {
   echo "  NN outputs file:                $NN_OUTPUTS"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
-  echo "  Distributed training:           $DISTRIBUTED"
   echo ""
   echo -e "=================================================================\n\n"
 }
@@ -67,6 +65,26 @@ print_computed_variables() {
   echo "  Number of NNs per node/job:     $NN_PER_NODE"
   echo ""
   echo -e "=================================================================\n\n"
+}
+
+error_exit_help() {
+  echo -e "\nUsage: $0 [-h] [-i inputs.txt] [-o outputs.txt] [-n nodes] [-c config.yml]"
+  echo -e "\nUse option -h for help.\n"
+  exit 1
+}
+
+error_exit() {
+  echo -e "Exiting script.\n"
+  exit 1
+}
+
+graceful_exit() {
+  echo -e "Exiting script.\n"
+  exit 0
+}
+
+timestamp() {
+  date +"%T" # current time
 }
 
 case_counter() {
@@ -126,7 +144,18 @@ want_to_continue() {
 }
 
 compute_nn_per_node() {
-  NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
+  # Check if outputs .txt file exists
+  if [ -f "$NN_OUTPUTS" ]; then
+    NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
+  else
+    echo -e "\nError: Outputs .txt file does not exist.\n"
+    error_exit
+  fi
+  # Check if it was empty
+  if [[ $NUM_OUTPUTS == 0 ]]; then
+    echo -e "\nError: Outputs .txt file was empty.\n"
+    error_exit
+  fi
   NN_PER_NODE=$((($NUM_OUTPUTS + $NUM_NODES - 1) / $NUM_NODES))
 
   # Test if we have to use different number of nodes than specified
@@ -138,24 +167,25 @@ compute_nn_per_node() {
   fi
 }
 
-error_exit_help() {
-  echo -e "\nUsage: $0 [-h] [-i inputs.txt] [-o outputs.txt] [-n nodes] [-c config.yml]"
-  echo -e "\nUse option -h for help.\n"
-  exit 1
+read_distributed() {
+  if [ -f "$NN_CONFIG" ]; then
+    DISTRIBUTED=$(grep 'do_mirrored_strategy:' $NN_CONFIG)
+    DISTRIBUTED=${DISTRIBUTED//*do_mirrored_strategy: /}
+    # Remove trailing new lines and spaces
+    DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n ']}"
+  else
+    echo -e "\nError: YAML configuration file does not exist.\n"
+    error_exit
+  fi
 }
 
-error_exit() {
-  echo -e "Exiting script.\n"
-  exit 1
-}
-
-graceful_exit() {
-  echo -e "Exiting script.\n"
-  exit 0
-}
-
-timestamp() {
-  date +"%T" # current time
+check_input_file_exists() {
+  if [ -f "$NN_INPUTS" ]; then
+    :
+  else
+    echo -e "\nError: Inputs .txt file does not exist.\n"
+    error_exit
+  fi
 }
 
 ##########################
@@ -180,6 +210,16 @@ if [ $# -eq 0 ]; then
   ###########################
   compute_nn_per_node
 
+  #######################################
+  # Read distributed strategy from YAML #
+  #######################################
+  read_distributed
+
+  ############################
+  # Check inputs file exists #
+  ############################
+  check_input_file_exists
+
   echo -e "\n\nRunning script with the following variables:"
   print_computed_variables
 
@@ -192,10 +232,9 @@ else
   found_o=0
   found_n=0
   found_c=0
-  found_d=0
 
   # Parse options
-  while getopts "i:o:n:c:d:h" opt; do
+  while getopts "i:o:n:c:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -234,17 +273,6 @@ else
         NN_CONFIG=$OPTARG
       else
         echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
-        error_exit
-      fi
-      ;;
-    d)
-      found_d=1
-      if [[ $OPTARG == "y" ]]; then
-        DISTRIBUTED=true
-      elif [[ $OPTARG == "n" ]]; then
-        DISTRIBUTED=false
-      else
-        echo -e "\nError: Invalid value for option -d (using distributed training). Must be either 'y' (yes) or 'n' (no)."
         error_exit
       fi
       ;;
@@ -452,33 +480,20 @@ else
     done
   fi
 
-  # using distributed strategy
-  if [[ $found_d == 0 ]]; then
-    counter=0
-    echo ""
-    while [ $counter -lt 3 ]; do
-      read -r -e -p "Is training done using distributed MirroredStrategy? [y]/n: " input
-      answer=${input:-"y"}
-      echo ""
-
-      if [[ $answer == "y" ]]; then
-        DISTRIBUTED=true
-        break
-      elif [[ $answer == "n" ]]; then
-        DISTRIBUTED=false
-        break
-      else
-        #Unknown input
-        case_counter $counter
-      fi
-      counter=$(($counter + 1))
-    done
-  fi
-
   ###########################
   # Compute number of nodes #
   ###########################
   compute_nn_per_node
+
+  #######################################
+  # Read distributed strategy from YAML #
+  #######################################
+  read_distributed
+
+  ############################
+  # Check inputs file exists #
+  ############################
+  check_input_file_exists
 
   echo -e "\n\nRunning script with the following variables:"
   print_computed_variables
@@ -491,17 +506,20 @@ want_to_continue
 ##########################
 # Exceeding compute time #
 ##########################
-if [ "$DISTRIBUTED" = true ]; then
+if [[ $DISTRIBUTED == "True" ]]; then
   NETS_IN_TIME=3
+elif [[ $DISTRIBUTED == "False" ]]; then
+  NETS_IN_TIME=1
 else
-  NETS_IN_TIME=2
+  echo -e "\nUnknown value for distributed strategy: $DISTRIBUTED. Must be True or False."
+  error_exit
 fi
 
 if (($NN_PER_NODE > $NETS_IN_TIME)); then
-  echo -e "\nInfo: Training $NN_PER_NODE nets per node may lead to exceeding the node reservation time limit (12h for GPU partition)."
-  echo "  From experience, we can train about 2 nets in 12 hours (3 nets with distributed training). "
-  echo "  If the time limit is exceeded, training will be aborted and there may not be any log output."
-  echo -e "  (Tensorboard and model weights files should still be saved.)\n"
+  echo -e "\n\nInfo: Training $NN_PER_NODE nets per node may lead to exceeding the node reservation time limit (12h for GPU partition)."
+  echo "      From experience, we can fully train about 1 net in 12 hours (3 nets with distributed training). "
+  echo "      If the time limit is exceeded, training will be aborted and there may not be any log output."
+  echo -e "      (Tensorboard and model weights files should still be saved.)\n"
 
   outer_counter=0
   while [ $outer_counter -lt 3 ]; do
@@ -514,7 +532,7 @@ if (($NN_PER_NODE > $NETS_IN_TIME)); then
 
       if (($NUM_NODES > 20)); then
         echo -e "\nInfo: Cannot run $1 nodes/jobs simultaneously because it exceeds the maximum number of running jobs per user (max running jobs=$MAX_RUNNING_JOBS)."
-        echo -e "  The jobs exceeding the job limit will be scheduled and will start once running jobs have finished.\n"
+        echo -e "      The jobs exceeding the job limit will be scheduled and will start once running jobs have finished.\n"
 
         inner_counter=0
         while [ $inner_counter -lt 3 ]; do
@@ -557,7 +575,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   TRAIN_INDICES="$i-$END_INDEX"
   echo -e "Starting batch script with output indices $TRAIN_INDICES"
 
-  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
+  #sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
