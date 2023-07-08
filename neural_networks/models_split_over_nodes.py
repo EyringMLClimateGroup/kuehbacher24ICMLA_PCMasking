@@ -11,12 +11,12 @@ def write_inputs_and_outputs_lists(setup, inputs_file, outputs_file):
     with open(inputs_file, 'w') as i_file:
         for var in inputs_list:
             i_file.write(f"{var}\n")
-    print(f"Successfully wrote NN input variables to {inputs_file}.")
+    print(f"Successfully wrote NN input variables to {inputs_file}.\n")
 
     with open(outputs_file, 'w') as o_file:
         for var in outputs_list:
             o_file.write(f"{var}\n")
-    print(f"Successfully wrote NN output variables to {outputs_file}.")
+    print(f"Successfully wrote NN output variables to {outputs_file}.\n")
 
 
 def generate_single_nn_for_output_list(setup, inputs_list, outputs_list):
@@ -66,7 +66,7 @@ def write_outputs_mapping(setup, txt_file):
     with open(txt_file, 'w') as file:
         for key, value in output_vars_dict.items():
             file.write(f"{key}: {value}\n")
-    print(f"Successfully wrote output variables mapping to {txt_file}.")
+    print(f"Successfully wrote output variables mapping to {txt_file}.\n")
 
 
 def _build_spcam_var_list(var_type, setup):
