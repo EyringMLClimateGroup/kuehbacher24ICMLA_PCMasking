@@ -26,8 +26,8 @@ documentation:
 analysis: 'single' # 'single': gridpoints individually;
 # 'concat': gridpoints contatenated into a
 #           single time-series;
-spcam_parents: [ 'ps' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
-spcam_children: [ 'phq' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
+spcam_parents: [ 'ps', 'lhflx' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
+spcam_children: [ 'phq', 'prect' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
@@ -71,8 +71,8 @@ nn_type: "castleNN" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN
 
 nn_output_path: notebooks_castle/test/output/models_castle
 
-input_order: [ ps ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
-output_order: [ phq ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
+input_order: [ ps, lhflx ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
+output_order: [ phq, prect ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
 hidden_layers:  [32, 32]  # [ 256,256,256,256,256,256,256,256,256 ]
 activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
@@ -118,6 +118,20 @@ beta: 1.0
 lambda: 1.0
 do_mirrored_strategy: True
 
-
-
-
+# Diagnostic configuration
+# ----------------------
+## DATASETS.
+# Gunnar's: SPCAM_gb_prepoc; Tom's: SPCAM_tb_preproc
+# Tom's: SPCAM_tb_prepoc; Aqua_Generalization_Test_Sets
+test_data_folder : "./notebooks_castle/test_data/" # "./SPCAM_tb_preproc"
+# Gunnar's. Train (year/month): 002_train_1_<year/month>.nc 002_train_1_<year/month>_shuffle.nc
+#           Valid (year/month): 000_valid_1_<year/month>.nc
+# Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TEST_For_Nando_shuffle.nc
+#                                 2021_09_02_TEST_For_Nando.nc
+#                          Gener: 2022_02_07_TEST_For_Nando_m4K.nc; 2022_02_07_TEST_For_Nando_p4K.nc
+#                          ClInv: 2021_09_03_TEST_For_Nando_ClInv_shuffle.nc
+#                                 2021_09_03_TEST_For_Nando_ClInv.nc
+test_data_fn : 2021_09_02_TEST_For_Nando_shuffle_perc0-0001.nc # 2021_09_02_VALID_For_Nando.nc #
+# Diagnostics
+diagnostics      : ['map']  # 'map'
+diagnostics_time : ['mean'] # snapshot: int; time-mean: 'mean'
