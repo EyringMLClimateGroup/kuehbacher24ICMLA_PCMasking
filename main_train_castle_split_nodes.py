@@ -93,4 +93,4 @@ if __name__ == "__main__":
     train_castle(yaml_config_file, inputs_file, outputs_file, train_idx)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
-    print(f"\n{datetime.datetime.now()} --- Finished. Ellapsed time: {t_total}")
+    print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
