@@ -57,11 +57,10 @@ print_computed_variables() {
   echo "  NN inputs file:                 $NN_INPUTS"
   echo "  NN outputs file:                $NN_OUTPUTS"
   echo "  NN config file:                 $NN_CONFIG"
-  echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Distributed training:           $DISTRIBUTED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
-  echo "  Number of training nodes:       $NUM_NODES"
+  echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Number of NNs per node/job:     $NN_PER_NODE"
   echo ""
   echo -e "=================================================================\n\n"
@@ -105,7 +104,7 @@ case_counter() {
 more_nodes_than_jobs() {
   if (($1 > 20)); then
     echo -e "\nInfo: Cannot run $1 nodes/jobs simultaneously because it exceeds the maximum number of running jobs per user ($MAX_RUNNING_JOBS)."
-    echo "  The jobs exceeding the job limit will be scheduled and will start once running jobs have finished."
+    echo "      The jobs exceeding the job limit will be scheduled and will start once running jobs have finished."
     counter=0
     while [ $counter -lt 3 ]; do
       read -r -e -p "Do you wish to continue? [y]/n: " input
@@ -575,7 +574,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   TRAIN_INDICES="$i-$END_INDEX"
   echo -e "Starting batch script with output indices $TRAIN_INDICES"
 
-  #sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
+  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
