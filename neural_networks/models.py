@@ -205,9 +205,12 @@ class ModelDescription:
                 cfg_str.format(alpha_lasso=self.setup.alpha_lasso)
             )
         elif self.model_type == "castleNN":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
+            if self.setup.do_mirrored_strategy:
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-distributed/"
+            else:
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
-                                              lambda_=self.setup.lambda_))
+                                              lambda_=self.setup.lambda_, do_mirrored=self.setup.do_mirrored_strategy))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
