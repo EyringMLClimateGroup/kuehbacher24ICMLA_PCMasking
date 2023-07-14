@@ -157,9 +157,9 @@ class SetupPCMCIAggregation(Setup):
         self._setup_plots(self.yml_cfg)
 
     def _setup_results_aggregation(self, yml_cfg):
-        self.thresholds    = yml_cfg["thresholds"]
+        self.thresholds = yml_cfg["thresholds"]
         self.area_weighted = yml_cfg["area_weighted"]
-        self.pdf           = yml_cfg["pdf"]
+        self.pdf = yml_cfg["pdf"]
         self.aggregate_folder = self._evaluate_symlink(yml_cfg["aggregate_folder"])
 
     def _setup_plots(self, yml_cfg):
@@ -185,6 +185,9 @@ class SetupNeuralNetworks(Setup):
         self.do_random_single_nn = False
         self.do_sklasso_nn = False
         self.do_castle_nn = False
+
+        # Set do_mirrored_strategy
+        self.do_mirrored_strategy = False
 
         if self.nn_type == "SingleNN":
             self.do_single_nn = True
@@ -257,6 +260,14 @@ class SetupNeuralNetworks(Setup):
         self.out_scale_dict_fn = yml_cfg["out_scale_dict_fn"]
         self.batch_size = yml_cfg["batch_size"]
 
+        # Add an attributed for validation batch size
+        # Even though it's not used in the normal training, it's good to be able to control
+        #  validation batch size in testing
+        # Using get here, so that it doesn't throw a key not found error if validation batch size was
+        #  not specified in the config file
+        self.val_batch_size = yml_cfg.get("val_batch_size")
+        self.use_val_batch_size = yml_cfg.get("val_batch_size")
+
         self.init_lr = yml_cfg["init_lr"]
         self.step_lr = yml_cfg["step_lr"]
         self.divide_lr = yml_cfg["divide_lr"]
@@ -271,8 +282,8 @@ class SetupDiagnostics(SetupNeuralNetworks):
 
     def _setup_diagnostics(self, yml_cfg):
         self.test_data_folder = self._evaluate_symlink(yml_cfg["test_data_folder"])
-        self.test_data_fn     = yml_cfg["test_data_fn"]
-        self.diagnostics      = yml_cfg["diagnostics"]
+        self.test_data_fn = yml_cfg["test_data_fn"]
+        self.diagnostics = yml_cfg["diagnostics"]
         self.diagnostics_time = yml_cfg["diagnostics_time"]
 
 
@@ -282,13 +293,13 @@ class SetupSherpa(SetupNeuralNetworks):
         self._setup_sherpa(self.yml_cfg)
 
     def _setup_sherpa(self, yml_cfg):
-        self.sherpa_hyper      = yml_cfg["sherpa_hyper"]
-        self.nn_type           = yml_cfg["sherpa_nn_type"]
-        self.nn_sherpa_path    = yml_cfg["nn_sherpa_path"]
-        self.sherpa_pc_alphas  = yml_cfg["sherpa_pc_alphas"]
+        self.sherpa_hyper = yml_cfg["sherpa_hyper"]
+        self.nn_type = yml_cfg["sherpa_nn_type"]
+        self.nn_sherpa_path = yml_cfg["nn_sherpa_path"]
+        self.sherpa_pc_alphas = yml_cfg["sherpa_pc_alphas"]
         self.sherpa_thresholds = yml_cfg["sherpa_thresholds"]
         self.sherpa_num_layers = yml_cfg["sherpa_num_layers"]
-        self.sherpa_num_nodes  = yml_cfg["sherpa_num_nodes"]
+        self.sherpa_num_nodes = yml_cfg["sherpa_num_nodes"]
         self.sherpa_num_trials = yml_cfg["sherpa_num_trials"]
 
 

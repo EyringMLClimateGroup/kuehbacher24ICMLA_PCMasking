@@ -12,7 +12,8 @@ def build_train_generator(
     setup,
     # save_dir=False,
     input_pca_vars_dict=False,
-    strategy=None,
+    num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
+    diagnostic_mode=False,
 ):
     out_scale_dict = load_pickle(
         Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
@@ -40,8 +41,8 @@ def build_train_generator(
     else:
         train_data_fn = setup.train_data_fn
 
-    if setup.do_mirrored_strategy:
-        batch_size = setup.batch_size * strategy.num_replicas_in_sync
+    if setup.do_mirrored_strategy and not diagnostic_mode:
+        batch_size = setup.batch_size * num_replicas_distributed
     else:
         batch_size = setup.batch_size
     print(f"Training batch size = {batch_size}.", flush=True)
@@ -70,7 +71,8 @@ def build_valid_generator(
     test=False,
     # save_dir=False,
     input_pca_vars_dict=False,
-    strategy=None,
+    num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
+    diagnostic_mode=False,
 ):
     out_scale_dict = load_pickle(
         Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
@@ -83,11 +85,19 @@ def build_valid_generator(
         data_fn = setup.train_data_folder
         filenm  = setup.valid_data_fn
 
-    ngeo = nlat * nlon
-    if setup.do_mirrored_strategy:
-        batch_size = ngeo * strategy.num_replicas_in_sync
+    # Option to use validation batch size specified in setup
+    # This is useful for small test runs
+    if setup.use_val_batch_size:
+        batch_size = setup.use_val_batch_size
     else:
-        batch_size = ngeo
+        ngeo = nlat * nlon
+        if setup.do_mirrored_strategy and not diagnostic_mode:
+            if num_replicas_distributed == 0:
+                raise ValueError("Cannot run distributed training with 0 GPUs.")
+            batch_size = ngeo * num_replicas_distributed
+        else:
+            batch_size = ngeo
+
     print(f"Validation batch size = {batch_size}.", flush=True)
 
     if setup.ind_test_name == "pca":
