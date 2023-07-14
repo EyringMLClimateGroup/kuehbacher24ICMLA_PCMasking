@@ -103,6 +103,14 @@ def get_var_list(setup, target_vars):
     return output_list
 
 
+def load_single_model(setup, var_name):
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or setup.do_castle_nn:
+        var = Variable_Lev_Metadata.parse_var_name(var_name)
+        return {var: get_model(setup, var, setup.nn_type, pc_alpha=None,threshold=None)}
+    else:
+        raise NotImplementedError(f"load_single_model is not implemented for neural network type {setup.nn_type}")
+
+
 def load_models(setup):
     """ Load all NN models specified in setup """
     models = collections.defaultdict(dict)
