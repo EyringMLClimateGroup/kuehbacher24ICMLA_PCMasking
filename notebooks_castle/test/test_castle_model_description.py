@@ -9,7 +9,7 @@ from neural_networks.load_models import load_models
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
-from notebooks_castle.test.testing_utils import delete_dir, set_memory_growth_gpu
+from notebooks_castle.test.testing_utils import delete_dir, set_memory_growth_gpu, train_model_if_not_exists
 from utils.setup import SetupNeuralNetworks
 
 
@@ -126,14 +126,7 @@ class TestCastleSetup(unittest.TestCase):
         logging.info("Testing loading of model description instance with trained CASTLE models.")
 
         self.castle_setup_few_networks.do_mirrored_strategy = False
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-
-        for md in model_descriptions:
-            trained_model = md.get_filename() + '_model.h5'
-            training_path = str(md.get_path(self.castle_setup_few_networks.nn_output_path))
-            if not os.path.isfile(os.path.join(training_path, trained_model)):
-                train_all_models([md], self.castle_setup_few_networks)
-
+        train_model_if_not_exists(self.castle_setup_few_networks)
         loaded_model_description = load_models(self.castle_setup_few_networks)
 
         self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
@@ -143,13 +136,7 @@ class TestCastleSetup(unittest.TestCase):
         logging.info("Testing loading of model description instance with distributed trained CASTLE models.")
 
         self.castle_setup_few_networks.do_mirrored_strategy = False
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-
-        for md in model_descriptions:
-            trained_model = md.get_filename() + '_model.h5'
-            training_path = str(md.get_path(self.castle_setup_few_networks.nn_output_path))
-            if not os.path.isfile(os.path.join(training_path, trained_model)):
-                train_all_models_mirrored([md], self.castle_setup_few_networks)
+        train_model_if_not_exists(self.castle_setup_few_networks)
 
         loaded_model_description = load_models(self.castle_setup_few_networks)
 
