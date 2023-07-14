@@ -55,10 +55,10 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         return data_inputs, data_outputs
 
     with build_train_generator(input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
-                               strategy=model_description.strategy) as train_gen, \
+                               num_replicas_distributed=model_description.strategy.num_replicas_in_sync) as train_gen, \
             build_valid_generator(input_vars_dict, output_vars_dict, setup,
                                   input_pca_vars_dict=setup.input_pca_vars_dict,
-                                  strategy=model_description.strategy) as valid_gen:
+                                  num_replicas_distributed=model_description.strategy.num_replicas_in_sync) as valid_gen:
         train_data = h5py.File(train_gen.data_fn, "r")
         val_data = h5py.File(valid_gen.data_fn, "r")
 
