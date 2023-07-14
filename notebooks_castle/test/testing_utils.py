@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from neural_networks.models import generate_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
+from neural_networks.training import train_all_models
 
 
 def delete_dir(folder):
@@ -29,4 +30,4 @@ def train_model_if_not_exists(setup):
             if setup.do_mirrored_strategy:
                 train_all_models_mirrored([md], setup)
             else:
-                trained_model([md], setup)
+                train_all_models([md], setup)
