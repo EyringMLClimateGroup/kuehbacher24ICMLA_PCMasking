@@ -64,10 +64,10 @@ class DataGenerator(tf.keras.utils.Sequence):
         X = self.input_transform.transform(X)
         Y = self.output_transform.transform(Y)
 
-        # When training CASTLE networks, we need the y labels and x variables
-        # concatenated as one array which serves both as input as well as true output
+        # When training CASTLE networks, we only pass X as input into the network,
+        # but since we are reconstructing X as well as predicting Y, we need both for the error calculation.
         if self.do_castle:
-            return np.concatenate([Y, X], axis=1)
+            return X, np.concatenate([Y, X], axis=1)
 
         return X, Y
 

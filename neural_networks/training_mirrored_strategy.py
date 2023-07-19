@@ -39,20 +39,20 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
     Path(save_dir).mkdir(parents=True, exist_ok=True)
 
     def normalize(data, generator):
-        data_inputs = data["vars"][:, generator.input_idxs]
-        data_outputs = data["vars"][:, generator.output_idxs]
+        data_x = data["vars"][:, generator.input_idxs]
+        data_y = data["vars"][:, generator.output_idxs]
 
         # Normalize
-        data_inputs = generator.input_transform.transform(data_inputs)
-        data_outputs = generator.output_transform.transform(data_outputs)
+        data_x = generator.input_transform.transform(data_x)
+        data_y = generator.output_transform.transform(data_y)
 
         if setup.do_castle_nn:
-            return np.concatenate([data_outputs, data_inputs], axis=1)
+            return data_x, np.concatenate([data_y, data_x], axis=1)
 
         # Delete data to save memory
         del data
 
-        return data_inputs, data_outputs
+        return data_x, data_y
 
     with build_train_generator(input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
                                num_replicas_distributed=model_description.strategy.num_replicas_in_sync) as train_gen, \
@@ -65,19 +65,12 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         train_batch_size = train_gen.batch_size
         val_batch_size = valid_gen.batch_size
 
-        if setup.do_castle_nn:
-            train_data_outputs_inputs = normalize(train_data, train_gen)
-            val_data_outputs_inputs = normalize(val_data, valid_gen)
+        train_data_inputs, train_data_outputs = normalize(train_data, train_gen)
+        val_data_inputs, val_data_outputs = normalize(val_data, valid_gen)
 
-            train_dataset = tf.data.Dataset.from_tensor_slices(train_data_outputs_inputs, name="train_dataset")
-            val_dataset = tf.data.Dataset.from_tensor_slices(val_data_outputs_inputs, name="val_dataset")
-        else:
-            train_data_inputs, train_data_outputs = normalize(train_data, train_gen)
-            val_data_inputs, val_data_outputs = normalize(val_data, valid_gen)
-
-            train_dataset = tf.data.Dataset.from_tensor_slices((train_data_inputs, train_data_outputs),
-                                                               name="train_dataset")
-            val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_data_inputs, train_data_outputs),
+                                                           name="train_dataset")
+        val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
 
     train_gen_input_transform = train_gen.input_transform
     train_gen_output_transform = train_gen.output_transform

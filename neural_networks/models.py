@@ -330,7 +330,6 @@ def generate_all_single_nn(setup):
     return model_descriptions
 
 
-
 def generate_all_causal_single_nn(setup, aggregated_results):
     """ Generate all NN with one output and selected inputs from a pc analysis """
 
@@ -418,6 +417,8 @@ def generate_models(setup, threshold_dict=False):
             raise EnvironmentError(f"Cannot build and compile models with tf.distribute.MirroredStrategy "
                   f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)
+    else:
+        print(f"\n\nBuilding and compiling models.", flush=True)
 
     if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
         model_descriptions.extend(generate_all_single_nn(setup))
