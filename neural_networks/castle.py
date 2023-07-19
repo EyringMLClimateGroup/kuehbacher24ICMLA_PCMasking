@@ -177,7 +177,7 @@ def castle_loss(input_layer_weights, rho, alpha, reg_lambda):
         # Compute matrix with l2-norms of input sub-layer weight matrices:
         # The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
         # Since our weight matrices are of dimension dxd (d is the number of x-variables), but we have d+1
-        # variables all together (x-variables and y) we set the first column 0 for y.
+        # variables all together (x-variables and y) we set the first row 0 for y.
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
