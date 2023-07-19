@@ -101,9 +101,12 @@ class ModelDiagnostics():
                 if self.setup.nn_type == "castleNN":
                     # In CASTLE, output Y and inputs X are fed into the network together
                     # as one concatenated array [Y, X]. We need to split the array to get the ground truth
-                    # Note: X in CASTLE is actually [Y, X]
-                    X = valid_gen[itime]
-                    truth, _ = np.split(X, [1], axis=1)
+                    YX = valid_gen[itime]
+                    truth, X = np.split(YX, [1], axis=1)
+                    # The input shape of the model must match, so we concatenate an empty array
+                    # with the input variables to make the prediction
+                    X = np.concatenate([np.zeros_like(truth), X], axis=1)
+
                     pred = model.predict_on_batch(X[:, inputs])
                     # We only want the prediction for Y, not the reconstruction of the X's
                     pred = pred[0]
@@ -132,8 +135,10 @@ class ModelDiagnostics():
                         # In CASTLE, output Y and inputs X are fed into the network together
                         # as one concatenated array [Y, X]. We need to split the array to get the ground truth
                         # Note: X in CASTLE is actually [Y, X]
-                        X_tmp = valid_gen[iTime]
-                        t_tmp, _ = np.split(X_tmp, [1], axis=1)
+                        YX_tmp = valid_gen[iTime]
+                        t_tmp, X_tmp = np.split(YX_tmp, [1], axis=1)
+                        X_tmp = np.concatenate([np.zeros_like(t_tmp), X_tmp], axis=1)
+
                         p_tmp = model.predict_on_batch(X_tmp[:, inputs])
                         # We only want the prediction for Y, not the reconstruction of the X's
                         p_tmp = p_tmp[0]
@@ -166,6 +171,7 @@ class ModelDiagnostics():
             nSamples=False,
             metric=False
     ):
+        print(f"\nGetting Shapley values for variable {var}.\n")
 
         input_list = get_var_list(self.setup, self.setup.spcam_inputs)
         self.inputs = sorted(
@@ -192,7 +198,14 @@ class ModelDiagnostics():
                 # X_train, _ = train_gen[0] #TODO: Change this to retrieve all the data
                 n_batches = int((self.ngeo / self.setup.batch_size) * nTime)
                 # print(f"n_batches: {n_batches}")
-                X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
+
+                if self.setup.nn_type == "castleNN":
+                    # For CASTLE we need add 1 to len(inputs), since the first index is always
+                    # reserved for the output Y.
+                    X_train = np.zeros([self.ngeo * nTime, len(self.inputs) + 1])
+                else:
+                    X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
+
                 # print(f"concatenated.shape: {concatenated.shape}")
                 sIdx = 0
                 eIdx = self.setup.batch_size
@@ -214,12 +227,18 @@ class ModelDiagnostics():
                 # X_test, _ = valid_gen[0] #TODO: Change this to retrieve all the data
                 if not nTime: nTime = len(valid_gen)
                 n_batches = nTime
-                X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
-                sIdx = 0;
+                if self.setup.nn_type == "castleNN":
+                    # For CASTLE we need add 1 to len(inputs), since the first index is always
+                    # reserved for the output Y.
+                    X_test = np.zeros([self.ngeo * nTime, len(self.inputs) + 1])
+                else:
+                    X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
+
+                sIdx = 0
                 eIdx = self.ngeo
                 for i in range(n_batches):
                     X_test[sIdx:eIdx, :] = valid_gen[i][0]
-                    sIdx += self.ngeo;
+                    sIdx += self.ngeo
                     eIdx += self.ngeo
 
         if not nSamples: nSamples = len(X_train)
@@ -227,14 +246,28 @@ class ModelDiagnostics():
         # explain predictions of the model
         background = X_train[np.random.choice(X_train.shape[0], nSamples, replace=False)]
         test = X_test[np.random.choice(X_test.shape[0], nSamples, replace=False)]
-        e = shap.DeepExplainer(model, background[:, inputs])
-        shap_values = e.shap_values(test[:, inputs], check_additivity=False)
+
+        if self.setup.nn_type == "castleNN":
+            # For CASTLE we need to move the input indices, since the first index is always
+            # reserved for the output Y.
+            # Watch out to not do this in a loop!
+            inputs_castle = [i + 1 for i in inputs]
+            inputs_castle.insert(0, 0)  # we always need to have Y in there
+
+            e = shap.DeepExplainer(model, background[:, inputs_castle])
+            shap_values = e.shap_values(test[:, inputs_castle], check_additivity=False)
+
+        else:
+            e = shap.DeepExplainer(model, background[:, inputs])
+            shap_values = e.shap_values(test[:, inputs], check_additivity=False)
+
         shap_values_sign = np.mean(shap_values[0], axis=0)
-        shap_values_sign[shap_values_sign < 0] = -1.;
+        shap_values_sign[shap_values_sign < 0] = -1.
         shap_values_sign[shap_values_sign > 0] = 1.
         shap_values_mean = np.mean(shap_values[0], axis=0)
         shap_values_abs_mean = np.mean(np.absolute(shap_values[0]), axis=0)
         shap_values_abs_mean_sign = shap_values_abs_mean * shap_values_sign
+
         # shap_values_mean = valid_gen.output_transform.inverse_transform(np.mean(shap_values[0],axis=0))
         # print(f'transformed shap_values_mean: {valid_gen.output_transform.inverse_transform(shap_values_mean)}')
 
@@ -262,7 +295,7 @@ class ModelDiagnostics():
             **kwargs
     ):
         varname = var.var.value
-        print(f"Plotting double_xy for variable {varname}")
+        print(f"\nPlotting double_xy for variable {varname}\n")
 
         if stats is not False:
             t, p = self.get_truth_pred('range', var, nTime=nTime)
@@ -301,7 +334,7 @@ class ModelDiagnostics():
                 **kwargs
             )
             plt.close(fig)
-            print(f"Closed plot for variable {var}")
+            print(f"\nClosed plot for variable {var}\n")
             return
 
     def plot_double_yz(
@@ -314,10 +347,11 @@ class ModelDiagnostics():
             save=False,
             diff=False,
             stats=False,
+            show_plot=True,
             **kwargs
     ):
         varname = var.var.value
-        print(f"Plotting double_yz for variable {varname}")
+        print(f"\nPlotting double_yz for variable {varname}\n")
 
         # Allocate array
         truth = np.zeros([self.nlev, self.nlat])
@@ -362,17 +396,33 @@ class ModelDiagnostics():
                 hor_r2 = 1 - (hor_mse / hor_tvar)
                 mean_stats[iLev, :] = locals()['hor_' + stats]
 
-        return self.plot_slices(
-            truth,
-            pred,
-            itime,
-            varname=varname,
-            stype='yz',
-            save=save,
-            diff=diff,
-            stats=[False, (stats, mean_stats)][stats is not False],
-            **kwargs
-        )
+        if show_plot:
+            return self.plot_slices(
+                truth,
+                pred,
+                itime,
+                var=var,
+                stype='yz',
+                save=save,
+                diff=diff,
+                stats=[False, (stats, mean_stats)][stats is not False],
+                **kwargs
+            )
+        else:
+            fig, axes = self.plot_slices(
+                truth,
+                pred,
+                itime,
+                var=var,
+                stype='yz',
+                save=save,
+                diff=diff,
+                stats=[False, (stats, mean_stats)][stats is not False],
+                **kwargs
+            )
+            plt.close(fig)
+            print(f"\nClosed plot for variable {var}\n")
+            return
 
     def plot_slices(
             self,
@@ -451,6 +501,7 @@ class ModelDiagnostics():
             #             else:
             #                 lmin=vmin; lmax=vmax
             #                 cmap_theme=cmap
+            # todo: this is where range fails because var_to_plot is 3d instead of 2d
             I = axes[iSlice].imshow(var_to_plot, vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
             cb = fig.colorbar(I, ax=axes[iSlice], orientation='horizontal', extend=extend)
             cb.set_label(unit)
@@ -564,9 +615,12 @@ class ModelDiagnostics():
             lons=[0., 359.],
             save=False,
             stats=False,
+            show_plot=True,
+            unit="",
             **kwargs
     ):
         varname = var.var.value
+        print(f"\nPlotting double_profiles for variable {varname}\n")
 
         if not nTime and isinstance(itime, int):
             nTime = 1
@@ -614,18 +668,37 @@ class ModelDiagnostics():
                 hor_r2 = 1 - (hor_mse / hor_tvar)
                 mean_stats[iLev] = locals()['hor_' + stats]
 
-        return self.plot_profiles(
-            truth,
-            pred,
-            itime,
-            varname=varname,
-            nTime=False,
-            lats=[-90, 90],
-            lons=[0., 359.],
-            save=False,
-            stats=[False, (stats, mean_stats)][stats is not False],
-            **kwargs
-        )
+        if show_plot:
+            return self.plot_profiles(
+                truth,
+                pred,
+                itime,
+                varname=varname,
+                nTime=nTime,
+                lats=lats,
+                lons=lons,
+                save=save,
+                stats=[False, (stats, mean_stats)][stats is not False],
+                unit=unit,
+                **kwargs
+            )
+        else:
+            fig = self.plot_profiles(
+                truth,
+                pred,
+                itime,
+                varname=varname,
+                nTime=nTime,
+                lats=lats,
+                lons=lons,
+                save=save,
+                stats=[False, (stats, mean_stats)][stats is not False],
+                unit=unit,
+                **kwargs
+            )
+            plt.close(fig)
+            print(f"\nClosed plot for variable {var}\n")
+            return
 
     def plot_profiles(
             self,
@@ -673,7 +746,7 @@ class ModelDiagnostics():
             )
         ax1.invert_yaxis()
         ax1.set_xlim(vmin, vmax)
-        ax1.set_xlabel(f" ({unit})")
+        ax1.set_xlabel(f"{varname} ({unit})")
         ax1.set_ylabel('Pressure (hPa)')
         ax1.legend(loc=0)
 
@@ -695,7 +768,10 @@ class ModelDiagnostics():
         fig.suptitle(title)
         if save:
             Path(save).mkdir(parents=True, exist_ok=True)
-            fig.savefig(f"{save}/{var}_profile_time-{itime}.png")
+            save_path = Path(f"{save}/{varname}_profile_time-{itime}.png")
+            fig.savefig(save_path)
+            print(f"\nSaved profile plot {save_path.name}")
+
         return fig
 
     def calc_sums(self, p, t, nTime):
@@ -895,5 +971,8 @@ def plot_profiles(
     fig.suptitle(title)
     if save is not False:
         Path(save).mkdir(parents=True, exist_ok=True)
-        fig.savefig(f"{save}/{varname}_profile.png")
+        save_path = Path(f"{save}/{varname}_profile.png")
+        fig.savefig(save_path)
+        print(f"\nSaved profile plot {save_path.name}")
+
     plt.show()

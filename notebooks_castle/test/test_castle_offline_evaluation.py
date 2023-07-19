@@ -77,11 +77,23 @@ class TestCastleSetup(unittest.TestCase):
     #     for var in self.castle_models[self.castle_setup.nn_type].keys():
     #         print(var)
     #         castle_md.get_shapley_values(itime, var, nTime=False, nSamples=False, metric=False)
+    #
+    # def test_compute_stats(self):
+    #     castle_md = ModelDiagnostics(setup=self.castle_setup,
+    #                                  models=self.castle_models[self.castle_setup.nn_type])
+    #
+    #     itime = 'range'
+    #     for var in self.castle_models[self.castle_setup.nn_type].keys():
+    #         # Todo: do I have to call compute before mean?
+    #         castle_md.compute_stats(itime, var)
+    #         stats = castle_md.mean_stats()
+    #         print(f"Stats for variable {var}: \n{stats}\n")
 
     def _plot_diff_true_false(self, model_diagnostic, itime):
         for var in self.castle_models[self.castle_setup.nn_type].keys():
             print(var)
-            model_diagnostic.plot_double_xy(itime, var, diff=False, nTime=False, cmap='RdBu_r', save=self.plots_save_dir)
+            model_diagnostic.plot_double_xy(itime, var, diff=False, nTime=False, cmap='RdBu_r',
+                                            save=self.plots_save_dir)
 
         for var in self.castle_models[self.castle_setup.nn_type].keys():
             print(var)
