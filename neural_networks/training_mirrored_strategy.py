@@ -46,9 +46,6 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         data_x = generator.input_transform.transform(data_x)
         data_y = generator.output_transform.transform(data_y)
 
-        if setup.do_castle_nn:
-            return data_x, np.concatenate([data_y, data_x], axis=1)
-
         # Delete data to save memory
         del data
 
@@ -71,6 +68,11 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         train_dataset = tf.data.Dataset.from_tensor_slices((train_data_inputs, train_data_outputs),
                                                            name="train_dataset")
         val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
+
+        if setup.nn_type == "castleNN":
+            # Map inputs to dictionary for CASTLE
+            train_dataset = train_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
+            val_dataset = val_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
 
     train_gen_input_transform = train_gen.input_transform
     train_gen_output_transform = train_gen.output_transform

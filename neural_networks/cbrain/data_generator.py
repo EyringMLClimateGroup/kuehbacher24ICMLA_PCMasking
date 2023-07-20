@@ -64,10 +64,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         X = self.input_transform.transform(X)
         Y = self.output_transform.transform(Y)
 
-        # When training CASTLE networks, we only pass X as input into the network,
-        # but since we are reconstructing X as well as predicting Y, we need both for the error calculation.
         if self.do_castle:
-            return X, np.concatenate([Y, X], axis=1)
+            return {"x_input": X, "y_target": Y}
 
         return X, Y
 

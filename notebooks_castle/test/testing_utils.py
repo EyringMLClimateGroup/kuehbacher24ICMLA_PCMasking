@@ -10,7 +10,7 @@ from neural_networks.training import train_all_models
 
 def delete_dir(folder):
     if os.path.isdir(folder):
-        shutil.rmtree(folder)
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def set_memory_growth_gpu():

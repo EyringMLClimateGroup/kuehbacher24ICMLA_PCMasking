@@ -17,6 +17,13 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
 
+    The inputs for the model must be a dictionary of the form {"x_input": x, "y_target": y},
+    where x has shapes (num_inputs,) and y has shape (1,).
+    y is not used for training the model, but for computing the prediction error.
+
+    The output of the model is an array of shape [num_inputs + 1, batch_size, 1].
+    The first element of the output (output[0]) contains the prediction for the target variable y.
+
     Args:
         num_inputs (int): The number of predictors, i.e. the x-variables. This is also the number of neural network
             inputs for all input sub-layers.
@@ -56,15 +63,51 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     num_outputs = 1
 
     def _build_castle():
-        input_sub_layers, inputs, model_, outputs = _create_model(activation, hidden_layers, num_inputs, num_outputs,
-                                                                  seed)
+        model_, x_inputs, y_target, yx_outputs, input_sub_layers = _create_model(activation, hidden_layers, num_inputs,
+                                                                                 num_outputs, seed)
+
+        # Compute losses
+        # Compute loss and add to model.
+        # CASTLE loss consists of four components:
+        # overall_loss = prediction_loss + lambda * regularization_loss
+        # where regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularization
+
+        # Prediction loss
+        prediction_loss = compute_prediction_loss(y_target, yx_outputs)
+        model_.add_metric(prediction_loss, name="prediction_loss")
+        # tf.print(f"\n\nprediction loss = {prediction_loss}")
+
+        # Reconstruction loss
+        reconstruction_loss = compute_reconstruction_loss(x_inputs, yx_outputs)
+        model_.add_metric(reconstruction_loss, name="reconstruction_loss")
+        # tf.print(f"reconstruction loss = {reconstruction_loss}")
+
+        # Acyclicity loss
+        input_layer_weights = [l.get_weights()[0] for l in input_sub_layers]
+        acyclicity_loss = compute_acyclicity_loss(input_layer_weights, alpha, rho)
+        # Cannot add this as a metric because it's not a symbolic tensor
+        # tf.print(f"acyclicity loss = {acyclicity_loss}")
+
+        # Sparsity regularizer
+        sparsity_regularizer = compute_sparsity_loss(input_layer_weights)
+        # Cannot add this as a metric because it's not a symbolic tensor
+        # tf.print(f"sparsity regularizer = {sparsity_regularizer}")
+
+        # Add everything up to form overall loss
+        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
+                                          name="regularization_loss")
+        # tf.print(f"regularization loss = {regularization_loss}\n\n")
+        overall_loss = tf.math.add(prediction_loss,
+                                   tf.math.multiply(lambda_, regularization_loss, name="weighted_regularization"),
+                                   name="overall_loss")
+        model_.add_loss(overall_loss)
+
         # Add MSE metric to model
-        model_.add_metric(tf.metrics.mse(tf.expand_dims(inputs, axis=-1), tf.transpose(outputs[1:], [1, 0, 2])),
+        model_.add_metric(tf.metrics.mse(tf.expand_dims(x_inputs, axis=-1), tf.transpose(yx_outputs[1:], [1, 0, 2])),
                           name="mse_x")
 
         # Compile model
-        loss_func = castle_loss([l.get_weights()[0] for l in input_sub_layers], rho, alpha, lambda_)
-        return _compile_castle(model_, loss_func, eager_execution)
+        return _compile_castle(model_, eager_execution)
 
     if strategy is not None:
         strategy = tf.distribute.MirroredStrategy()
@@ -76,18 +119,19 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     return model
 
 
-def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
+def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
     # Get activation function
     activation = activation.lower()
     act = tf.keras.layers.LeakyReLU(alpha=0.3) if activation == "leakyrelu" else tf.keras.layers.Activation(activation)
 
     # 1. Create layers
-    # Neural net inputs
-    inputs = keras.Input(shape=(nn_inputs,), name="input_tensor")
+    # Neural net inputs x and the target y
+    x_inputs = keras.Input(shape=(num_inputs,), dtype=tf.float32, name="x_input")
+    y_target = keras.Input(shape=(1,), dtype=tf.float32, name="y_target")
 
     # The number of input sub-layers is nn_inputs + 1, because we need one sub-layer with all
     # x-variables for the prediction of y, and nn_input layers for the prediction for each of the inputs
-    num_input_layers = nn_inputs + 1
+    num_input_layers = num_inputs + 1
 
     # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
     # We're using RandomNormal initializers for kernel and bias because the original CASTLE
@@ -122,7 +166,8 @@ def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
                                bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1, seed=seed)))
 
     # 2. Create network graph
-    inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in input_sub_layers]
+    # Only pass x into the network
+    inputs_hidden = [in_sub_layer(x_inputs) for in_sub_layer in input_sub_layers]
     hidden_outputs = list()
     for hidden_layer in shared_hidden_layers:
         # Pass all inputs through same hidden layers
@@ -132,9 +177,12 @@ def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
         # Outputs become new inputs for next hidden layers
         inputs_hidden = hidden_outputs[-num_input_layers:]
 
-    outputs = [out_layer(x) for x, out_layer in zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
+    yx_outputs = [out_layer(x) for x, out_layer in zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
     # Stack the outputs into one tensor
-    outputs = tf.stack(outputs)
+    yx_outputs = tf.stack(yx_outputs)
+
+    # Create model
+    model = keras.Model(inputs=[x_inputs, y_target], outputs=yx_outputs, name='castleNN')
 
     # 3. Mask matrix rows in input layers so that a variable cannot cause itself
     #    Since the first input sub-layer aims to use all the x-variables to predict y, it does not need a mask.
@@ -143,88 +191,62 @@ def _create_model(activation, hidden_layers, nn_inputs, num_outputs, seed):
     for i in range(num_input_layers - 1):
         weights, bias = input_sub_layers[i + 1].get_weights()
         # Create one hot matrix that masks the row of the current input
-        mask = tf.transpose(tf.one_hot([i] * hidden_layers[0], depth=nn_inputs, on_value=0.0, off_value=1.0, axis=-1))
+        mask = tf.transpose(tf.one_hot([i] * hidden_layers[0], depth=num_inputs, on_value=0.0, off_value=1.0, axis=-1))
         input_sub_layers[i + 1].set_weights([weights * mask, bias])
 
-    # Create model
-    model = keras.Model(inputs=inputs, outputs=outputs, name='castleNN')
-    return input_sub_layers, inputs, model, outputs
+    return model, x_inputs, y_target, yx_outputs, input_sub_layers
 
 
-def castle_loss(input_layer_weights, rho, alpha, reg_lambda):
-    # function that accepts the ground truth and predictions
-    def _castle_loss(y_true, y_pred):
-        # y_true shape [batch_size, num_x + 1]
-        # y_pred shape [num_x + 1, batch_size, 1]
-
-        # Compute loss and add to model.
-        # CASTLE loss consists of four components:
-        # overall_loss = prediction_loss + lambda * regularization_loss
-        # where regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularization
-
-        # Prediction loss
-        prediction_loss = tf.reduce_mean(keras.losses.mse(y_pred[0], y_true[:, 0]), name="prediction_loss_reduce_mean")
-        # tf.print(f"\n\nprediction loss = {prediction_loss}")
-
-        # Reconstruction loss
-        # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-        reconstruction_loss = tf.reduce_mean(
-            tf.norm(y_true[:, 1:] - tf.transpose(y_pred[1:], [1, 0]), ord='fro', axis=[-2, -1]),
-            name="reconstruction_loss_reduce_mean")
-        # tf.print(f"reconstruction loss = {reconstruction_loss}")
-
-        # Acyclicity loss
-        # Compute matrix with l2-norms of input sub-layer weight matrices:
-        # The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
-        # Since our weight matrices are of dimension dxd (d is the number of x-variables), but we have d+1
-        # variables all together (x-variables and y) we set the first row 0 for y.
-        l2_norm_matrix = list()
-        for j, w in enumerate(input_layer_weights):
-            l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
-                                             tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
-        l2_norm_matrix = tf.stack(l2_norm_matrix, axis=1)
-        # tf.print(f"l2 norm matrix = {l2_norm_matrix}")
-
-        h = compute_h(l2_norm_matrix)
-        # tf.print(f"h function = {h}")
-
-        # Acyclicity loss is computed using the Lagrangian scheme with penalty parameter rho and
-        # Lagrangian multiplier alpha.
-        h_squared = tf.math.square(h, name="h_squared")
-        acyclicity_loss = tf.math.add(tf.math.multiply(0.5 * rho, h_squared, name="lagrangian_penalty"),
-                                      tf.math.multiply(alpha, h, name="lagrangian_optimizer"),
-                                      name="acyclicity_loss")
-        # tf.print(f"acyclicity loss = {acyclicity_loss}")
-
-        # Sparsity regularizer
-        # Compute the l1-norm for the weight matrices in th einput_sublayer
-        sparsity_regularizer = 0.0
-        sparsity_regularizer += tf.reduce_sum(tf.norm(input_layer_weights[0], ord=1, axis=1))
-        for i, weight in enumerate(input_layer_weights[1:]):
-            # Ignore the masked row
-            w_1 = tf.slice(weight, [0, 0], [i - 1, -1])
-            w_2 = tf.slice(weight, [i, 0], [-1, -1])
-
-            sparsity_regularizer += tf.reduce_sum(tf.norm(w_1, ord=1, axis=1, name="l1_norm_input_layers"),
-                                                  name="w1_reduce_sum") + \
-                                    tf.reduce_sum(tf.norm(w_2, ord=1, axis=1, name="l1_norm_input_layers"),
-                                                  name="w2_reduce_sum")
-        # tf.print(f"sparsity regularizer = {sparsity_regularizer}")
-
-        # Add everything up to form overall loss
-        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
-                                          name="regularization_loss")
-        # tf.print(f"regularization loss = {regularization_loss}\n\n")
-        overall_loss = tf.math.add(prediction_loss,
-                                   tf.math.multiply(reg_lambda, regularization_loss, name="weighted_regularization"),
-                                   name="overall_loss")
-        return overall_loss
-
-    # return the inner function tuned by the hyperparameter
-    return _castle_loss
+def compute_prediction_loss(y_true, yx_pred):
+    return tf.reduce_mean(keras.losses.mse(yx_pred[0], y_true), name="prediction_loss_reduce_mean")
 
 
-def _compile_castle(model, loss_func, eager_execution):
+def compute_reconstruction_loss(x_true, yx_pred):
+    # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
+    return tf.reduce_mean(
+        tf.norm(tf.expand_dims(x_true, axis=2) - tf.transpose(yx_pred[1:], [1, 0, 2]), ord='fro', axis=[-2, -1]),
+        name="reconstruction_loss_reduce_mean")
+
+
+def compute_acyclicity_loss(input_layer_weights, alpha, rho):
+    # Compute matrix with l2 - norms of input sub-layer weight matrices:
+    # The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
+    # Since our weight matrices are of dimension dxd (d is the number of x-variables), but we have d+1
+    # variables all together (x-variables and y) we set the first row 0 for y.
+    l2_norm_matrix = list()
+    for j, w in enumerate(input_layer_weights):
+        l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
+                                         tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
+    l2_norm_matrix = tf.stack(l2_norm_matrix, axis=1)
+
+    h = compute_h(l2_norm_matrix)
+    # tf.print(f"h function = {h}")
+
+    # Acyclicity loss is computed using the Lagrangian scheme with penalty parameter rho and
+    # Lagrangian multiplier alpha.
+    h_squared = tf.math.square(h, name="h_squared")
+    return tf.math.add(tf.math.multiply(0.5 * rho, h_squared, name="lagrangian_penalty"),
+                       tf.math.multiply(alpha, h, name="lagrangian_optimizer"),
+                       name="acyclicity_loss")
+
+
+def compute_sparsity_loss(input_layer_weights):
+    # Compute the l1 - norm for the weight matrices in th einput_sublayer
+    sparsity_regularizer = 0.0
+    sparsity_regularizer += tf.reduce_sum(tf.norm(input_layer_weights[0], ord=1, axis=1))
+    for i, weight in enumerate(input_layer_weights[1:]):
+        # Ignore the masked row
+        w_1 = tf.slice(weight, [0, 0], [i - 1, -1])
+        w_2 = tf.slice(weight, [i, 0], [-1, -1])
+
+        sparsity_regularizer += tf.reduce_sum(tf.norm(w_1, ord=1, axis=1, name="l1_norm_input_layers"),
+                                              name="w1_reduce_sum") + \
+                                tf.reduce_sum(tf.norm(w_2, ord=1, axis=1, name="l1_norm_input_layers"),
+                                              name="w2_reduce_sum")
+    return sparsity_regularizer
+
+
+def _compile_castle(model, eager_execution):
     optimizer = keras.optimizers.Adam(
         learning_rate=0.001,
         beta_1=0.9,
@@ -237,7 +259,6 @@ def _compile_castle(model, loss_func, eager_execution):
 
     model.compile(
         optimizer=optimizer,
-        loss=loss_func,
         run_eagerly=eager_execution,
     )
 
@@ -290,3 +311,5 @@ def compute_h(matrix, castle_computation=True):
     matrix_exp = tf.linalg.expm(hadamard_product)
     # tf.print(f"matrix exponential = {matrix_exp}")
     return tf.linalg.trace(matrix_exp) - tf.cast(d, dtype=tf.float32)
+
+
