@@ -1,9 +1,11 @@
 import logging
+import os
 import unittest
+from pathlib import Path
 
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-import numpy as np
 
 from neural_networks.castle import build_castle
 from notebooks_castle.test.testing_utils import set_memory_growth_gpu
@@ -22,6 +24,8 @@ class TestCastle(unittest.TestCase):
         self.alpha = 1.0
         self.lambda_ = 1.0
 
+        self.output_dir = os.path.join(Path(__file__).parent.resolve(), "output")
+
         try:
             set_memory_growth_gpu()
         except RuntimeError:
@@ -39,7 +43,8 @@ class TestCastle(unittest.TestCase):
 
         print(model.summary())
         try:
-            keras.utils.plot_model(model, to_file="castle.png", show_shapes=True, show_layer_activations=True)
+            keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle.png"), show_shapes=True,
+                                   show_layer_activations=True)
         except ImportError:
             print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
                   "See tf.keras.utils.plot_model documentation for details.")
