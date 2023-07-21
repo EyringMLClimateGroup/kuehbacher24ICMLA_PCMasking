@@ -33,7 +33,7 @@ class TestCastleSetup(unittest.TestCase):
                             "If memory growth is not enabled, the tests may fail with CUDA error.")
 
         # Just two 2d variables, which results in 2 single output networks
-        argv = ["-c", "cfg_castle_NN_Creation_test_2.yml"]
+        argv = ["-c", "config/cfg_castle_NN_Creation_test_2.yml"]
 
         self.castle_setup = SetupDiagnostics(argv)
         train_model_if_not_exists(self.castle_setup)

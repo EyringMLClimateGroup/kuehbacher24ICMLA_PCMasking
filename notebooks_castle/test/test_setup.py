@@ -5,13 +5,16 @@ import yaml
 
 from utils.setup import SetupNeuralNetworks
 
+
 class TestCastleSetup(unittest.TestCase):
-    logging.basicConfig(level=logging.INFO)
+
+    def setUp(self):
+        logging.basicConfig(level=logging.INFO)
 
     def test_castle_setup(self):
         logging.info("Testing creating setup instance for CASTLE configuration.")
 
-        argv = ["-c", "cfg_castle_NN_Creation_test_1.yml"]
+        argv = ["-c", "config/cfg_castle_NN_Creation_test_1.yml"]
 
         castle_setup = SetupNeuralNetworks(argv)
 

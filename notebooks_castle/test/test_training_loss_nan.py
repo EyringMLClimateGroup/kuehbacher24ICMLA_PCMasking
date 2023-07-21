@@ -25,7 +25,7 @@ class TestTrainingLossNaN(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
 
-        self.argv = ["-c", "cfg_castle_NN_Creation_test_2.yml"]
+        self.argv = ["-c", "config/cfg_castle_NN_Creation_test_2.yml"]
 
         self.castle_setup = SetupNeuralNetworks(self.argv)
 

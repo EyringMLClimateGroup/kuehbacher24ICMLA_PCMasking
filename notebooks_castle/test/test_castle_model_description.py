@@ -30,10 +30,10 @@ class TestCastleSetup(unittest.TestCase):
         # Inputs: ps (3d) and lhflx (2d)
         # Outputs: phq (3d) and prect (2d)
         #   There should be 30 levels for the 3d variable, so we should get 31 single output networks
-        argv_s1 = ["-c", "cfg_castle_NN_Creation_test_1.yml"]
+        argv_s1 = ["-c", "config/cfg_castle_NN_Creation_test_1.yml"]
         self.num_models_config_1 = 31
         # Just two 2d variables, which results in 2 single output networks
-        argv_s2 = ["-c", "cfg_castle_NN_Creation_test_2.yml"]
+        argv_s2 = ["-c", "config/cfg_castle_NN_Creation_test_2.yml"]
 
         self.castle_setup_many_networks = SetupNeuralNetworks(argv_s1)
         self.castle_setup_few_networks = SetupNeuralNetworks(argv_s2)
