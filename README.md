@@ -94,7 +94,15 @@ nohup python -m offline_eval_script > log_file.txt 2&>1 &
 
 You can find some tests for the CASTLE implementation in `notebooks_castle/test/`.
 These are by no means complete and don't follow strict unit testing guidelines,
-but they are useful for testing whether functionality has been destroyed after code changes. 
+but they are useful for testing whether functionality has been destroyed after code changes.  
+
+`notebooks_castle/test/config/` contains two configuration files that can be used for testing 
+(they allow for quicker test runs, as the number of network inputs/outputs, hidden layers etc. 
+is reduced).   
+
+You can use the notebook `notebooks_castle/split_data.ipynb` to generate small datasets for 
+testing from the normal training data. The path to the test data has to be specified in the 
+config files. 
 
 ### Git Branch
 
