@@ -90,26 +90,21 @@ class ModelDiagnostics():
 
             model, inputs = self.models[var]
 
-            if self.setup.nn_type == "castleNN":
-                # For CASTLE we need to move the input indices, since the first index is always
-                # reserved for the output Y.
-                # Watch out to not do this in a loop!
-                inputs = [i + 1 for i in inputs]
-                inputs.insert(0, 0)  # we always need to have Y in there
-
             if isinstance(itime, int):
                 if self.setup.nn_type == "castleNN":
-                    # In CASTLE, output Y and inputs X are fed into the network together
-                    # as one concatenated array [Y, X]. We need to split the array to get the ground truth
-                    YX = valid_gen[itime]
-                    truth, X = np.split(YX, [1], axis=1)
+                    # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
+                    XY_dict = valid_gen[itime]
+                    truth = XY_dict["y_target"]
                     # The input shape of the model must match, so we concatenate an empty array
                     # with the input variables to make the prediction
-                    X = np.concatenate([np.zeros_like(truth), X], axis=1)
+                    # This should not be necessary, since Y is not used in the networks prediction, but
+                    # better be safe than sorry
+                    XY_dict["y_target"] = np.zeros_like(truth)
+                    XY_dict["x_input"] = XY_dict["x_input"][:, inputs]
 
-                    pred = model.predict_on_batch(X[:, inputs])
+                    pred = model.predict_on_batch(XY_dict)
                     # We only want the prediction for Y, not the reconstruction of the X's
-                    pred = pred[0]
+                    pred = pred[0, :]
                 else:
                     X, truth = valid_gen[itime]
 
@@ -132,16 +127,19 @@ class ModelDiagnostics():
                 pred = np.zeros([nTime, self.ngeo, 1])
                 for iTime in range(nTime):
                     if self.setup.nn_type == "castleNN":
-                        # In CASTLE, output Y and inputs X are fed into the network together
-                        # as one concatenated array [Y, X]. We need to split the array to get the ground truth
-                        # Note: X in CASTLE is actually [Y, X]
-                        YX_tmp = valid_gen[iTime]
-                        t_tmp, X_tmp = np.split(YX_tmp, [1], axis=1)
-                        X_tmp = np.concatenate([np.zeros_like(t_tmp), X_tmp], axis=1)
+                        # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
+                        XY_dict_tmp = valid_gen[iTime]
+                        t_tmp = XY_dict_tmp["y_target"]
+                        # The input shape of the model must match, so we concatenate an empty array
+                        # with the input variables to make the prediction
+                        # This should not be necessary, since Y is not used in the networks prediction, but
+                        # better be safe than sorry
+                        XY_dict_tmp["y_target"] = np.zeros_like(t_tmp)
+                        XY_dict_tmp["x_input"] = XY_dict_tmp["x_input"][:, inputs]
+                        p_tmp = model.predict_on_batch(XY_dict_tmp)
 
-                        p_tmp = model.predict_on_batch(X_tmp[:, inputs])
                         # We only want the prediction for Y, not the reconstruction of the X's
-                        p_tmp = p_tmp[0]
+                        p_tmp = p_tmp[0, :]
 
                     else:
                         X_tmp, t_tmp = valid_gen[iTime]
@@ -198,13 +196,7 @@ class ModelDiagnostics():
                 # X_train, _ = train_gen[0] #TODO: Change this to retrieve all the data
                 n_batches = int((self.ngeo / self.setup.batch_size) * nTime)
                 # print(f"n_batches: {n_batches}")
-
-                if self.setup.nn_type == "castleNN":
-                    # For CASTLE we need add 1 to len(inputs), since the first index is always
-                    # reserved for the output Y.
-                    X_train = np.zeros([self.ngeo * nTime, len(self.inputs) + 1])
-                else:
-                    X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
+                X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
 
                 # print(f"concatenated.shape: {concatenated.shape}")
                 sIdx = 0
@@ -227,12 +219,7 @@ class ModelDiagnostics():
                 # X_test, _ = valid_gen[0] #TODO: Change this to retrieve all the data
                 if not nTime: nTime = len(valid_gen)
                 n_batches = nTime
-                if self.setup.nn_type == "castleNN":
-                    # For CASTLE we need add 1 to len(inputs), since the first index is always
-                    # reserved for the output Y.
-                    X_test = np.zeros([self.ngeo * nTime, len(self.inputs) + 1])
-                else:
-                    X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
+                X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
 
                 sIdx = 0
                 eIdx = self.ngeo
@@ -247,19 +234,8 @@ class ModelDiagnostics():
         background = X_train[np.random.choice(X_train.shape[0], nSamples, replace=False)]
         test = X_test[np.random.choice(X_test.shape[0], nSamples, replace=False)]
 
-        if self.setup.nn_type == "castleNN":
-            # For CASTLE we need to move the input indices, since the first index is always
-            # reserved for the output Y.
-            # Watch out to not do this in a loop!
-            inputs_castle = [i + 1 for i in inputs]
-            inputs_castle.insert(0, 0)  # we always need to have Y in there
-
-            e = shap.DeepExplainer(model, background[:, inputs_castle])
-            shap_values = e.shap_values(test[:, inputs_castle], check_additivity=False)
-
-        else:
-            e = shap.DeepExplainer(model, background[:, inputs])
-            shap_values = e.shap_values(test[:, inputs], check_additivity=False)
+        e = shap.DeepExplainer(model, background[:, inputs])
+        shap_values = e.shap_values(test[:, inputs], check_additivity=False)
 
         shap_values_sign = np.mean(shap_values[0], axis=0)
         shap_values_sign[shap_values_sign < 0] = -1.
