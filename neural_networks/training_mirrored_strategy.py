@@ -69,11 +69,6 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
                                                            name="train_dataset")
         val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
 
-        if setup.nn_type == "castleNN":
-            # Map inputs to dictionary for CASTLE
-            train_dataset = train_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
-            val_dataset = val_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
-
     train_gen_input_transform = train_gen.input_transform
     train_gen_output_transform = train_gen.output_transform
 

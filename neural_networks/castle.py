@@ -2,7 +2,6 @@
 # Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
 # Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
 # https://github.com/trentkyono/CASTLE
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
@@ -63,20 +62,17 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     num_outputs = 1
 
     def _build_castle():
-        model_, x_inputs, y_target, yx_outputs, input_sub_layers = _create_model(activation, hidden_layers, num_inputs,
-                                                                                 num_outputs, seed)
+        model_, x_inputs, yx_outputs, input_sub_layers = _create_model(activation, hidden_layers, num_inputs,
+                                                                       num_outputs, seed)
 
-        # Compute losses
         # Compute loss and add to model.
         # CASTLE loss consists of four components:
-        # overall_loss = prediction_loss + lambda * regularization_loss
-        # where regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularization
-
-        # Prediction loss
-        prediction_loss = compute_prediction_loss(y_target, yx_outputs)
-        model_.add_metric(prediction_loss, name="prediction_loss")
-        # tf.print(f"\n\nprediction loss = {prediction_loss}")
-
+        #   overall_loss = prediction_loss + lambda * regularization_loss
+        #   where regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularization
+        #
+        # We add the weighted regularization loss here, because it depends on model weights and model inputs.
+        # The prediction loss is computed separately in a custom loss function, as it depends
+        # on the model output and a target label.
         # Reconstruction loss
         reconstruction_loss = compute_reconstruction_loss(x_inputs, yx_outputs)
         model_.add_metric(reconstruction_loss, name="reconstruction_loss")
@@ -97,14 +93,13 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
         regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
                                           name="regularization_loss")
         # tf.print(f"regularization loss = {regularization_loss}\n\n")
-        overall_loss = tf.math.add(prediction_loss,
-                                   tf.math.multiply(lambda_, regularization_loss, name="weighted_regularization"),
-                                   name="overall_loss")
-        model_.add_loss(overall_loss)
+
+        weighted_regularization_loss = tf.math.multiply(lambda_, regularization_loss, name="weighted_regularization")
+        # Add the weighted regularization loss to the model
+        model_.add_loss(weighted_regularization_loss)
 
         # Add MSE metric to model
-        model_.add_metric(tf.metrics.mse(tf.expand_dims(x_inputs, axis=-1), tf.transpose(yx_outputs[1:], [1, 0, 2])),
-                          name="mse_x")
+        model_.add_metric(tf.metrics.mse(tf.expand_dims(x_inputs, axis=-1), yx_outputs[:, 1:]), name="mse_x")
 
         # Compile model
         return _compile_castle(model_, eager_execution)
@@ -127,7 +122,6 @@ def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
     # 1. Create layers
     # Neural net inputs x and the target y
     x_inputs = keras.Input(shape=(num_inputs,), dtype=tf.float32, name="x_input")
-    y_target = keras.Input(shape=(1,), dtype=tf.float32, name="y_target")
 
     # The number of input sub-layers is nn_inputs + 1, because we need one sub-layer with all
     # x-variables for the prediction of y, and nn_input layers for the prediction for each of the inputs
@@ -178,11 +172,11 @@ def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
         inputs_hidden = hidden_outputs[-num_input_layers:]
 
     yx_outputs = [out_layer(x) for x, out_layer in zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
-    # Stack the outputs into one tensor
-    yx_outputs = tf.stack(yx_outputs)
+    # Stack the outputs into one tensor, such that we get the shape (batch_size, num_inputs+1, 1)
+    yx_outputs = tf.transpose(tf.stack(yx_outputs), [1, 0, 2])
 
     # Create model
-    model = keras.Model(inputs=[x_inputs, y_target], outputs=yx_outputs, name='castleNN')
+    model = keras.Model(inputs=x_inputs, outputs=yx_outputs, name='castleNN')
 
     # 3. Mask matrix rows in input layers so that a variable cannot cause itself
     #    Since the first input sub-layer aims to use all the x-variables to predict y, it does not need a mask.
@@ -194,18 +188,13 @@ def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
         mask = tf.transpose(tf.one_hot([i] * hidden_layers[0], depth=num_inputs, on_value=0.0, off_value=1.0, axis=-1))
         input_sub_layers[i + 1].set_weights([weights * mask, bias])
 
-    return model, x_inputs, y_target, yx_outputs, input_sub_layers
-
-
-def compute_prediction_loss(y_true, yx_pred):
-    return tf.reduce_mean(keras.losses.mse(yx_pred[0], y_true), name="prediction_loss_reduce_mean")
+    return model, x_inputs, yx_outputs, input_sub_layers
 
 
 def compute_reconstruction_loss(x_true, yx_pred):
     # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-    return tf.reduce_mean(
-        tf.norm(tf.expand_dims(x_true, axis=2) - tf.transpose(yx_pred[1:], [1, 0, 2]), ord='fro', axis=[-2, -1]),
-        name="reconstruction_loss_reduce_mean")
+    return tf.reduce_mean(tf.norm(tf.expand_dims(x_true, axis=2) - yx_pred[:, 1:], ord='fro', axis=[-2, -1]),
+                          name="reconstruction_loss_reduce_mean")
 
 
 def compute_acyclicity_loss(input_layer_weights, alpha, rho):
@@ -246,6 +235,23 @@ def compute_sparsity_loss(input_layer_weights):
     return sparsity_regularizer
 
 
+def prediction_loss(y_true, yx_pred):
+    return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]), name="prediction_loss_reduce_mean")
+
+
+class MeanSquaredErrorY(tf.keras.metrics.Metric):
+
+    def __init__(self, name='mse_y', **kwargs):
+        super(MeanSquaredErrorY, self).__init__(name=name, **kwargs)
+        self.mse = tf.keras.metrics.MeanSquaredError()
+
+    def update_state(self, y_true, yx_pred, sample_weight=None):
+        self.mse.update_state(y_true, yx_pred[:, 0])
+
+    def result(self):
+        return self.mse.result()
+
+
 def _compile_castle(model, eager_execution):
     optimizer = keras.optimizers.Adam(
         learning_rate=0.001,
@@ -259,6 +265,8 @@ def _compile_castle(model, eager_execution):
 
     model.compile(
         optimizer=optimizer,
+        loss=prediction_loss,
+        metrics=[MeanSquaredErrorY()],
         run_eagerly=eager_execution,
     )
 
@@ -311,5 +319,3 @@ def compute_h(matrix, castle_computation=True):
     matrix_exp = tf.linalg.expm(hadamard_product)
     # tf.print(f"matrix exponential = {matrix_exp}")
     return tf.linalg.trace(matrix_exp) - tf.cast(d, dtype=tf.float32)
-
-

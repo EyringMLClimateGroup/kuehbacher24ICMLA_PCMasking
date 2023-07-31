@@ -11,6 +11,7 @@ class TestCastleSetup(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
 
+    # For some reason this test is not automatically discovered
     def test_castle_setup(self):
         logging.info("Testing creating setup instance for CASTLE configuration.")
 

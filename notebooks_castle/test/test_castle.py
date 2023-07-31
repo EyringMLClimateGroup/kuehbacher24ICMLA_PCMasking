@@ -79,10 +79,7 @@ class TestCastle(unittest.TestCase):
         y_array = np.random.rand(n_samples, num_outputs)
 
         train_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
-        train_ds = train_ds.map(lambda x, y: {"x_input": x, "y_target": y})
-
         val_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
-        val_ds = val_ds.map(lambda x, y: {"x_input": x, "y_target": y})
 
         history = model.fit(
             x=train_ds,
@@ -93,8 +90,8 @@ class TestCastle(unittest.TestCase):
 
         self.assertIsNotNone(history)
 
-        train_loss_keys = ["prediction_loss", "reconstruction_loss", "loss"]
-        val_loss_keys = ["val_prediction_loss", "val_reconstruction_loss", "val_loss"]
+        train_loss_keys = ["loss", "reconstruction_loss", "mse_x", "mse_y"]
+        val_loss_keys = ["val_loss", "val_reconstruction_loss", "val_mse_x", "val_mse_y"]
         self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
         self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
 
@@ -115,9 +112,8 @@ class TestCastle(unittest.TestCase):
         y_array = np.zeros((n_samples, num_outputs), dtype=np.float32)
 
         test_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size, drop_remainder=True)
-        test_ds = test_ds.map(lambda x, y: {"x_input": x, "y_target": y})
 
         prediction = model.predict(test_ds)
 
         self.assertIsNotNone(prediction)
-        self.assertEqual(prediction.shape, ((self.num_inputs + 1) * num_batches, batch_size, 1))
+        self.assertEqual((batch_size * num_batches, self.num_inputs + 1, 1), prediction.shape)

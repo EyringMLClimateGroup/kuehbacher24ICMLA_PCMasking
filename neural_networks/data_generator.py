@@ -57,7 +57,6 @@ def build_train_generator(
         output_transform=out_scale_dict,
         batch_size=batch_size,
         shuffle=True,  # This feature doesn't seem to work
-        do_castle=setup.do_castle_nn,
     )
     return train_gen
 
@@ -127,6 +126,5 @@ def build_valid_generator(
         batch_size=batch_size,
         shuffle=False,
         # xarray=True,
-        do_castle=setup.do_castle_nn,
     )
     return valid_gen
