@@ -1,4 +1,11 @@
 import os
+import sys
+from pathlib import Path
+
+# This is necessary when calling this script not from the root
+# project_root = Path(__file__).parent.parent.resolve()
+# sys.path.append(str(project_root))
+
 
 # 0 = all messages are logged (default behavior)
 # 1 = INFO messages are not printed
@@ -10,7 +17,6 @@ import tensorflow as tf
 from utils.setup import SetupDiagnostics
 from neural_networks.load_models import load_models
 from neural_networks.model_diagnostics import ModelDiagnostics
-from pathlib import Path
 from utils.variable import Variable_Lev_Metadata
 
 
@@ -34,6 +40,8 @@ def get_save_str(idx_time, num_time=False, idx_lon=False,
 
 
 def run_plot_yz(variables, md_var_keys, i_time, n_time, i_lon, diff, stats):
+    print(f"\nPlotting {i_time}-{n_time}-{i_lon}-{diff}-{stats}", flush=True)
+
     save_dir = Path(plot_dir, get_save_str(i_time, num_time=n_time, idx_lon=i_lon,
                                            show_diff=diff, statistics=stats))
     Path(save_dir).mkdir(parents=True, exist_ok=True)
@@ -52,8 +60,8 @@ if __name__ == "__main__":
 
     project_root = Path(__file__).parent.parent.resolve()
 
-    argv = ["-c", Path(project_root, "output_castle/training_5_mirrored/cfg_castle_NN_Creation.yml")]
-    plot_dir = Path(project_root, "output_castle/training_5_mirrored/plots_offline_evaluation/plot_cross_section/")
+    argv = ["-c", Path(project_root, "output_castle/training_7_mirrored/cfg_castle_NN_Creation.yml")]
+    plot_dir = Path(project_root, "output_castle/training_7_mirrored/plots_offline_evaluation/plots_cross_section/")
 
     castle_setup = SetupDiagnostics(argv)
     castle_models = load_models(castle_setup)
@@ -71,7 +79,7 @@ if __name__ == "__main__":
     three_d_str = ["tphystnd-3.64", "phq-3.64"]
     three_d_keys = [Variable_Lev_Metadata.parse_var_name(var_str) for var_str in three_d_str]
 
-    # # time step 1 without diff
+    # time step 1 without diff
     # i_time = 1
     # n_time = False
     # i_lon = 64
@@ -86,30 +94,30 @@ if __name__ == "__main__":
     # diff = True
     # stats = False
     # run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
-    #
-    # # time mean without diff
-    # i_time = "mean"
-    # n_time = 1440
-    # i_lon = 64
-    # diff = False
-    # stats = False
-    # run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
-    #
-    # # time mean with diff
-    # i_time = "mean"
-    # n_time = 1440
-    # i_lon = 64
-    # diff = True
-    # stats = False
-    # run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
-    #
-    # # time mean, lon mean, stats r2, no diff
-    # i_time = "mean"
-    # n_time = 1440
-    # i_lon = "mean"
-    # diff = False
-    # stats = "r2"
-    # run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
+
+    # time mean without diff
+    i_time = "mean"
+    n_time = 1440
+    i_lon = 64
+    diff = False
+    stats = False
+    run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
+
+    # time mean with diff
+    i_time = "mean"
+    n_time = 1440
+    i_lon = 64
+    diff = True
+    stats = False
+    run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
+
+    # time mean, lon mean, stats r2, no diff
+    i_time = "mean"
+    n_time = 1440 # 720
+    i_lon = "mean"
+    diff = False
+    stats = "r2"
+    run_plot_yz(three_d_keys, dict_keys, i_time, n_time, i_lon, diff, stats)
 
     # time mean, lon mean, stats r2, with diff
     i_time = "mean"
