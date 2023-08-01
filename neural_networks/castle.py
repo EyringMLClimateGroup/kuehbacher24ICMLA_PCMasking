@@ -92,6 +92,7 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
         # Add everything up to form overall loss
         regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
                                           name="regularization_loss")
+        model_.add_metric(regularization_loss, name="regularization_loss")
         # tf.print(f"regularization loss = {regularization_loss}\n\n")
 
         weighted_regularization_loss = tf.math.multiply(lambda_, regularization_loss, name="weighted_regularization")
@@ -236,7 +237,7 @@ def compute_sparsity_loss(input_layer_weights):
 
 
 def prediction_loss(y_true, yx_pred):
-    return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]), name="prediction_loss_reduce_mean")
+    return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]))
 
 
 class MeanSquaredErrorY(tf.keras.metrics.Metric):
@@ -266,7 +267,7 @@ def _compile_castle(model, eager_execution):
     model.compile(
         optimizer=optimizer,
         loss=prediction_loss,
-        metrics=[MeanSquaredErrorY()],
+        metrics=[MeanSquaredErrorY(), prediction_loss],
         run_eagerly=eager_execution,
     )
 

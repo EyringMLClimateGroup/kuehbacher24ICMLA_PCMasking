@@ -97,7 +97,10 @@ def build_valid_generator(
         else:
             batch_size = ngeo
 
-    print(f"Validation batch size = {batch_size}.", flush=True)
+    if test:
+        print(f"Test batch size = {batch_size}.", flush=True)
+    else:
+        print(f"Validation batch size = {batch_size}.", flush=True)
 
     if setup.ind_test_name == "pca":
         pca_data_fn = filenm.split('.')[0]+"_pca."+filenm.split('.')[-1]

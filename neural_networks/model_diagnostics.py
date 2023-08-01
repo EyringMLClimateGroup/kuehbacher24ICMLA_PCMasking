@@ -60,7 +60,6 @@ class ModelDiagnostics():
         return var_idxs
 
     def get_truth_pred(self, itime, var, nTime=False):
-
         input_list = get_var_list(self.setup, self.setup.spcam_inputs)
         self.inputs = sorted(
             [Variable_Lev_Metadata.parse_var_name(p) for p in input_list],
@@ -91,29 +90,11 @@ class ModelDiagnostics():
             model, inputs = self.models[var]
 
             if isinstance(itime, int):
+                X, truth = valid_gen[itime]
+                pred = model.predict_on_batch(X[:, inputs])
+                # For CASTLE, we just want the prediction for Y
                 if self.setup.nn_type == "castleNN":
-                    # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
-                    XY_dict = valid_gen[itime]
-                    truth = XY_dict["y_target"]
-                    # The input shape of the model must match, so we concatenate an empty array
-                    # with the input variables to make the prediction
-                    # This should not be necessary, since Y is not used in the networks prediction, but
-                    # better be safe than sorry
-                    XY_dict["y_target"] = np.zeros_like(truth)
-                    XY_dict["x_input"] = XY_dict["x_input"][:, inputs]
-
-                    pred = model.predict_on_batch(XY_dict)
-                    # We only want the prediction for Y, not the reconstruction of the X's
-                    pred = pred[0, :]
-                else:
-                    X, truth = valid_gen[itime]
-
-                    # Todo: talk to Nando
-                    #  how does selecting the inputs work here? we can't just change the dimension of the array
-                    #  we are passing to the network compared to when it was trained?
-                    #  If the inputs differ from the training inputs, this will throw an error because the
-                    #  shapes don't match with the loaded model
-                    pred = model.predict_on_batch(X[:, inputs])
+                    pred = pred[:, 0]
 
                 # Inverse transform
                 truth = valid_gen.output_transform.inverse_transform(truth)
@@ -126,24 +107,11 @@ class ModelDiagnostics():
                 truth = np.zeros([nTime, self.ngeo, 1])
                 pred = np.zeros([nTime, self.ngeo, 1])
                 for iTime in range(nTime):
+                    X_tmp, t_tmp = valid_gen[iTime]
+                    p_tmp = model.predict_on_batch(X_tmp[:, inputs])
+                    # For CASTLE, we just want the prediction for Y
                     if self.setup.nn_type == "castleNN":
-                        # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
-                        XY_dict_tmp = valid_gen[iTime]
-                        t_tmp = XY_dict_tmp["y_target"]
-                        # The input shape of the model must match, so we concatenate an empty array
-                        # with the input variables to make the prediction
-                        # This should not be necessary, since Y is not used in the networks prediction, but
-                        # better be safe than sorry
-                        XY_dict_tmp["y_target"] = np.zeros_like(t_tmp)
-                        XY_dict_tmp["x_input"] = XY_dict_tmp["x_input"][:, inputs]
-                        p_tmp = model.predict_on_batch(XY_dict_tmp)
-
-                        # We only want the prediction for Y, not the reconstruction of the X's
-                        p_tmp = p_tmp[0, :]
-
-                    else:
-                        X_tmp, t_tmp = valid_gen[iTime]
-                        p_tmp = model.predict_on_batch(X_tmp[:, inputs])
+                        p_tmp = p_tmp[:, 0]
 
                     # Inverse transform
                     truth[iTime, :] = valid_gen.output_transform.inverse_transform(t_tmp)
@@ -198,7 +166,6 @@ class ModelDiagnostics():
                 # print(f"n_batches: {n_batches}")
                 X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
 
-                # print(f"concatenated.shape: {concatenated.shape}")
                 sIdx = 0
                 eIdx = self.setup.batch_size
 
@@ -261,7 +228,7 @@ class ModelDiagnostics():
     # Plotting functions
     def plot_double_xy(
             self,
-            itime,
+            itime,  # can be int specifying time step or "mean"
             var,
             nTime=False,
             save=False,
@@ -315,7 +282,7 @@ class ModelDiagnostics():
 
     def plot_double_yz(
             self,
-            var,
+            var,  # this var is redundant
             varkeys,
             itime=1,
             nTime=False,
@@ -356,6 +323,7 @@ class ModelDiagnostics():
                     hor_pmean = pred_mean[:, ilon]
                     hor_mse = mse[:, ilon]
                     hor_rmse = np.sqrt(mse[:, ilon])
+
             elif ilon == 'mean':
                 truth[iLev, :] = np.mean(t, axis=1)
                 pred[iLev, :] = np.mean(p, axis=1)
@@ -366,6 +334,7 @@ class ModelDiagnostics():
                     hor_pmean = np.mean(pred_mean, axis=1)
                     hor_mse = np.mean(mse, axis=1)
                     hor_rmse = np.sqrt(np.mean(mse, axis=1))
+
             if stats is not False:
                 hor_tvar = hor_tsqmean - hor_tmean ** 2
                 hor_pvar = hor_psqmean - hor_pmean ** 2
@@ -373,29 +342,11 @@ class ModelDiagnostics():
                 mean_stats[iLev, :] = locals()['hor_' + stats]
 
         if show_plot:
-            return self.plot_slices(
-                truth,
-                pred,
-                itime,
-                var=var,
-                stype='yz',
-                save=save,
-                diff=diff,
-                stats=[False, (stats, mean_stats)][stats is not False],
-                **kwargs
-            )
+            return self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=diff,
+                                    stats=[False, (stats, mean_stats)][stats is not False], **kwargs)
         else:
-            fig, axes = self.plot_slices(
-                truth,
-                pred,
-                itime,
-                var=var,
-                stype='yz',
-                save=save,
-                diff=diff,
-                stats=[False, (stats, mean_stats)][stats is not False],
-                **kwargs
-            )
+            fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=diff,
+                                         stats=[False, (stats, mean_stats)][stats is not False], **kwargs)
             plt.close(fig)
             print(f"\nClosed plot for variable {var}\n")
             return
