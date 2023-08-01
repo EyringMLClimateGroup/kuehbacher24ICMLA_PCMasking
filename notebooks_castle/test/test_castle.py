@@ -90,8 +90,8 @@ class TestCastle(unittest.TestCase):
 
         self.assertIsNotNone(history)
 
-        train_loss_keys = ["loss", "reconstruction_loss", "mse_x", "mse_y"]
-        val_loss_keys = ["val_loss", "val_reconstruction_loss", "val_mse_x", "val_mse_y"]
+        train_loss_keys = ["loss", "prediction_loss", "regularization_loss", "reconstruction_loss", "mse_x", "mse_y"]
+        val_loss_keys = ["val_" + loss for loss in train_loss_keys]
         self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
         self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
 

@@ -54,6 +54,9 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     if eager_execution:
         tf.data.experimental.enable_debug_mode()
 
+    # Set random seed
+    tf.random.set_seed(seed)
+
     if rho <= 0:
         raise ValueError("Penalty parameter `rho` for Lagrangian optimization scheme for acyclicity constraint "
                          "must be greater than 0.")
@@ -240,19 +243,6 @@ def prediction_loss(y_true, yx_pred):
     return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]))
 
 
-class MeanSquaredErrorY(tf.keras.metrics.Metric):
-
-    def __init__(self, name='mse_y', **kwargs):
-        super(MeanSquaredErrorY, self).__init__(name=name, **kwargs)
-        self.mse = tf.keras.metrics.MeanSquaredError()
-
-    def update_state(self, y_true, yx_pred, sample_weight=None):
-        self.mse.update_state(y_true, yx_pred[:, 0])
-
-    def result(self):
-        return self.mse.result()
-
-
 def _compile_castle(model, eager_execution):
     optimizer = keras.optimizers.Adam(
         learning_rate=0.001,
@@ -267,7 +257,7 @@ def _compile_castle(model, eager_execution):
     model.compile(
         optimizer=optimizer,
         loss=prediction_loss,
-        metrics=[MeanSquaredErrorY(), prediction_loss],
+        metrics=[prediction_loss],
         run_eagerly=eager_execution,
     )
 
