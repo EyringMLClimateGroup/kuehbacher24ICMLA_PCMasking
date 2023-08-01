@@ -12,6 +12,7 @@ NN_INPUTS="output_castle/training_1/inputs_list.txt"
 NN_OUTPUTS="output_castle/training_1/outputs_list.txt"
 NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
+SEED="NULL"
 
 MAX_RUNNING_JOBS=20
 
@@ -35,6 +36,8 @@ display_help() {
   echo "       Current default: $NUM_NODES"
   echo " -c    YAML configuration file for CASTLE networks."
   echo "       Current default: $NN_CONFIG"
+  echo " -s    Random seed. Leave out this option to not set a random seed."
+  echo "       Default: $SEED"
   echo " -h    Print this help."
   echo ""
   exit 0
@@ -47,6 +50,7 @@ print_variables() {
   echo "  NN outputs file:                $NN_OUTPUTS"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
+  echo "  Random seed:                    $SEED"
   echo ""
   echo -e "=================================================================\n\n"
 }
@@ -58,6 +62,7 @@ print_computed_variables() {
   echo "  NN outputs file:                $NN_OUTPUTS"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Distributed training:           $DISTRIBUTED"
+  echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
@@ -119,6 +124,8 @@ more_nodes_than_jobs() {
       fi
       counter=$(($counter + 1))
     done
+  else
+    NUM_NODES=$1
   fi
 
 }
@@ -171,7 +178,7 @@ read_distributed() {
     DISTRIBUTED=$(grep 'do_mirrored_strategy:' $NN_CONFIG)
     DISTRIBUTED=${DISTRIBUTED//*do_mirrored_strategy: /}
     # Remove trailing new lines and spaces
-    DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n ']}"
+    DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n ']/}"
   else
     echo -e "\nError: YAML configuration file does not exist.\n"
     error_exit
@@ -231,9 +238,10 @@ else
   found_o=0
   found_n=0
   found_c=0
+  found_s=0
 
   # Parse options
-  while getopts "i:o:n:c:h" opt; do
+  while getopts "i:o:n:c:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -272,6 +280,16 @@ else
         NN_CONFIG=$OPTARG
       else
         echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
+        error_exit
+      fi
+      ;;
+    s)
+      found_s=1
+      re='^[+-]?[0-9]+$'
+      if [[ $OPTARG =~ $re ]]; then
+        SEED=$OPTARG
+      else
+        echo -e "\nError: Invalid value for option -s (random seed). Must be an integer."
         error_exit
       fi
       ;;
@@ -479,6 +497,61 @@ else
     done
   fi
 
+  # random seed
+  if [[ $found_s == 0 ]]; then
+    echo -e "\nRandom seed not given. Do you wish to use default value SEED=$SEED? If SEED is NULL, no random seed will be set."
+
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please type a random seed or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            re='^[+-]?[0-9]+$'
+            if [[ $input =~ $re ]]; then
+              SEED=$input
+              break 2
+            else
+              cap_input=$(echo $input | tr '[:lower:]' '[:upper:]')
+              if [[ $cap_input == "NULL" ]]; then
+                SEED="NULL"
+                break 2
+              else
+                case $inner_counter in
+                0)
+                  echo -e "\nError: Invalid value for option -s (random seed). Must be an integer or NULL. Try again (2 tries left).\n"
+                  ;;
+                1)
+                  echo -e "\nError: Invalid value for option -s (random seed). Must be an integer or NULL. Try again (1 try left).\n"
+                  ;;
+                2)
+                  echo -e "\nError: Invalid value for option -s (random seed). Must be an integer or NULL.\n"
+                  error_exit
+                  ;;
+                esac
+              fi
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
   ###########################
   # Compute number of nodes #
   ###########################
@@ -505,10 +578,12 @@ want_to_continue
 ##########################
 # Exceeding compute time #
 ##########################
+DISTRIBUTED_NETS=2
+NORMAL_NETS=1
 if [[ $DISTRIBUTED == "True" ]]; then
-  NETS_IN_TIME=3
+  NETS_IN_TIME=$DISTRIBUTED_NETS
 elif [[ $DISTRIBUTED == "False" ]]; then
-  NETS_IN_TIME=1
+  NETS_IN_TIME=$NORMAL_NETS
 else
   echo -e "\nUnknown value for distributed strategy: $DISTRIBUTED. Must be True or False."
   error_exit
@@ -516,7 +591,7 @@ fi
 
 if (($NN_PER_NODE > $NETS_IN_TIME)); then
   echo -e "\n\nInfo: Training $NN_PER_NODE nets per node may lead to exceeding the node reservation time limit (12h for GPU partition)."
-  echo "      From experience, we can fully train about 1 net in 12 hours (3 nets with distributed training). "
+  echo "      From experience, we can fully train about $NORMAL_NETS net in 12 hours ($DISTRIBUTED_NETS nets with distributed training). "
   echo "      If the time limit is exceeded, training will be aborted and there may not be any log output."
   echo -e "      (Tensorboard and model weights files should still be saved.)\n"
 
@@ -562,6 +637,13 @@ if (($NN_PER_NODE > $NETS_IN_TIME)); then
   want_to_continue
 fi
 
+########################
+# Random seed to false #
+########################
+if [[ $SEED == "NULL" ]]; then
+  SEED="False"
+fi
+
 echo -e "\n\n$(timestamp) --- Starting SLURM jobs.\n"
 
 #####################
@@ -574,7 +656,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   TRAIN_INDICES="$i-$END_INDEX"
   echo -e "Starting batch script with output indices $TRAIN_INDICES"
 
-  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES"
+  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES" "$SEED"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
