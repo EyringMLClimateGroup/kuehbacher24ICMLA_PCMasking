@@ -103,7 +103,7 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
         model_.add_loss(weighted_regularization_loss)
 
         # Add MSE metric to model
-        model_.add_metric(tf.metrics.mse(tf.expand_dims(x_inputs, axis=-1), yx_outputs[:, 1:]), name="mse_x")
+        model_.add_metric(tf.metrics.mse(x_inputs, yx_outputs[:, 1:]), name="mse_x")
 
         # Compile model
         return _compile_castle(model_, eager_execution)
@@ -176,8 +176,8 @@ def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
         inputs_hidden = hidden_outputs[-num_input_layers:]
 
     yx_outputs = [out_layer(x) for x, out_layer in zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
-    # Stack the outputs into one tensor, such that we get the shape (batch_size, num_inputs+1, 1)
-    yx_outputs = tf.transpose(tf.stack(yx_outputs), [1, 0, 2])
+    # Concatenate the outputs into one tensor
+    yx_outputs = tf.concat(yx_outputs, axis=1)
 
     # Create model
     model = keras.Model(inputs=x_inputs, outputs=yx_outputs, name='castleNN')
@@ -197,7 +197,7 @@ def _create_model(activation, hidden_layers, num_inputs, num_outputs, seed):
 
 def compute_reconstruction_loss(x_true, yx_pred):
     # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-    return tf.reduce_mean(tf.norm(tf.expand_dims(x_true, axis=2) - yx_pred[:, 1:], ord='fro', axis=[-2, -1]),
+    return tf.reduce_mean(tf.norm(x_true - yx_pred[:, 1:], ord='fro', axis=[-2, -1]),
                           name="reconstruction_loss_reduce_mean")
 
 
@@ -240,7 +240,7 @@ def compute_sparsity_loss(input_layer_weights):
 
 
 def prediction_loss(y_true, yx_pred):
-    return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]))
+    return tf.reduce_mean(keras.losses.mse(y_true, yx_pred[:, 0]), name="prediction_loss_reduce_mean")
 
 
 def _compile_castle(model, eager_execution):
