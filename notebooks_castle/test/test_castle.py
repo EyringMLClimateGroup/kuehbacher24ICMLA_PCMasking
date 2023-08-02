@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
+from neural_networks.castle_model import CASTLE
 from neural_networks.castle import build_castle
 from notebooks_castle.test.testing_utils import set_memory_growth_gpu
 
@@ -70,27 +71,13 @@ class TestCastle(unittest.TestCase):
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
                              eager_execution=True, seed=42)
-        n_samples = 320
-        num_outputs = 1
-        batch_size = 32
-        epochs = 2
 
-        x_array = np.random.rand(n_samples, self.num_inputs)
-        y_array = np.random.rand(n_samples, num_outputs)
-
-        train_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
-        val_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
-
-        history = model.fit(
-            x=train_ds,
-            validation_data=val_ds,
-            batch_size=batch_size,
-            epochs=epochs
-        )
+        epochs = 3
+        history = self.train_castle(model, epochs=epochs)
 
         self.assertIsNotNone(history)
 
-        train_loss_keys = ["loss", "prediction_loss", "regularization_loss", "reconstruction_loss", "mse_x"]
+        train_loss_keys = ["loss", "prediction_loss", "reconstruction_loss", "sparsity_loss", "acyclicity_loss"]
         val_loss_keys = ["val_" + loss for loss in train_loss_keys]
         self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
         self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
@@ -117,3 +104,39 @@ class TestCastle(unittest.TestCase):
 
         self.assertIsNotNone(prediction)
         self.assertEqual((batch_size * num_batches, self.num_inputs + 1), prediction.shape)
+
+    def test_save_load_castle_model(self):
+        model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
+                             eager_execution=True, seed=42)
+
+        _ = self.train_castle(model, epochs=1)
+
+        model.save(Path(self.output_dir, "castle_model.keras"), save_format="keras_v3")
+        model.save_weights(str(Path(self.output_dir, "castle_weights.h5")))
+
+        loaded_model = tf.keras.models.load_model(Path(self.output_dir, "castle_model.keras"),
+                                                  custom_objects={'CASTLE': CASTLE})
+
+        self.assertEqual(loaded_model.alpha, model.alpha)
+        self.assertEqual(loaded_model.rho, model.rho)
+        self.assertEqual(loaded_model.reg_lambda, model.reg_lambda)
+        self.assertEqual(len(loaded_model.get_weights()), len(model.get_weights()))
+
+    def train_castle(self, model, epochs):
+        n_samples = 320
+        num_outputs = 1
+        batch_size = 32
+
+        x_array = np.random.standard_normal((n_samples, self.num_inputs)).astype(dtype=np.float32)
+        y_array = np.random.standard_normal((n_samples, num_outputs)).astype(dtype=np.float32)
+        train_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
+        val_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
+
+        history = model.fit(
+            x=train_ds,
+            validation_data=val_ds,
+            batch_size=batch_size,
+            epochs=epochs
+        )
+
+        return history

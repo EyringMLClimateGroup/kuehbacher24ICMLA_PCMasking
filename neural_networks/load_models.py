@@ -4,6 +4,7 @@ from pathlib import Path
 import tensorflow as tf
 
 from utils.variable import Variable_Lev_Metadata
+from neural_networks.castle_model import CASTLE
 
 
 def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
@@ -68,15 +69,15 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
     folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
     filename = get_filename(setup, output)
 
-    modelname = Path(folder, filename + '_model.h5')
-    print(f"\nLoad model: {modelname}")
-
     if setup.do_castle_nn:
-        act = setup.activation.lower()
-        act = tf.keras.layers.LeakyReLU(alpha=0.3) if act == "leakyrelu" else tf.keras.layers.Activation(act)
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'Activation': act}, compile=False)
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE})
     else:
+        modelname = Path(folder, filename + '_model.h5')
+        print(f"\nLoad model: {modelname}")
+
         model = tf.keras.models.load_model(modelname)
 
     inputs_path = Path(folder, f"{filename}_input_list.txt")
@@ -106,7 +107,7 @@ def get_var_list(setup, target_vars):
 def load_single_model(setup, var_name):
     if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or setup.do_castle_nn:
         var = Variable_Lev_Metadata.parse_var_name(var_name)
-        return {var: get_model(setup, var, setup.nn_type, pc_alpha=None,threshold=None)}
+        return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
     else:
         raise NotImplementedError(f"load_single_model is not implemented for neural network type {setup.nn_type}")
 

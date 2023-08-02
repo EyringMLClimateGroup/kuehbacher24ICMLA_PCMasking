@@ -116,7 +116,7 @@ class TestCastleSetup(unittest.TestCase):
 
     def _assert_saved_files(self, train_model_descriptions):
         for m in train_model_descriptions:
-            model_fn = m.get_filename() + '_model.h5'
+            model_fn = m.get_filename() + '_model.keras'
             out_path = str(m.get_path(self.castle_setup_many_networks.nn_output_path))
 
             self.assertTrue(os.path.isfile(os.path.join(out_path, model_fn)))

@@ -238,7 +238,12 @@ class ModelDescription:
         print(f"\nUsing filename {filename}.\n")
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
-        self.model.save(Path(folder, f"{filename}_model.h5"))
+
+        if self.setup.nn_type == "castleNN":
+            # Castle model is custom, so it cannot be saved in legacy h5 format
+            self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
+        else:
+            self.model.save(Path(folder, f"{filename}_model.h5"))
         # Save weights
         self.model.save_weights(str(Path(folder, f"{filename}_weights.h5")))
         # Save input list
