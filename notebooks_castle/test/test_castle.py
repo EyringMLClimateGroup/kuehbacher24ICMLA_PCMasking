@@ -61,7 +61,7 @@ class TestCastle(unittest.TestCase):
 
         print(model.summary())
         try:
-            keras.utils.plot_model(model, to_file="castle.png", show_shapes=True, show_layer_activations=True)
+            keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle_mirrored.png"), show_shapes=True, show_layer_activations=True)
         except ImportError:
             print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
                   "See tf.keras.utils.plot_model documentation for details.")
