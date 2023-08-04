@@ -113,24 +113,14 @@ class CASTLE(keras.Model):
         # Concatenate the outputs into one tensor
         return tf.concat(yx_outputs, axis=1)
 
-    # If we are using distribute strategy, we cannot decorate this with tf.function
-    # @tf.function
-    def train_step(self, data):
-        # Unpack data
-        x, y = data
-
-        with tf.GradientTape() as tape:
-            yx_pred = self(x, training=True)  # Forward pass
-            # Compute the loss value
-            acyclicity_loss, loss, prediction_loss, reconstruction_loss, sparsity_regularizer = self.loss_fn(x, y,
-                                                                                                             yx_pred)
-
-        # Compute gradients
-        trainable_vars = self.trainable_variables
-        gradients = tape.gradient(loss, trainable_vars)
-
-        # Update weights
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+    def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
+        # In CASTLE, y_pred is (y_pred, x_pred)
+        reconstruction_loss = self.compute_reconstruction_loss(x, y_pred)
+        acyclicity_loss = self.compute_acyclicity_loss()
+        sparsity_regularizer = self.compute_sparsity_loss()
+        regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularizer
+        prediction_loss = self.compute_prediction_loss(y, y_pred)
+        loss = prediction_loss + self.reg_lambda * regularization_loss
 
         # Update metrics
         self.loss_tracker.update_state(loss)
@@ -139,49 +129,18 @@ class CASTLE(keras.Model):
         self.sparsity_loss_tracker.update_state(sparsity_regularizer)
         self.acyclicity_loss_tracker.update_state(acyclicity_loss)
 
-        # Return a dict mapping metric names to current value
-        return {"loss": self.loss_tracker.result(), "prediction_loss": self.prediction_loss_tracker.result(),
-                "reconstruction_loss": self.reconstruction_loss_tracker.result(),
-                "sparsity_loss": self.sparsity_loss_tracker.result(),
-                "acyclicity_loss": self.acyclicity_loss_tracker.result()}
+        return loss
 
-    # If we are using distribute strategy, we cannot decorate this with tf.function
-    # @tf.function
-    def test_step(self, data):
-        # Unpack the data
-        x, y = data
-
-        # Compute predictions
-        yx_pred = self(x, training=False)
-
-        # Compute loss
-        acyclicity_loss, loss, prediction_loss, reconstruction_loss, sparsity_regularizer = self.loss_fn(x, y, yx_pred)
-
-        # Update the metrics
-        self.loss_tracker.update_state(loss)
-        self.prediction_loss_tracker.update_state(prediction_loss)
-        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
-        self.sparsity_loss_tracker.update_state(sparsity_regularizer)
-        self.acyclicity_loss_tracker.update_state(acyclicity_loss)
-
-        # Return a dict mapping metric names to current value
-        return {"loss": self.loss_tracker.result(), "prediction_loss": self.prediction_loss_tracker.result(),
-                "reconstruction_loss": self.reconstruction_loss_tracker.result(),
-                "sparsity_loss": self.sparsity_loss_tracker.result(),
-                "acyclicity_loss": self.acyclicity_loss_tracker.result()}
-
-    def loss_fn(self, x, y, yx_pred):
-        reconstruction_loss = self.compute_reconstruction_loss(x, yx_pred)
-        acyclicity_loss = self.compute_acyclicity_loss()
-        sparsity_regularizer = self.compute_sparsity_loss()
-        regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularizer
-        prediction_loss = self.compute_prediction_loss(y, yx_pred)
-        loss = prediction_loss + self.reg_lambda * regularization_loss
-        return acyclicity_loss, loss, prediction_loss, reconstruction_loss, sparsity_regularizer
+    def reset_metrics(self):
+        self.loss_tracker.reset_state()
+        self.prediction_loss_tracker.reset_state()
+        self.reconstruction_loss_tracker.reset_state()
+        self.sparsity_loss_tracker.reset_state()
+        self.acyclicity_loss_tracker.reset_state()
 
     @property
     def metrics(self):
-        # We list our `Metric` objects here so that `reset_states()` can be
+        # We list our `Metric` objects here so that `reset_state()` can be
         # called automatically at the start of each epoch or at the start of `evaluate()`..
         return [self.loss_tracker, self.prediction_loss_tracker, self.reconstruction_loss_tracker,
                 self.sparsity_loss_tracker, self.acyclicity_loss_tracker]
