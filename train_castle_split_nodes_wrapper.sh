@@ -10,6 +10,7 @@
 ###########################
 NN_INPUTS="output_castle/training_1/inputs_list.txt"
 NN_OUTPUTS="output_castle/training_1/outputs_list.txt"
+OUTPUTS_MAP="output_castle/training_1/outputs_map.txt"
 NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
 SEED="NULL"
@@ -25,13 +26,15 @@ display_help() {
   echo "Bash script wrapper for CASTLE training that splits training of model description list across multiple SLURM nodes."
   echo "Default options for arguments can be specified in this bash script."
   echo ""
-  echo "Usage: $0 [-h] [-i inputs.txt] [-o outputs.txt] [-n nodes] [-c config.yml]"
+  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-s seed]"
   echo ""
   echo " Options:"
   echo " -i    txt file with input list for CASTLE networks."
   echo "       Current default: $NN_INPUTS"
   echo " -o    txt file with output list for CASTLE networks."
   echo "       Current default: $NN_OUTPUTS"
+  echo " -m    txt file with mapping for output variable identifiers for CASTLE networks."
+  echo "       Current default: $OUTPUTS_MAP"
   echo " -n    Number of SLURM nodes to be used for training. Maximum number of running jobs per user is $MAX_RUNNING_JOBS."
   echo "       Current default: $NUM_NODES"
   echo " -c    YAML configuration file for CASTLE networks."
@@ -48,6 +51,7 @@ print_variables() {
   echo ""
   echo "  NN inputs file:                 $NN_INPUTS"
   echo "  NN outputs file:                $NN_OUTPUTS"
+  echo "  Outputs map file:               $OUTPUTS_MAP"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Random seed:                    $SEED"
@@ -60,6 +64,7 @@ print_computed_variables() {
   echo ""
   echo "  NN inputs file:                 $NN_INPUTS"
   echo "  NN outputs file:                $NN_OUTPUTS"
+  echo "  Outputs map file:               $OUTPUTS_MAP"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Distributed training:           $DISTRIBUTED"
   echo "  Random Seed:                    $SEED"
@@ -150,13 +155,7 @@ want_to_continue() {
 }
 
 compute_nn_per_node() {
-  # Check if outputs .txt file exists
-  if [ -f "$NN_OUTPUTS" ]; then
-    NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
-  else
-    echo -e "\nError: Outputs .txt file does not exist.\n"
-    error_exit
-  fi
+  NUM_OUTPUTS="$(grep -c ".*" $NN_OUTPUTS)"
   # Check if it was empty
   if [[ $NUM_OUTPUTS == 0 ]]; then
     echo -e "\nError: Outputs .txt file was empty.\n"
@@ -185,13 +184,54 @@ read_distributed() {
   fi
 }
 
-check_input_file_exists() {
+check_inputs_file_exists() {
   if [ -f "$NN_INPUTS" ]; then
     :
   else
     echo -e "\nError: Inputs .txt file does not exist.\n"
     error_exit
   fi
+}
+check_map_file_exists() {
+  if [ -f "$OUTPUTS_MAP" ]; then
+    :
+  else
+    echo -e "\nError: Outputs map .txt file does not exist.\n"
+    error_exit
+  fi
+}
+
+check_outputs_file_exists() {
+  # Check if outputs .txt file exists
+  if [ -f "$NN_OUTPUTS" ]; then
+    :
+  else
+    echo -e "\nError: Outputs .txt file does not exist.\n"
+    error_exit
+  fi
+}
+
+set_var_ident_str() {
+    # Watch out: head starts at index 1
+  start=$(($1 + 1))
+  end=$(($1 + 1))
+
+  var_ident_str=""
+  concat=""
+
+  # Also: i is used below, here we need to use j
+  for ((j = start; j < end + 1; j += 1)); do
+    var_line=$(head -n "$j" $NN_OUTPUTS | tail -1)
+    var_line="${var_line//[$'\t\r\n ']/}"
+
+    var_map=$(grep "$var_line" $OUTPUTS_MAP)
+    var_ident=${var_map%:*}
+
+    var_ident_str="${var_ident_str}${concat}${var_ident}"
+    concat="-"
+  done
+  # set variable
+  VAR_IDENT_STR=$var_ident_str
 }
 
 ##########################
@@ -211,6 +251,13 @@ if [ $# -eq 0 ]; then
     graceful_exit
   fi
 
+  #######################
+  # Check files exists #
+  #######################
+  check_outputs_file_exists
+  check_inputs_file_exists
+  check_map_file_exists
+
   ###########################
   # Compute number of nodes #
   ###########################
@@ -220,11 +267,6 @@ if [ $# -eq 0 ]; then
   # Read distributed strategy from YAML #
   #######################################
   read_distributed
-
-  ############################
-  # Check inputs file exists #
-  ############################
-  check_input_file_exists
 
   echo -e "\n\nRunning script with the following variables:"
   print_computed_variables
@@ -236,12 +278,13 @@ else
 
   found_i=0
   found_o=0
+  found_m=0
   found_n=0
   found_c=0
   found_s=0
 
   # Parse options
-  while getopts "i:o:n:c:s:h" opt; do
+  while getopts "i:o:m:n:c:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -262,6 +305,15 @@ else
         NN_OUTPUTS=$OPTARG
       else
         echo -e "\nError: Invalid value for option -o (NN outputs). Must be .txt file."
+        error_exit
+      fi
+      ;;
+    m)
+      found_m=1
+      if [[ $OPTARG == *.txt ]]; then
+        OUTPUTS_MAP=$OPTARG
+      else
+        echo -e "\nError: Invalid value for option -m (outputs map). Must be .txt file."
         error_exit
       fi
       ;;
@@ -387,6 +439,52 @@ else
                 ;;
               2)
                 echo -e "\nError: Invalid value for NN outputs. Must be given in a .txt file.\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
+  # outputs map txt
+  if [[ $found_m == 0 ]]; then
+    echo -e "\nNo output map file supplied. Do you wish to use default value OUTPUTS_MAP=$OUTPUTS_MAP?"
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please supply outputs map .txt file or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            if [[ $input == *.txt ]]; then
+              OUTPUTS_MAP=$input
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for option -m (outputs map). Must be .txt file. Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for option -m (outputs map). Must be .txt file. Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for option -m (outputs map). Must be .txt file.\n"
                 error_exit
                 ;;
               esac
@@ -552,6 +650,13 @@ else
     done
   fi
 
+  #######################
+  # Check files exists #
+  #######################
+  check_outputs_file_exists
+  check_inputs_file_exists
+  check_map_file_exists
+
   ###########################
   # Compute number of nodes #
   ###########################
@@ -561,11 +666,6 @@ else
   # Read distributed strategy from YAML #
   #######################################
   read_distributed
-
-  ############################
-  # Check inputs file exists #
-  ############################
-  check_input_file_exists
 
   echo -e "\n\nRunning script with the following variables:"
   print_computed_variables
@@ -597,9 +697,9 @@ if (($NN_PER_NODE > $NETS_IN_TIME)); then
 
   outer_counter=0
   while [ $outer_counter -lt 3 ]; do
-    read -r -e -p "Do you wish to keep the current value of $NN_PER_NODE NNs per node or change it to $NETS_IN_TIME NNs per node? [change]/keep: " input
+    read -r -e -p "Change current value of $NN_PER_NODE NNs per node to $NETS_IN_TIME NNs per node? [y]/n: " input
 
-    if [[ $input == "change" || $input == "" ]]; then
+    if [[ $input == "y" || $input == "" ]]; then
       NN_PER_NODE=$NETS_IN_TIME
       NUM_NODES=$((($NUM_OUTPUTS + $NN_PER_NODE - 1) / $NN_PER_NODE))
       echo -e "\nContinuing with $NN_PER_NODE NNs per node and $NUM_NODES nodes.\n"
@@ -622,7 +722,7 @@ if (($NN_PER_NODE > $NETS_IN_TIME)); then
         done
       fi
 
-    elif [[ $input == "keep" ]]; then
+    elif [[ $input == "n" ]]; then
       echo -e "\nKeeping $NN_PER_NODE NNs per node and $NUM_NODES nodes.\n"
       break
 
@@ -654,9 +754,15 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   # Test if we've gone too far
   END_INDEX=$(($((($NUM_OUTPUTS - 1) < $END_INDEX)) ? $(($NUM_OUTPUTS - 1)) : $END_INDEX))
   TRAIN_INDICES="$i-$END_INDEX"
-  echo -e "Starting batch script with output indices $TRAIN_INDICES"
 
-  sbatch train_castle_split_nodes_batch.sh "$NN_CONFIG" "$NN_INPUTS" "$NN_OUTPUTS" "$TRAIN_INDICES" "$SEED"
+  # Set variable VAR_IDENT_STR
+  set_var_ident_str "$i" $END_INDEX
+  JOB_NAME="castle_training_${VAR_IDENT_STR}"
+
+  echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
+  echo "Job name: ${JOB_NAME}"
+
+  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -s "$SEED" -j "$JOB_NAME"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
