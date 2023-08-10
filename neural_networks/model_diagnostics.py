@@ -90,11 +90,51 @@ class ModelDiagnostics():
             model, inputs = self.models[var]
 
             if isinstance(itime, int):
-                X, truth = valid_gen[itime]
-                pred = model.predict_on_batch(X[:, inputs])
+                if self.setup.which_castle == "dict":
+                    # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
+                    XY_dict = valid_gen[itime]
+                    truth = XY_dict["y_target"]
+                    # The input shape of the model must match, so we concatenate an empty array
+                    # with the input variables to make the prediction
+                    # This should not be necessary, since Y is not used in the networks prediction, but
+                    # better be safe than sorry
+                    XY_dict["y_target"] = np.zeros_like(truth)
+                    XY_dict["x_input"] = XY_dict["x_input"][:, inputs]
+                    pred = model.predict_on_batch(XY_dict)
+
+                elif self.setup.which_castle == "concat":
+                    XY_dict = valid_gen[itime]
+                    truth = XY_dict[:, 0]
+                    X = XY_dict[:, 1:][:, inputs]
+                    y_placeholder = np.zeros_like(truth)
+                    pred = model.predict_on_batch(np.concatenate([y_placeholder, X], axis=0))
+
+                else:
+                    # custom, compile
+                    X, truth = valid_gen[itime]
+                    pred = model.predict_on_batch(X[:, inputs])
+
                 # For CASTLE, we just want the prediction for Y
                 if self.setup.nn_type == "castleNN":
-                    pred = pred[:, 0]
+                    try:
+                        print(pred.shape)
+                    except:
+                        print("pred is not an array")
+
+                    print(f"\nCastle output type: {self.setup.castle_output}")
+
+                    if self.setup.castle_output == "list":
+                        # list
+                        pred = pred[0]
+                    elif self.setup.castle_output == "stack":
+                        # stack
+                        pred = pred[0, :]
+                    else:
+                        # concat
+                        pred = pred[:, 0]  # shape (batch_size)
+                        # Need to expand the axis so that it has shape (batch_size, 1) for further processing
+                        pred = np.expand_dims(pred, axis=1)
+                    print(f"Prediction shape: {pred.shape=}")
 
                 # Inverse transform
                 truth = valid_gen.output_transform.inverse_transform(truth)
@@ -107,11 +147,39 @@ class ModelDiagnostics():
                 truth = np.zeros([nTime, self.ngeo, 1])
                 pred = np.zeros([nTime, self.ngeo, 1])
                 for iTime in range(nTime):
-                    X_tmp, t_tmp = valid_gen[iTime]
-                    p_tmp = model.predict_on_batch(X_tmp[:, inputs])
+                    if self.setup.which_castle == "dict":
+                        # In CASTLE, the network receives a dictionary of the form {"x_input": X, "y_target": Y}
+                        XY_dict = valid_gen[itime]
+                        t_tmp = XY_dict["y_target"]
+                        # The input shape of the model must match, so we concatenate an empty array
+                        # with the input variables to make the prediction
+                        # This should not be necessary, since Y is not used in the networks prediction, but
+                        # better be safe than sorry
+                        XY_dict["y_target"] = np.zeros_like(truth)
+                        XY_dict["x_input"] = XY_dict["x_input"][:, inputs]
+                        p_tmp = model.predict_on_batch(XY_dict)
+                    elif self.setup.which_castle == "concat":
+                        XY_dict = valid_gen[itime]
+                        t_tmp = XY_dict[:, 0]
+                        X_tmp = XY_dict[:, 1:][:, inputs]
+                        y_placeholder = np.zeros_like(t_tmp)
+                        p_tmp = model.predict_on_batch(np.concatenate([y_placeholder, X_tmp], axis=1))
+
+                    else:
+                        X_tmp, t_tmp = valid_gen[iTime]
+                        p_tmp = model.predict_on_batch(X_tmp[:, inputs])
+
                     # For CASTLE, we just want the prediction for Y
                     if self.setup.nn_type == "castleNN":
-                        p_tmp = p_tmp[:, 0]
+                        # stack
+                        # pred = pred[0, :]
+                        # list
+                        # pred = pred[0]
+                        # concat
+                        p_tmp = p_tmp[:, 0]  # shape (batch_size)
+                        # Need to expand the axis so that it has shape (batch_size, 1) for further processing
+                        p_tmp = np.expand_dims(p_tmp, axis=1)
+                        print(f"{p_tmp.shape=}")
 
                     # Inverse transform
                     truth[iTime, :] = valid_gen.output_transform.inverse_transform(t_tmp)

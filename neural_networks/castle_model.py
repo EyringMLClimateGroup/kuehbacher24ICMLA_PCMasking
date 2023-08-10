@@ -8,8 +8,9 @@ from tensorflow import keras
 
 @tf.keras.utils.register_keras_serializable()
 class CASTLE(keras.Model):
-    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, reg_lambda, relu_alpha=0.3, seed=None):
-        super().__init__()
+    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, reg_lambda, relu_alpha=0.3, seed=None,
+                 name="castle_model", **kwargs):
+        super().__init__(name=name, **kwargs)
         self.rho = rho
         self.alpha = alpha
         self.reg_lambda = reg_lambda
@@ -263,3 +264,13 @@ def compute_h(matrix, castle_computation=True):
 
 def mse_x(x_true, yx_pred):
     return tf.metrics.mse(x_true, yx_pred[:, 1:])
+
+
+@tf.keras.utils.register_keras_serializable()
+class MSEY(keras.losses.Loss):
+    def __init__(self, name="mse_y", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.mse = tf.keras.losses.MeanSquaredError()
+
+    def call(self, y_true, y_pred):
+        return self.mse(y_true, y_pred[:, 0])

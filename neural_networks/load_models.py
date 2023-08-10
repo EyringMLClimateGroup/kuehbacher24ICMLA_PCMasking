@@ -73,7 +73,19 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE})
+        act = setup.activation.lower()
+        act = tf.keras.layers.LeakyReLU(alpha=0.3) if act == "leakyrelu" else tf.keras.layers.Activation(act)
+
+        # todo: remove when done
+        if setup.which_castle == "dict" or setup.which_castle == "compile" or setup.which_castle == "concat":
+            model = tf.keras.models.load_model(modelname, custom_objects={'Activation': act}, compile=False)
+        elif setup.which_castle == "custom":
+            # custom model
+            # todo: why does custom need activation function?
+            model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE, 'Activation': act})
+        else:
+            raise ValueError("Which CASTLE model not set.")
+
     else:
         modelname = Path(folder, filename + '_model.h5')
         print(f"\nLoad model: {modelname}")

@@ -10,7 +10,10 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
-from neural_networks.castle import build_castle
+from neural_networks.castle import build_castle as build_castle_custom
+from neural_networks.castle_models.castle_functional_dict import build_castle as build_castle_dict
+from neural_networks.castle_models.castle_functional_compile_loss import build_castle as build_castle_compile
+from neural_networks.castle_models.castle_functional_concat import build_castle as build_castle_concat
 
 
 class ModelDescription:
@@ -90,6 +93,18 @@ class ModelDescription:
         if setup.do_castle_nn:
             # Setup distributed training
             self.strategy = tf.distribute.MirroredStrategy() if setup.do_mirrored_strategy else None
+
+            # todo: delete when done
+            if setup.which_castle == "dict":
+                build_castle = build_castle_dict
+            elif setup.which_castle == "compile":
+                build_castle = build_castle_compile
+            elif setup.which_castle == "custom":
+                build_castle = build_castle_custom
+            elif setup.which_castle == "concat":
+                build_castle = build_castle_concat
+            else:
+                raise ValueError("Which CASTLE model not set.")
 
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,
@@ -420,7 +435,7 @@ def generate_models(setup, threshold_dict=False):
     if setup.do_mirrored_strategy:
         if setup.do_mirrored_strategy and not tf.config.get_visible_devices('GPU'):
             raise EnvironmentError(f"Cannot build and compile models with tf.distribute.MirroredStrategy "
-                  f"because Tensorflow found no GPUs.")
+                                   f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)

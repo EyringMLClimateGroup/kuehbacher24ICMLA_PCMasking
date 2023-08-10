@@ -53,6 +53,7 @@ class TestCastleSetup(unittest.TestCase):
         logging.info("Testing creating model description instances with distributed CASTLE models.")
 
         self.castle_setup_many_networks.do_mirrored_strategy = True
+        self.castle_setup_many_networks.which_castle = "concat"
         if not len(tf.config.list_physical_devices("GPU")):
             logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
                             "Exiting test.")
@@ -80,18 +81,23 @@ class TestCastleSetup(unittest.TestCase):
         logging.info("Testing training 2 model description instances with CASTLE models.")
 
         # Delete existing output directories
-        delete_dir(self.castle_setup_many_networks.nn_output_path)
-        delete_dir(self.castle_setup_many_networks.tensorboard_folder)
+        # delete_dir(self.castle_setup_many_networks.nn_output_path)
+        # delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
         self.castle_setup_many_networks.do_mirrored_strategy = False
 
-        model_descriptions = generate_models(self.castle_setup_many_networks)
+        which_castles = ["dict", "custom", "compile", "concat"]
+        for which_castle in which_castles:
+            print(f"Testing for {which_castle} model")
+            self.castle_setup_many_networks.which_castle = which_castle
 
-        # Only test train the first two models
-        train_model_descriptions = model_descriptions[:2]
-        train_all_models(train_model_descriptions, self.castle_setup_many_networks)
+            model_descriptions = generate_models(self.castle_setup_many_networks)
 
-        self._assert_saved_files(train_model_descriptions)
+            # Only test train the first two models
+            train_model_descriptions = model_descriptions[:2]
+            train_all_models(train_model_descriptions, self.castle_setup_many_networks)
+
+            self._assert_saved_files(train_model_descriptions)
 
     def test_train_and_save_castle_model_description_distributed(self):
         logging.info("Testing distributed training of 2 model description instances with distributed CASTLE models.")
@@ -101,18 +107,23 @@ class TestCastleSetup(unittest.TestCase):
         delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
         self.castle_setup_many_networks.do_mirrored_strategy = True
-        if not len(tf.config.list_physical_devices("GPU")):
-            logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
-                            "Exiting test.")
-            return
+        which_castles = ["dict", "custom", "compile", "concat"]
+        for which_castle in which_castles:
+            print(f"Testing for {which_castle} model")
+            self.castle_setup_many_networks.which_castle = which_castle
 
-        model_descriptions = generate_models(self.castle_setup_many_networks)
+            if not len(tf.config.list_physical_devices("GPU")):
+                logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
+                                "Exiting test.")
+                return
 
-        # Only test train the first two models
-        train_model_descriptions = model_descriptions[:2]
-        train_all_models_mirrored(train_model_descriptions, self.castle_setup_many_networks)
+            model_descriptions = generate_models(self.castle_setup_many_networks)
 
-        self._assert_saved_files(train_model_descriptions)
+            # Only test train the first two models
+            train_model_descriptions = model_descriptions[:2]
+            train_all_models_mirrored(train_model_descriptions, self.castle_setup_many_networks)
+
+            self._assert_saved_files(train_model_descriptions)
 
     def _assert_saved_files(self, train_model_descriptions):
         for m in train_model_descriptions:
@@ -126,19 +137,29 @@ class TestCastleSetup(unittest.TestCase):
         logging.info("Testing loading of model description instance with trained CASTLE models.")
 
         self.castle_setup_few_networks.do_mirrored_strategy = False
-        train_model_if_not_exists(self.castle_setup_few_networks)
-        loaded_model_description = load_models(self.castle_setup_few_networks)
+        which_castles = ["dict", "custom", "compile", "concat"]
+        for which_castle in which_castles:
+            print(f"Testing for {which_castle} model")
+            self.castle_setup_few_networks.which_castle = which_castle
 
-        self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
-                         len(self.castle_setup_few_networks.output_order))
+            train_model_if_not_exists(self.castle_setup_few_networks)
+            loaded_model_description = load_models(self.castle_setup_few_networks)
+
+            self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
+                             len(self.castle_setup_few_networks.output_order))
 
     def test_load_castle_model_description_distributed(self):
         logging.info("Testing loading of model description instance with distributed trained CASTLE models.")
 
         self.castle_setup_few_networks.do_mirrored_strategy = False
-        train_model_if_not_exists(self.castle_setup_few_networks)
+        which_castles = ["dict", "custom", "compile", "concat"]
+        for which_castle in which_castles:
+            print(f"Testing for {which_castle} model")
+            self.castle_setup_few_networks.which_castle = which_castle
 
-        loaded_model_description = load_models(self.castle_setup_few_networks)
+            train_model_if_not_exists(self.castle_setup_few_networks)
 
-        self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
-                         len(self.castle_setup_few_networks.output_order))
+            loaded_model_description = load_models(self.castle_setup_few_networks)
+
+            self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
+                             len(self.castle_setup_few_networks.output_order))

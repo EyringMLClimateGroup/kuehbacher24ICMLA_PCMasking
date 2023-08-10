@@ -31,6 +31,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             batch_size=1024,
             shuffle=True,
             xarray=False,
+            setup=None,
     ):
         # Just copy over the attributes
         self.data_fn, self.norm_fn = data_fn, norm_fn
@@ -42,6 +43,12 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.input_transform = input_transform
         self.output_transform = output_transform
         self.xarray = xarray
+
+        if setup is not None:
+            try:
+                self.which_castle = setup.which_castle
+            except AttributeError:
+                self.which_castle = "custom"
 
     def __len__(self):
         return self.n_batches
@@ -62,7 +69,16 @@ class DataGenerator(tf.keras.utils.Sequence):
         X = self.input_transform.transform(X)
         Y = self.output_transform.transform(Y)
 
-        return X, Y
+        # todo: remove when done
+        if self.which_castle == "dict":
+            return {"x_input": X, "y_target": Y}
+        elif self.which_castle == "concat":
+            return np.concatenate([Y, X], axis=1)
+        else:
+            # custom, compile
+            return X, Y
+
+        # return X, Y
 
     def on_epoch_end(self):
         self.indices = np.arange(self.n_batches)

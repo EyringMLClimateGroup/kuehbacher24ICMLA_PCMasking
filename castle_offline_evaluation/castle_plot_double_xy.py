@@ -26,15 +26,18 @@ vmax = False  # False, 3e-7
 
 project_root = Path(__file__).parent.parent.resolve()
 
-config_file = Path(project_root, "output_castle/training_8_mirrored/cfg_castle_NN_Creation.yml")
+config_file = Path(project_root, "output_castle/training_13_mirrored_custom_list/cfg_castle_NN_Creation.yml")
 plot_dir = Path(project_root, "output_castle/test_diagnostics/plots_double_xy/")
 
-variable = "tphystnd-524.69"  # prect
+variable = "prect"  # prect
 
 
 def plot_single_variable(var_name, config, save_dir):
     argv = ["-c", config]
     setup = SetupDiagnostics(argv)
+
+    setup.which_castle = "custom"
+    setup.castle_output = "list"
 
     var_model = load_single_model(setup, var_name)
 

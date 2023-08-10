@@ -11,7 +11,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_12_mirrored_custom/%x_slurm.%j.out
+#SBATCH --output=output_castle/training_17_mirrored_various/%x_slurm.%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -50,7 +50,7 @@ found_s=0
 found_j=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:h" opt; do
+while getopts "c:i:o:x:s:j:w:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -103,6 +103,9 @@ while getopts "c:i:o:x:s:j:h" opt; do
     found_j=1
     JOB_NAME=$OPTARG
     ;;
+  w)
+    WHICH_CASTLE=$OPTARG
+    ;;
   :)
     echo -e "\nOption $opt requires an argument."
     error_exit_help
@@ -141,4 +144,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" > "output_castle/training_12_mirrored_custom/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" -w "$WHICH_CASTLE" > "output_castle/training_17_mirrored_various/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

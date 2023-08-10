@@ -11,9 +11,14 @@ from neural_networks.training_mirrored_strategy import train_all_models as train
 from utils.setup import SetupNeuralNetworks
 
 
-def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices):
+def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, which_castle):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
+
+    # todo: delete when done
+    # custom, dict, compile, concat
+    setup.which_castle = which_castle
+    print(f"\nUsing model '{setup.which_castle}'.")
 
     inputs = _read_txt_to_list(nn_inputs_file)
     outputs = _read_txt_to_list(nn_outputs_file)
@@ -74,6 +79,9 @@ if __name__ == "__main__":
     required_args.add_argument("-x", "--train_indices", help="Start and end index of outputs in outputs list, "
                                                              "specifying the neural networks that are to be trained. "
                                                              "Must be a string in the form 'start-end'.", required=True)
+    # todo: remove when done
+    required_args.add_argument("-w", "--which_castle",
+                               help="Which castle. One of ['custom', 'compile', 'concat', 'dict']", required=True)
 
     args = parser.parse_args()
 
@@ -82,6 +90,7 @@ if __name__ == "__main__":
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
     random_seed_str = args.seed
+    which_castle_model = args.which_castle
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -119,7 +128,7 @@ if __name__ == "__main__":
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, which_castle_model)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

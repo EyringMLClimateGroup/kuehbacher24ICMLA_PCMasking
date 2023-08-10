@@ -69,6 +69,23 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
                                                            name="train_dataset")
         val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
 
+        try:
+            which_castle = setup.which_castle
+
+            if which_castle == "dict":
+                train_dataset = train_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
+                val_dataset = val_dataset.map(lambda x, y: {"x_input": x, "y_target": y})
+            elif which_castle == "concat":
+                train_dataset = train_dataset.map(lambda x, y: tf.concat([y, x], axis=0))
+                val_dataset = val_dataset.map(lambda x, y: tf.concat([y, x], axis=0))
+            elif which_castle == "custom" or which_castle == "compile":
+                pass
+            else:
+                raise ValueError("Which CASTLE not set.")
+
+        except AttributeError:
+            pass
+
     train_gen_input_transform = train_gen.input_transform
     train_gen_output_transform = train_gen.output_transform
 

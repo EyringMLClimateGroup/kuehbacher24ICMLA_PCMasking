@@ -4,7 +4,7 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
-from neural_networks.castle_model import CASTLE
+from neural_networks.castle_model import CASTLE, MSEY
 
 
 # Todo:
@@ -16,10 +16,6 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     Implement neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
-
-    The inputs for the model must be a dictionary of the form {"x_input": x, "y_target": y},
-    where x has shapes (num_inputs,) and y has shape (1,).
-    y is not used for training the model, but for computing the prediction error.
 
     The output of the model is an array of shape [num_inputs + 1, batch_size, 1].
     The first element of the output (output[0]) contains the prediction for the target variable y.
@@ -49,14 +45,13 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     Raises:
         ValueError: If `rho` is not greater than 0.
     """
+    print("Using custom CASTLE model with compute_loss. ")
+
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)
     # Force eager execution of tf.data functions as well
     if eager_execution:
         tf.data.experimental.enable_debug_mode()
-
-    # Set random seed
-    tf.random.set_seed(seed)
 
     if rho <= 0:
         raise ValueError("Penalty parameter `rho` for Lagrangian optimization scheme for acyclicity constraint "
@@ -92,6 +87,7 @@ def _compile_castle(model, eager_execution):
 
     model.compile(
         optimizer=optimizer,
+        # loss=MSEY(),
         run_eagerly=eager_execution
     )
 
