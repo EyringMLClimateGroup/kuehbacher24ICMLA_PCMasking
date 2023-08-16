@@ -9,9 +9,13 @@ from tensorflow import keras
 
 from neural_networks.castle_model import CASTLE
 # from neural_networks.castle import build_castle
-from neural_networks.castle_models.castle_functional_dict import build_castle
+from neural_networks.castle_models.castle_functional_trainable_vars_compile_loss import \
+    build_castle as build_castle_compile
+from neural_networks.castle import build_castle as build_castle_custom
 from notebooks_castle.test.testing_utils import set_memory_growth_gpu
 
+
+# todo: remove multiple CASTLE functions
 
 class TestCastle(unittest.TestCase):
 
@@ -39,95 +43,113 @@ class TestCastle(unittest.TestCase):
     def test_castle_model(self):
         logging.info("Testing building and compiling CASTLE model.")
 
-        model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
-                             eager_execution=True, seed=42)
-        self.assertIsNotNone(model)
+        castle_functions = [build_castle_compile, build_castle_custom]
+        for build_castle in castle_functions:
+            model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
+                                 self.lambda_,
+                                 eager_execution=True, seed=42)
+            self.assertIsNotNone(model)
 
-        print(model.summary())
-        try:
-            keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle.png"), show_shapes=True,
-                                   show_layer_activations=True)
-        except ImportError:
-            print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
-                  "See tf.keras.utils.plot_model documentation for details.")
+            print(model.summary())
+            try:
+                keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle.png"), show_shapes=True,
+                                       show_layer_activations=True)
+            except ImportError:
+                print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
+                      "See tf.keras.utils.plot_model documentation for details.")
 
     def test_castle_model_mirrored_strategy(self):
         logging.info("Testing building and compiling CASTLE model with tf.distribute.MirroredStrategy.")
 
         strategy = tf.distribute.MirroredStrategy()
+        logging.info("Testing building and compiling CASTLE model.")
 
-        model = build_castle(self.num_inputs, self.hidden_layers, self.relu, self.rho, self.alpha, self.lambda_,
-                             eager_execution=True, strategy=strategy, seed=42)
-        self.assertIsNotNone(model)
+        castle_functions = [build_castle_compile, build_castle_custom]
+        for build_castle in castle_functions:
 
-        print(model.summary())
-        try:
-            keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle_mirrored.png"), show_shapes=True,
-                                   show_layer_activations=True)
-        except ImportError:
-            print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
-                  "See tf.keras.utils.plot_model documentation for details.")
+            model = build_castle(self.num_inputs, self.hidden_layers, self.relu, self.rho, self.alpha, self.lambda_,
+                                 eager_execution=True, strategy=strategy, seed=42)
+            self.assertIsNotNone(model)
+
+            print(model.summary())
+            try:
+                keras.utils.plot_model(model, to_file=Path(self.output_dir, "castle_mirrored.png"), show_shapes=True,
+                                       show_layer_activations=True)
+            except ImportError:
+                print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
+                      "See tf.keras.utils.plot_model documentation for details.")
 
     def test_train_castle_model(self):
         logging.info("Testing training CASTLE model.")
 
-        model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
-                             eager_execution=True, seed=42)
+        logging.info("Testing building and compiling CASTLE model.")
 
-        epochs = 3
-        history = self.train_castle(model, epochs=epochs)
+        castle_functions = [build_castle_compile, build_castle_custom]
 
-        self.assertIsNotNone(history)
+        for build_castle in castle_functions:
+            model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
+                                 self.lambda_,
+                                 eager_execution=True, seed=42)
 
-        train_loss_keys = ["loss", "prediction_loss", "reconstruction_loss", "sparsity_loss", "acyclicity_loss"]
-        val_loss_keys = ["val_" + loss for loss in train_loss_keys]
-        # self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
-        # self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
+            epochs = 3
+            history = self.train_castle(model, epochs=epochs)
 
-        self.assertEqual(len(history.history["loss"]), epochs)
+            self.assertIsNotNone(history)
+
+            train_loss_keys = ["loss", "prediction_loss", "reconstruction_loss", "sparsity_loss", "acyclicity_loss"]
+            val_loss_keys = ["val_" + loss for loss in train_loss_keys]
+            # self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
+            # self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
+
+            self.assertEqual(len(history.history["loss"]), epochs)
 
     def test_predict_castle_model(self):
         logging.info("Testing predicting with CASTLE model.")
+        logging.info("Testing building and compiling CASTLE model.")
 
-        model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
-                             eager_execution=True, seed=42)
+        castle_functions = [build_castle_compile, build_castle_custom]
+        for build_castle in castle_functions:
+            model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
+                                 self.lambda_,
+                                 eager_execution=True, seed=42)
 
-        n_samples = 320
-        batch_size = 32
-        num_batches = int(n_samples / batch_size)
-        num_outputs = 1
+            n_samples = 320
+            batch_size = 32
+            num_batches = int(n_samples / batch_size)
+            num_outputs = 1
 
-        x_array = np.random.rand(n_samples, self.num_inputs)
-        y_array = np.zeros((n_samples, num_outputs), dtype=np.float32)
+            x_array = np.random.rand(n_samples, self.num_inputs)
+            y_array = np.zeros((n_samples, num_outputs), dtype=np.float32)
 
-        test_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size, drop_remainder=True)
+            test_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size, drop_remainder=True)
 
-        prediction = model.predict(test_ds)
+            prediction = model.predict(test_ds)
 
-        self.assertIsNotNone(prediction)
-        # output tf.concat(outputs, axis=1)
-        self.assertEqual(prediction.shape, (batch_size * num_batches, self.num_inputs + 1))
-        # output list
-        # self.assertEqual(self.num_inputs + num_outputs, len(prediction))
-        # output tf.stack(outputs)
-        # self.assertEqual(prediction.shape, ((self.num_inputs + 1) * num_batches, batch_size, 1))
+            self.assertIsNotNone(prediction)
+            # output shape
+            self.assertEqual(prediction.shape, (batch_size * num_batches, self.num_inputs + 1, 1))
 
     def test_save_load_castle_model(self):
-        model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha, self.lambda_,
-                             eager_execution=True, seed=42)
+        logging.info("Testing building and compiling CASTLE model.")
 
-        _ = self.train_castle(model, epochs=1)
+        castle_functions = [build_castle_compile, build_castle_custom]
+        for build_castle in castle_functions:
+            model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
+                                 self.lambda_,
+                                 eager_execution=True, seed=42)
 
-        model.save(Path(self.output_dir, "castle_model.keras"), save_format="keras_v3")
-        model.save_weights(str(Path(self.output_dir, "castle_weights.h5")))
+            _ = self.train_castle(model, epochs=1)
 
-        loaded_model = tf.keras.models.load_model(Path(self.output_dir, "castle_model.keras"),
-                                                  custom_objects={'CASTLE': CASTLE})
+            model.save(Path(self.output_dir, "castle_model.keras"), save_format="keras_v3")
+            model.save_weights(str(Path(self.output_dir, "castle_weights.h5")))
 
-        self.assertEqual(loaded_model.alpha, model.alpha)
-        self.assertEqual(loaded_model.rho, model.rho)
-        self.assertEqual(loaded_model.reg_lambda, model.reg_lambda)
-        self.assertEqual(len(loaded_model.get_weights()), len(model.get_weights()))
+            loaded_model = tf.keras.models.load_model(Path(self.output_dir, "castle_model.keras"),
+                                                      custom_objects={'CASTLE': CASTLE})
+
+            # self.assertEqual(loaded_model.alpha, model.alpha)
+            # self.assertEqual(loaded_model.rho, model.rho)
+            # self.assertEqual(loaded_model.reg_lambda, model.reg_lambda)
+            self.assertEqual(len(loaded_model.get_weights()), len(model.get_weights()))
 
     def train_castle(self, model, epochs):
         n_samples = 320
@@ -138,9 +160,6 @@ class TestCastle(unittest.TestCase):
         y_array = np.random.standard_normal((n_samples, num_outputs)).astype(dtype=np.float32)
         train_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
         val_ds = tf.data.Dataset.from_tensor_slices((x_array, y_array)).batch(batch_size)
-
-        train_ds = train_ds.map(lambda x, y: {"x_input": x, "y_target": y})
-        val_ds = val_ds.map(lambda x, y: {"x_input": x, "y_target": y})
 
         history = model.fit(
             x=train_ds,

@@ -26,9 +26,6 @@ class CASTLE(keras.Model):
         self.num_input_layers = self.num_inputs + 1
         self.hidden_layers = hidden_layers
 
-        # Names of the inputs layers. The name has to be the same as in self._build_graph
-        self.input_layer_weight_names = [f"input_sub_layer_{i}/kernel:0" for i in range(self.num_input_layers)]
-
         # Metrics
         self.loss_tracker = keras.metrics.Mean(name="loss")
         self.prediction_loss_tracker = keras.metrics.Mean(name="prediction_loss")
@@ -111,17 +108,22 @@ class CASTLE(keras.Model):
 
         yx_outputs = [out_layer(x) for x, out_layer in
                       zip(hidden_outputs[-self.num_input_layers:], self.output_sub_layers)]
-        # Concatenate the outputs into one tensor
-        return tf.concat(yx_outputs, axis=1)
+        # Stack outputs into one tensor
+        return tf.stack(yx_outputs, axis=1)
 
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
+        input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
+
         # In CASTLE, y_pred is (y_pred, x_pred)
         reconstruction_loss = self.compute_reconstruction_loss(x, y_pred)
-        acyclicity_loss = self.compute_acyclicity_loss()
-        sparsity_regularizer = self.compute_sparsity_loss()
-        regularization_loss = reconstruction_loss + acyclicity_loss + sparsity_regularizer
+        acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights)
+        sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
+        dag_loss = tf.add(acyclicity_loss, sparsity_regularizer, name="dag_loss")
+        regularization_loss = tf.add(reconstruction_loss, dag_loss)
+
         prediction_loss = self.compute_prediction_loss(y, y_pred)
-        loss = prediction_loss + self.reg_lambda * regularization_loss
+
+        loss = tf.add(prediction_loss, tf.multiply(self.reg_lambda, regularization_loss), name="overall_loss")
 
         # Update metrics
         self.loss_tracker.update_state(loss)
@@ -153,16 +155,15 @@ class CASTLE(keras.Model):
     @staticmethod
     def compute_reconstruction_loss(x_true, yx_pred):
         # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-        return tf.reduce_mean(tf.norm(x_true - yx_pred[:, 1:], ord='fro', axis=[-2, -1]),
+        return tf.reduce_mean(tf.norm(tf.subtract(tf.expand_dims(x_true, axis=-1), yx_pred[:, 1:]),
+                                      ord='fro', axis=[-2, -1]),
                               name="reconstruction_loss_reduce_mean")
 
-    def compute_acyclicity_loss(self):
+    def compute_acyclicity_loss(self, input_layer_weights):
         # Compute matrix with l2 - norms of input sub-layer weight matrices:
         # The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
         # Since our weight matrices are of dimension dxd (d is the number of x-variables), but we have d+1
         # variables all together (x-variables and y) we set the first row 0 for y.
-        input_layer_weights = [w for w in self.trainable_variables if w.name in self.input_layer_weight_names]
-
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
@@ -179,10 +180,8 @@ class CASTLE(keras.Model):
                            tf.math.multiply(self.alpha, h, name="lagrangian_optimizer"),
                            name="acyclicity_loss")
 
-    def compute_sparsity_loss(self):
+    def compute_sparsity_loss(self, input_layer_weights):
         # Compute the l1 - norm for the weight matrices in the input_sublayer
-        input_layer_weights = [w for w in self.trainable_variables if w.name in self.input_layer_weight_names]
-
         sparsity_regularizer = 0.0
         sparsity_regularizer += tf.reduce_sum(tf.norm(input_layer_weights[0], ord=1, axis=1))
         for i, weight in enumerate(input_layer_weights[1:]):

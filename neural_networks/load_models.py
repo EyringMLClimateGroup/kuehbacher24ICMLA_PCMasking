@@ -77,7 +77,7 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         act = tf.keras.layers.LeakyReLU(alpha=0.3) if act == "leakyrelu" else tf.keras.layers.Activation(act)
 
         # todo: remove when done
-        if setup.which_castle == "dict" or setup.which_castle == "compile" or setup.which_castle == "concat":
+        if setup.which_castle == "compile_loss":
             model = tf.keras.models.load_model(modelname, custom_objects={'Activation': act}, compile=False)
         elif setup.which_castle == "custom":
             # custom model

@@ -4,7 +4,7 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
-from neural_networks.castle_model import CASTLE, MSEY
+from neural_networks.castle_model import CASTLE, MSEY, mse_x
 
 
 # Todo:
@@ -87,7 +87,7 @@ def _compile_castle(model, eager_execution):
 
     model.compile(
         optimizer=optimizer,
-        # loss=MSEY(),
+        metrics=[mse_x],
         run_eagerly=eager_execution
     )
 

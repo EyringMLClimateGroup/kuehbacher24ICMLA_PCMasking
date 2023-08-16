@@ -144,4 +144,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" -w "$WHICH_CASTLE" > "output_castle/training_17_mirrored_various/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" -w "$WHICH_CASTLE" >"output_castle/training_17_mirrored_various/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

@@ -11,9 +11,8 @@ from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
 from neural_networks.castle import build_castle as build_castle_custom
-from neural_networks.castle_models.castle_functional_dict import build_castle as build_castle_dict
-from neural_networks.castle_models.castle_functional_compile_loss import build_castle as build_castle_compile
-from neural_networks.castle_models.castle_functional_concat import build_castle as build_castle_concat
+from neural_networks.castle_models.castle_functional_trainable_vars_compile_loss import \
+    build_castle as build_castle_compile
 
 
 class ModelDescription:
@@ -95,14 +94,10 @@ class ModelDescription:
             self.strategy = tf.distribute.MirroredStrategy() if setup.do_mirrored_strategy else None
 
             # todo: delete when done
-            if setup.which_castle == "dict":
-                build_castle = build_castle_dict
-            elif setup.which_castle == "compile":
-                build_castle = build_castle_compile
-            elif setup.which_castle == "custom":
+            if setup.which_castle == "custom":
                 build_castle = build_castle_custom
-            elif setup.which_castle == "concat":
-                build_castle = build_castle_concat
+            elif setup.which_castle == "compile_loss":
+                build_castle = build_castle_compile
             else:
                 raise ValueError("Which CASTLE model not set.")
 

@@ -16,7 +16,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, wh
     setup = SetupNeuralNetworks(argv)
 
     # todo: delete when done
-    # custom, dict, compile, concat
+    # custom, compile_loss
     setup.which_castle = which_castle
     print(f"\nUsing model '{setup.which_castle}'.")
 
