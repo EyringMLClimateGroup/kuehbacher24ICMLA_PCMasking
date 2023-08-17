@@ -24,10 +24,13 @@ def train_model_if_not_exists(setup):
     model_descriptions = generate_models(setup)
 
     for md in model_descriptions:
-        trained_model = md.get_filename() + '_model.h5'
+        trained_model = md.get_filename() + '_model.keras'
         training_path = str(md.get_path(setup.nn_output_path))
+
         if not os.path.isfile(os.path.join(training_path, trained_model)):
-            if setup.do_mirrored_strategy:
+            if setup.distribute_strategy == "mirrored":
                 train_all_models_mirrored([md], setup)
+            elif setup.distribute_strategy == "multi_worker_mirrored":
+                raise ValueError("Tests not yet configured for MultiWorkMirroredStrategy")
             else:
                 train_all_models([md], setup)

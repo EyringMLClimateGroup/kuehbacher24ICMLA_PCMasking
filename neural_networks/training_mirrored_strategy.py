@@ -12,18 +12,27 @@ from .cbrain.save_weights import save_norm
 from .data_generator import build_train_generator, build_valid_generator
 
 
-def train_all_models(model_descriptions, setup):
+def  train_all_models(model_descriptions, setup):
     """ Train and save all the models """
+    if setup.distribute_strategy == "mirrored":
+        if any(md.strategy.num_replicas_in_sync == 0 for md in model_descriptions):
+            raise ValueError("Trying to run function 'train_all_models' for tf.distribute.MirroredStrategy "
+                             "but Tensorflow found no GPUs. ")
+    elif setup.distribute_strategy == "multi_worker_mirrored":
+        n_workers = int(os.environ['SLURM_NTASKS'])
+        if n_workers == 0:
+            raise ValueError("Trying to run function 'train_all_models' for tf.distribute.MultiWorkerMirroredStrategy "
+                             "but no SLURM tasks were found. ")
+    else:
+        raise ValueError("Trying to run function 'train_all_models' with distributed training "
+                         "but no distribute strategy is not set in configuration file. ")
+
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     for model_description in model_descriptions:
         outModel = model_description.get_filename() + '_model.h5'
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):
-            if setup.do_mirrored_strategy and model_description.strategy.num_replicas_in_sync == 0:
-                print(f"Model {model_description} cannot be trained with tf.distribute.MirroredStrategy "
-                      f"because Tensorflow found no GPUs. Skipping ... ")
-            else:
-                train_save_model(model_description, setup, timestamp)
+            train_save_model(model_description, setup, timestamp)
         else:
             print(outPath + '/' + outModel, ' exists; skipping...')
 
@@ -125,7 +134,14 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         verbose=setup.train_verbose
     )
 
-    model_description.save_model(setup.nn_output_path)
+    if setup.distribute_strategy == "multi_worker_mirrored":
+        task_type, task_id = (model_description.strategy.cluster_resolver.task_type,
+                              model_description.strategy.cluster_resolver.task_id)
+        print(f"\nMultiworker task_type={task_type}, task_id={task_type}")
+        if _is_chief(task_type, task_id):
+            model_description.save_model(setup.nn_output_path)
+    else:
+        model_description.save_model(setup.nn_output_path)
 
     # Saving norm after saving the model avoids having to create the folder ourselves
     if "pca" not in model_description.model_type:
@@ -143,3 +159,32 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
             fmt='%1.6e',
             delimiter=",",
         )
+
+
+
+def _is_chief(task_type, task_id):
+    # Note: there are two possible `TF_CONFIG` configurations.
+    #   1) In addition to `worker` tasks, a `chief` task type is use;
+    #      in this case, this function should be modified to
+    #      `return task_type == 'chief'`.
+    #   2) Only `worker` task type is used; in this case, worker 0 is
+    #      regarded as the chief. The implementation demonstrated here
+    #      is for this case.
+    # For the purpose of this Colab section, the `task_type` is `None` case
+    # is added because it is effectively run with only a single worker.
+    return (task_type == 'worker' and task_id == 0) or task_type is None
+
+
+def _get_temp_dir(dirpath, task_id):
+    base_dirpath = 'workertemp_' + str(task_id)
+    temp_dir = os.path.join(dirpath, base_dirpath)
+    tf.io.gfile.makedirs(temp_dir)
+    return temp_dir
+
+
+def write_filepath(filepath, task_type, task_id):
+    dirpath = os.path.dirname(filepath)
+    base = os.path.basename(filepath)
+    if not _is_chief(task_type, task_id):
+        dirpath = _get_temp_dir(dirpath, task_id)
+    return os.path.join(dirpath, base)

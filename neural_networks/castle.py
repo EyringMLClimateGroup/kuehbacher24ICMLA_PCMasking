@@ -65,10 +65,8 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
         return _compile_castle(model_, eager_execution)
 
     if strategy is not None:
-        strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             model = _build_castle()
-
     else:
         model = _build_castle()
     return model

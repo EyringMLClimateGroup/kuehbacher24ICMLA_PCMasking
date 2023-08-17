@@ -90,8 +90,24 @@ class ModelDescription:
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
         if setup.do_castle_nn:
-            # Setup distributed training
-            self.strategy = tf.distribute.MirroredStrategy() if setup.do_mirrored_strategy else None
+            if setup.distribute_strategy == "mirrored":
+                # Train with MirroredStrategy across multiple GPUs
+                self.strategy = tf.distribute.MirroredStrategy()
+            elif setup.distribute_strategy == "multi_worker_mirrored":
+                # Train with MultiWorkerMirrored strategy across multiple SLURM nodes following
+                #   http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-tf-multi-eng.html
+                # Build multi-worker environment from Slurm variables
+                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver(port_base=12345)
+
+                # Use NCCL communication protocol
+                implementation = tf.distribute.experimental.CommunicationImplementation.NCCL
+                communication_options = tf.distribute.experimental.CommunicationOptions(implementation=implementation)
+
+                # Declare distribution strategy
+                self.strategy = tf.distribute.MultiWorkerMirroredStrategy(cluster_resolver=cluster_resolver,
+                                                                          communication_options=communication_options)
+            else:
+                self.strategy = None
 
             # todo: delete when done
             if setup.which_castle == "custom":
@@ -215,12 +231,14 @@ class ModelDescription:
                 cfg_str.format(alpha_lasso=self.setup.alpha_lasso)
             )
         elif self.model_type == "castleNN":
-            if self.setup.do_mirrored_strategy:
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-distributed/"
+            if self.setup.distribute_strategy == "mirrored":
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-mirrored/"
+            elif self.setup.distribute_strategy == "multi_worker_mirrored":
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-multi_worker_mirrored/"
             else:
                 cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
-                                              lambda_=self.setup.lambda_, do_mirrored=self.setup.do_mirrored_strategy))
+                                              lambda_=self.setup.lambda_))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
@@ -427,8 +445,8 @@ def generate_models(setup, threshold_dict=False):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
-    if setup.do_mirrored_strategy:
-        if setup.do_mirrored_strategy and not tf.config.get_visible_devices('GPU'):
+    if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
+        if not tf.config.get_visible_devices('GPU'):
             raise EnvironmentError(f"Cannot build and compile models with tf.distribute.MirroredStrategy "
                                    f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)

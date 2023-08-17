@@ -116,7 +116,7 @@ rho: 1.0
 alpha: 1.0
 beta: 1.0
 lambda: 1.0
-do_mirrored_strategy: True
+distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
 
 # Diagnostic configuration
 # ----------------------

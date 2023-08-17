@@ -16,7 +16,7 @@ def train_castle():
 
     model_descriptions = generate_models(setup)
 
-    if setup.do_mirrored_strategy:
+    if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
         train_all_models_mirrored(model_descriptions, setup)
     else:
         train_all_models(model_descriptions, setup)

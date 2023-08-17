@@ -37,8 +37,10 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
             cfg_str.format(alpha_lasso=setup.alpha_lasso)
         )
     elif model_type == "castleNN":
-        if setup.do_mirrored_strategy:
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-distributed/"
+        if setup.distribute_strategy == "mirrored":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-mirrored/"
+        elif setup.distribute_strategy == "multi_worker_mirrored":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-multi_worker_mirrored/"
         else:
             cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
         path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta, lambda_=setup.lambda_))

@@ -174,8 +174,8 @@ compute_nn_per_node() {
 
 read_distributed() {
   if [ -f "$NN_CONFIG" ]; then
-    DISTRIBUTED=$(grep 'do_mirrored_strategy:' $NN_CONFIG)
-    DISTRIBUTED=${DISTRIBUTED//*do_mirrored_strategy: /}
+    DISTRIBUTED=$(grep 'distributed_strategy:' $NN_CONFIG)
+    DISTRIBUTED=${DISTRIBUTED//*distributed_strategy: /}
     # Remove trailing new lines and spaces
     DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n ']/}"
   else

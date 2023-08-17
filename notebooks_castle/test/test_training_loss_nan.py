@@ -47,7 +47,7 @@ class TestTrainingLossNaN(unittest.TestCase):
         delete_dir(self.tensorboard_folder)
         delete_dir(self.nn_output_path)
 
-        self.castle_setup.do_mirrored_strategy = False
+        self.castle_setup.distribute_strategy = ""
 
         model_descriptions = generate_models(self.castle_setup)
 
@@ -62,7 +62,7 @@ class TestTrainingLossNaN(unittest.TestCase):
         delete_dir(self.tensorboard_folder)
         delete_dir(self.nn_output_path)
 
-        self.castle_setup.do_mirrored_strategy = True
+        self.castle_setup.distribute_strategy = "mirrored"
         if not len(tf.config.list_physical_devices("GPU")):
             logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
                             "Exiting test.")

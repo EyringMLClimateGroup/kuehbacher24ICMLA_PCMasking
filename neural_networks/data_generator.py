@@ -7,13 +7,13 @@ from .pca import pca
 
 
 def build_train_generator(
-    input_vars_dict,
-    output_vars_dict,
-    setup,
-    # save_dir=False,
-    input_pca_vars_dict=False,
-    num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
-    diagnostic_mode=False,
+        input_vars_dict,
+        output_vars_dict,
+        setup,
+        # save_dir=False,
+        input_pca_vars_dict=False,
+        num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
+        diagnostic_mode=False,
 ):
     out_scale_dict = load_pickle(
         Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
@@ -22,7 +22,7 @@ def build_train_generator(
 
     if setup.ind_test_name == "pca":
         # pca_data_fn = setup.train_data_fn.split('.')[0]+f"_pca{setup.n_components}."+setup.train_data_fn.split('.')[-1]
-        pca_data_fn = setup.train_data_fn.split('.')[0]+"_pca."+setup.train_data_fn.split('.')[-1]
+        pca_data_fn = setup.train_data_fn.split('.')[0] + "_pca." + setup.train_data_fn.split('.')[-1]
         if not os.path.exists(Path(setup.train_data_folder, pca_data_fn)):
             print(f"Creating training PC-components...")
             pca(
@@ -41,10 +41,11 @@ def build_train_generator(
     else:
         train_data_fn = setup.train_data_fn
 
-    if setup.do_mirrored_strategy and not diagnostic_mode:
-        batch_size = setup.batch_size * num_replicas_distributed
-    else:
+    if diagnostic_mode:
         batch_size = setup.batch_size
+    else:
+        batch_size = compute_train_batch_size(setup, num_replicas_distributed)
+
     print(f"Training batch size = {batch_size}.", flush=True)
 
     train_gen = DataGenerator(
@@ -62,16 +63,16 @@ def build_train_generator(
 
 
 def build_valid_generator(
-    input_vars_dict,
-    output_vars_dict,
-    setup,
-    nlat=64,
-    nlon=128,
-    test=False,
-    # save_dir=False,
-    input_pca_vars_dict=False,
-    num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
-    diagnostic_mode=False,
+        input_vars_dict,
+        output_vars_dict,
+        setup,
+        nlat=64,
+        nlon=128,
+        test=False,
+        # save_dir=False,
+        input_pca_vars_dict=False,
+        num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
+        diagnostic_mode=False,
 ):
     out_scale_dict = load_pickle(
         Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
@@ -79,23 +80,16 @@ def build_valid_generator(
     input_transform = (setup.input_sub, setup.input_div)
     if test:
         data_fn = setup.test_data_folder
-        filenm  = setup.test_data_fn
+        filenm = setup.test_data_fn
     else:
         data_fn = setup.train_data_folder
-        filenm  = setup.valid_data_fn
+        filenm = setup.valid_data_fn
 
-    # Option to use validation batch size specified in setup
-    # This is useful for small test runs
-    if setup.use_val_batch_size:
-        batch_size = setup.use_val_batch_size
+    ngeo = nlat * nlon
+    if diagnostic_mode:
+        batch_size = ngeo
     else:
-        ngeo = nlat * nlon
-        if setup.do_mirrored_strategy and not diagnostic_mode:
-            if num_replicas_distributed == 0:
-                raise ValueError("Cannot run distributed training with 0 GPUs.")
-            batch_size = ngeo * num_replicas_distributed
-        else:
-            batch_size = ngeo
+        batch_size = compute_val_batch_size(setup, ngeo, num_replicas_distributed)
 
     if test:
         print(f"Test batch size = {batch_size}.", flush=True)
@@ -103,7 +97,7 @@ def build_valid_generator(
         print(f"Validation batch size = {batch_size}.", flush=True)
 
     if setup.ind_test_name == "pca":
-        pca_data_fn = filenm.split('.')[0]+"_pca."+filenm.split('.')[-1]
+        pca_data_fn = filenm.split('.')[0] + "_pca." + filenm.split('.')[-1]
         if not os.path.exists(Path(setup.train_data_folder, pca_data_fn)):
             print(f"Creating validating/test PC-components...")
             pca(
@@ -131,3 +125,38 @@ def build_valid_generator(
         # xarray=True,
     )
     return valid_gen
+
+
+def compute_train_batch_size(setup, num_replicas_distributed):
+    if setup.distribute_strategy == "mirrored":
+        if num_replicas_distributed == 0:
+            num_replicas_distributed = 1
+            print("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+        batch_size_per_gpu = setup.batch_size
+        global_batch_size = batch_size_per_gpu * num_replicas_distributed
+    elif setup.distribute_strategy == "multi_worker_mirrored":
+        n_workers = int(os.environ['SLURM_NTASKS'])
+        batch_size_per_gpu = setup.batch_size
+        global_batch_size = batch_size_per_gpu * n_workers
+    else:
+        global_batch_size = setup.batch_size
+    return global_batch_size
+
+
+def compute_val_batch_size(setup, ngeo, num_replicas_distributed):
+    if setup.use_val_batch_size:
+        # Option to use validation batch size specified in setup
+        # This is useful for small test runs
+        return setup.val_batch_size
+    else:
+        if setup.distribute_strategy == "mirrored":
+            if num_replicas_distributed == 0:
+                num_replicas_distributed = 1
+                print("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+            global_batch_size = ngeo * num_replicas_distributed
+        elif setup.distribute_strategy == "multi_worker_mirrored":
+            n_workers = int(os.environ['SLURM_NTASKS'])
+            global_batch_size = ngeo * n_workers
+        else:
+            global_batch_size = ngeo
+        return global_batch_size

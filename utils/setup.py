@@ -187,7 +187,10 @@ class SetupNeuralNetworks(Setup):
         self.do_castle_nn = False
 
         # Set do_mirrored_strategy
-        self.do_mirrored_strategy = False
+        try:
+            self.distribute_strategy = yml_cfg["distribute_strategy"]
+        except KeyError:
+            self.distribute_strategy = ""
 
         if self.nn_type == "SingleNN":
             self.do_single_nn = True
@@ -212,7 +215,6 @@ class SetupNeuralNetworks(Setup):
             self.alpha = yml_cfg["alpha"]
             self.beta = yml_cfg["beta"]
             self.lambda_ = yml_cfg["lambda"]
-            self.do_mirrored_strategy = yml_cfg["do_mirrored_strategy"]
 
         elif self.nn_type == "all":
             self.do_single_nn = True

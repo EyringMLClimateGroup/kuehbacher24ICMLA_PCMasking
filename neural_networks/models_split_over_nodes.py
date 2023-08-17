@@ -34,8 +34,8 @@ def generate_models(setup, inputs, outputs):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
-    if setup.do_mirrored_strategy:
-        if setup.do_mirrored_strategy and not tf.config.get_visible_devices('GPU'):
+    if setup.distribute_strategy == "mirrored":
+        if not tf.config.get_visible_devices('GPU'):
             raise EnvironmentError(f"Cannot build and compile models with tf.distribute.MirroredStrategy "
                                    f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)

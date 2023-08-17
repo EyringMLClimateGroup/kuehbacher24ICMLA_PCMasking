@@ -41,7 +41,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_create_castle_model_description(self):
         logging.info("Testing creating model description instances with CASTLE models.")
 
-        self.castle_setup_many_networks.do_mirrored_strategy = False
+        self.castle_setup_many_networks.strategy = ""
         self.castle_setup_many_networks.which_castle = "custom"
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
@@ -53,7 +53,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_create_castle_model_description_distributed(self):
         logging.info("Testing creating model description instances with distributed CASTLE models.")
 
-        self.castle_setup_many_networks.do_mirrored_strategy = True
+        self.castle_setup_many_networks.strategy = "mirrored"
         self.castle_setup_many_networks.which_castle = "custom"
         if not len(tf.config.list_physical_devices("GPU")):
             logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
@@ -73,7 +73,7 @@ class TestCastleSetup(unittest.TestCase):
         # Mock that there aren't any visible devices
         mocked_visible_devices.return_value = []
 
-        self.castle_setup_many_networks.do_mirrored_strategy = True
+        self.castle_setup_many_networks.strategy = "mirrored"
 
         with self.assertRaises(EnvironmentError):
             _ = generate_models(self.castle_setup_many_networks)
@@ -85,7 +85,7 @@ class TestCastleSetup(unittest.TestCase):
         delete_dir(self.castle_setup_many_networks.nn_output_path)
         delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
-        self.castle_setup_many_networks.do_mirrored_strategy = False
+        self.castle_setup_many_networks.strategy = ""
 
         which_castles = ["custom", "compile_loss"]
         for which_castle in which_castles:
@@ -107,7 +107,8 @@ class TestCastleSetup(unittest.TestCase):
         delete_dir(self.castle_setup_many_networks.nn_output_path)
         delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
-        self.castle_setup_many_networks.do_mirrored_strategy = True
+        self.castle_setup_many_networks.strategy = "mirrored"
+
         which_castles = ["custom", "compile_loss"]
         for which_castle in which_castles:
             print(f"Testing for {which_castle} model")
@@ -137,7 +138,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_load_castle_model_description(self):
         logging.info("Testing loading of model description instance with trained CASTLE models.")
 
-        self.castle_setup_few_networks.do_mirrored_strategy = False
+        self.castle_setup_few_networks.distribute_strategy = ""
         which_castles = ["custom", "compile_loss"]
         for which_castle in which_castles:
             print(f"Testing for {which_castle} model")
@@ -152,7 +153,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_load_castle_model_description_distributed(self):
         logging.info("Testing loading of model description instance with distributed trained CASTLE models.")
 
-        self.castle_setup_few_networks.do_mirrored_strategy = False
+        self.castle_setup_few_networks.distribute_strategy = "mirrored"
         which_castles = ["custom", "compile_loss"]
         for which_castle in which_castles:
             print(f"Testing for {which_castle} model")
