@@ -1,21 +1,25 @@
 #!/bin/bash
 #SBATCH --partition=gpu
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=30
-#SBATCH --gpus=4
+#SBATCH --cpus-per-task=40
+#SBATCH --gres=gpu:4
 #SBATCH --hint=nomultithread
+#SBATCH --distribution=block:block  # distribution, might be better to have contiguous blocks
 #SBATCH --mem=0
 #SBATCH --constraint=a100_80
 #SBATCH --exclusive
-#SBATCH --time=12:00:00
+#SBATCH --time=01:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_17_mirrored_various/%x_slurm.%j.out
+#SBATCH --output=output_castle/training_20_mirrored_custom_multi_worker/%x_slurm.%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
+
+#############
+# Functions #
+#############
 
 display_help() {
   echo ""
@@ -39,9 +43,9 @@ error_exit() {
   exit 1
 }
 
-############################
-# Read and check arguments #
-############################
+####################
+# Argument parsing #
+####################
 
 found_c=0
 found_i=0
@@ -51,7 +55,7 @@ found_s=0
 found_j=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:w:h" opt; do
+while getopts "c:i:o:x:s:j:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -104,9 +108,6 @@ while getopts "c:i:o:x:s:j:w:h" opt; do
     found_j=1
     JOB_NAME=$OPTARG
     ;;
-  w)
-    WHICH_CASTLE=$OPTARG
-    ;;
   :)
     echo -e "\nOption $opt requires an argument."
     error_exit_help
@@ -143,6 +144,12 @@ fi
 # Start training #
 ##################
 
+# This is necessary for the workers to communicate
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+
+set -x
+cd "${SLURM_SUBMIT_DIR}" || error_exit
+
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" -w "$WHICH_CASTLE" >"output_castle/training_17_mirrored_various/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" >"output_castle/training_20_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

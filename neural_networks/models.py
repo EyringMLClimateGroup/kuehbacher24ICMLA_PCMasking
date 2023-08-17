@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import tensorflow as tf
 import pickle
@@ -10,9 +12,7 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
-from neural_networks.castle import build_castle as build_castle_custom
-from neural_networks.castle_models.castle_functional_trainable_vars_compile_loss import \
-    build_castle as build_castle_compile
+from neural_networks.castle import build_castle
 
 
 class ModelDescription:
@@ -97,7 +97,9 @@ class ModelDescription:
                 # Train with MultiWorkerMirrored strategy across multiple SLURM nodes following
                 #   http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-tf-multi-eng.html
                 # Build multi-worker environment from Slurm variables
-                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver(port_base=12345)
+                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver()
+                print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.cluster_spec()}\n\n")
+                print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.get_task_info()}\n\n")
 
                 # Use NCCL communication protocol
                 implementation = tf.distribute.experimental.CommunicationImplementation.NCCL
@@ -108,14 +110,6 @@ class ModelDescription:
                                                                           communication_options=communication_options)
             else:
                 self.strategy = None
-
-            # todo: delete when done
-            if setup.which_castle == "custom":
-                build_castle = build_castle_custom
-            elif setup.which_castle == "compile_loss":
-                build_castle = build_castle_compile
-            else:
-                raise ValueError("Which CASTLE model not set.")
 
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,

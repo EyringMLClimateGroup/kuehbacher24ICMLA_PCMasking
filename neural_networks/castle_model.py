@@ -115,16 +115,17 @@ class CASTLE(keras.Model):
         input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
 
         # In CASTLE, y_pred is (y_pred, x_pred)
+        prediction_loss = self.compute_prediction_loss(y, y_pred)
+
         reconstruction_loss = self.compute_reconstruction_loss(x, y_pred)
         acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights)
         sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
-        dag_loss = tf.add(acyclicity_loss, sparsity_regularizer, name="dag_loss")
-        regularization_loss = tf.add(reconstruction_loss, dag_loss)
+        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
+                                          name="regularization_loss")
 
-        prediction_loss = self.compute_prediction_loss(y, y_pred)
-
-        loss = tf.add(prediction_loss, tf.multiply(self.reg_lambda, regularization_loss), name="overall_loss")
-
+        loss = tf.math.add(prediction_loss,
+                           tf.math.multiply(self.reg_lambda, regularization_loss, name="weighted_regularization"),
+                           name="overall_loss")
         # Update metrics
         self.loss_tracker.update_state(loss)
         self.prediction_loss_tracker.update_state(prediction_loss)

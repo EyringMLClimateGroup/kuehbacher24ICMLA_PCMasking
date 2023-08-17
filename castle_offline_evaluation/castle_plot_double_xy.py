@@ -36,9 +36,6 @@ def plot_single_variable(var_name, config, save_dir):
     argv = ["-c", config]
     setup = SetupDiagnostics(argv)
 
-    setup.which_castle = "custom"
-    setup.castle_output = "list"
-
     var_model = load_single_model(setup, var_name)
 
     model_desc = create_castle_model_description(setup, var_model)
