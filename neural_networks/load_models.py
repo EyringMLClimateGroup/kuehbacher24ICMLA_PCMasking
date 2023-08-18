@@ -66,6 +66,29 @@ def get_filename(setup, output):
     return f"{i_var}_{i_level}"
 
 
+def get_best_ckpt_path(setup, model_type, output, pc_alpha=None, threshold=None):
+    folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
+    return Path(folder, "ckpt_best", get_filename(setup, output) + "_model", "best_train_ckpt")
+
+
+def get_cont_ckpt_path(setup, model_type, output, pc_alpha=None, threshold=None):
+    folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
+    return Path(folder, "ckpt_cont", get_filename(setup, output) + "_model", "cont_train_ckpt")
+
+
+def load_model_weights_from_checkpoint(model_description, which_checkpoint):
+    if which_checkpoint == "best":
+        ckpt_path = get_best_ckpt_path(model_description.setup, model_description.model_type, model_description.output,
+                                       pc_alpha=model_description.pc_alpha, threshold=model_description.threshold)
+    elif which_checkpoint == "cont":
+        ckpt_path = get_cont_ckpt_path(model_description.setup, model_description.model_type, model_description.output,
+                                       pc_alpha=model_description.pc_alpha, threshold=model_description.threshold)
+    else:
+        raise ValueError(f"Which checkpoint value must be in ['best', 'cont']")
+
+    model_description.model.load_weghts(ckpt_path)
+
+
 def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
     """ Get model and input list """
     folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)

@@ -10,9 +10,10 @@ from tensorflow.keras.callbacks import LearningRateScheduler, EarlyStopping, Mod
 from .cbrain.learning_rate_schedule import LRUpdate
 from .cbrain.save_weights import save_norm
 from .data_generator import build_train_generator, build_valid_generator
+from .load_models import load_model_weights_from_checkpoint
 
 
-def train_all_models(model_descriptions, setup):
+def train_all_models(model_descriptions, setup, from_checkpoint=False):
     """ Train and save all the models """
     if setup.distribute_strategy == "mirrored":
         if any(md.strategy.num_replicas_in_sync == 0 for md in model_descriptions):
@@ -32,12 +33,13 @@ def train_all_models(model_descriptions, setup):
         outModel = model_description.get_filename() + '_model.h5'
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):
-            train_save_model(model_description, setup, timestamp)
+            train_save_model(model_description, setup, from_checkpoint, timestamp)
         else:
             print(outPath + '/' + outModel, ' exists; skipping...')
 
 
-def train_save_model(model_description, setup, timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
+def train_save_model(model_description, setup, from_checkpoint=False,
+                     timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
     """ Train a model and save all information necessary for CAM """
     print(f"\n\nDistributed training of model {model_description}\n", flush=True)
 
@@ -46,6 +48,11 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
 
     save_dir = str(model_description.get_path(setup.nn_output_path))
     Path(save_dir).mkdir(parents=True, exist_ok=True)
+    print(f"\nSave directory is: {str(save_dir)}\n", flush=True)
+
+    # If this is the continuation of a previous training, load the model weights
+    if from_checkpoint:
+        load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
 
     def normalize(data, generator):
         data_x = data["vars"][:, generator.input_idxs]
@@ -118,11 +125,24 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
 
     early_stop = EarlyStopping(monitor="val_loss", patience=setup.train_patience)
 
-    checkpoint = ModelCheckpoint(
-        str(model_description.get_path(setup.nn_output_path)),
+    checkpoint_dir_best = Path(save_dir, "ckpt_best", model_description.get_filename() + "_model", "best_train_ckpt")
+    checkpoint_best = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_dir_best,
         save_best_only=True,
+        save_weights_only=True,
         monitor='val_loss',
-        mode='min'
+        mode='min',
+        verbose=1
+    )
+
+    checkpoint_dir_cont = Path(save_dir, "ckpt_cont", model_description.get_filename() + "_model", "cont_train_ckpt")
+    checkpoint_cont = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_dir_cont,
+        save_best_only=True,
+        save_weights_only=False,
+        monitor='val_loss',
+        mode='min',
+        verbose=1
     )
 
     model_description.fit_model(
@@ -130,7 +150,7 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         validation_data=val_dataset,
         epochs=setup.epochs,
         #             callbacks=[lrs, tensorboard, early_stop],
-        callbacks=[lrs, tensorboard, early_stop, checkpoint],
+        callbacks=[lrs, tensorboard, early_stop, checkpoint_best, checkpoint_cont],
         verbose=setup.train_verbose
     )
 
@@ -141,7 +161,7 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
 
         # Apparently, it is important to save model in all workers, not just the chief
         write_model_path = write_filepath(setup.nn_output_path, task_type, task_id)
-        model_description.save(write_model_path)
+        model_description.save_model(write_model_path)
         # Delete temporary models from the works
         if not _is_chief(task_type, task_id):
             tf.io.gfile.rmtree(os.path.dirname(write_model_path))
