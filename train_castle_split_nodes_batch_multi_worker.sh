@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --partition=gpu
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=40
-#SBATCH --gres=gpu:4
+#SBATCH --gpus=4
 #SBATCH --hint=nomultithread
 #SBATCH --distribution=block:block  # distribution, might be better to have contiguous blocks
 #SBATCH --mem=0
 #SBATCH --constraint=a100_80
 #SBATCH --exclusive
-#SBATCH --time=01:00:00
+#SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
 #SBATCH --output=output_castle/training_20_mirrored_custom_multi_worker/%x_slurm.%j.out
@@ -152,4 +152,5 @@ cd "${SLURM_SUBMIT_DIR}" || error_exit
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" >"output_castle/training_20_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+# srun will use gres=gpu:1 by default, but we want to use all 4 gpus
+srun --gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" > "output_castle/training_20_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
