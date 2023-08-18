@@ -11,7 +11,7 @@ from neural_networks.training_mirrored_strategy import train_all_models as train
 from utils.setup import SetupNeuralNetworks
 
 
-def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices):
+def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -22,9 +22,9 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices):
     model_descriptions = generate_models(setup, inputs, selected_outputs)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup)
+        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
     else:
-        train_all_models(model_descriptions, setup)
+        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
 
 
 def _read_txt_to_list(txt_file):
@@ -50,8 +50,21 @@ def parse_str_to_bool(v):
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
-        # If it's not a boolean, we just pass it along and test for int later
+        raise ValueError(f"Could not parse {v} to boolean. See option -h for help.")
+
+
+def parse_str_to_bool_or_int(v):
+    if isinstance(v, bool):
         return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        try:
+            return int(v)
+        except ValueError:
+            raise ValueError(f"Could not parse {v} to boolean or int.  See option -h for help.")
 
 
 if __name__ == "__main__":
@@ -64,16 +77,20 @@ if __name__ == "__main__":
                                                  "variables for specific setup configuration.")
     parser.add_argument("-s", "--seed", help="Integer value for random seed. "
                                              "Use 'False' or leave out this option to not set a random seed.",
-                        default=False, type=parse_str_to_bool, nargs='?', const=True)
+                        default=False, type=parse_str_to_bool_or_int, nargs='?', const=True)
 
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
                                required=True)
-    required_args.add_argument("-i", "--inputs_file", help=".txt file with NN inputs list.", required=True)
-    required_args.add_argument("-o", "--outputs_file", help=".txt file with NN outputs list.", required=True)
+    required_args.add_argument("-i", "--inputs_file", help=".txt file with NN inputs list.", required=True, type=str)
+    required_args.add_argument("-o", "--outputs_file", help=".txt file with NN outputs list.", required=True, type=str)
     required_args.add_argument("-x", "--train_indices", help="Start and end index of outputs in outputs list, "
                                                              "specifying the neural networks that are to be trained. "
-                                                             "Must be a string in the form 'start-end'.", required=True)
+                                                             "Must be a string in the form 'start-end'.",
+                               required=True, type=str)
+    required_args.add_argument("-l", "--load_ckpt",
+                               help="Boolean indicating whether to load weights from checkpoint from previous training.",
+                               required=True, type=parse_str_to_bool)
 
     args = parser.parse_args()
 
@@ -81,7 +98,8 @@ if __name__ == "__main__":
     inputs_file = Path(args.inputs_file)
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
-    random_seed_str = args.seed
+    load_ckpt = args.load_ckpt
+    random_seed_parsed = args.seed
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -95,19 +113,13 @@ if __name__ == "__main__":
     if not train_idx:
         raise ValueError("Given train indices were incorrect. Start indices must be smaller than end index. ")
 
-    if random_seed_str is False:
+    if random_seed_parsed is False:
         pass
     else:
-        if random_seed_str is True:
+        if random_seed_parsed is True:
             random_seed = 42
-
         else:
-            try:
-                random_seed = int(random_seed_str)
-            except ValueError:
-                raise ValueError(f"Invalid value given for random seed. Must be an integer, got {random_seed_str}. "
-                                 f"Use 'False' or leave out option '-s' to not set a random seed. ")
-
+            random_seed = random_seed_parsed
         print(f"\n\nSet Tensorflow random seed for reproducibility: seed={random_seed}", flush=True)
         tf.random.set_seed(random_seed)
 
@@ -119,7 +131,7 @@ if __name__ == "__main__":
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

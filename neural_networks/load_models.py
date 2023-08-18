@@ -86,7 +86,7 @@ def load_model_weights_from_checkpoint(model_description, which_checkpoint):
     else:
         raise ValueError(f"Which checkpoint value must be in ['best', 'cont']")
 
-    model_description.model.load_weghts(ckpt_path)
+    model_description.model.load_weights(ckpt_path)
 
 
 def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):

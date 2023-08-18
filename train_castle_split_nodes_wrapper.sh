@@ -14,6 +14,7 @@ OUTPUTS_MAP="output_castle/training_1/outputs_map.txt"
 NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
 SEED="NULL"
+LOAD_CKPT="False"
 
 MAX_RUNNING_JOBS=20
 
@@ -39,6 +40,8 @@ display_help() {
   echo "       Current default: $NUM_NODES"
   echo " -c    YAML configuration file for CASTLE networks."
   echo "       Current default: $NN_CONFIG"
+  echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
+  echo "       Default: $LOAD_CKPT"
   echo " -s    Random seed. Leave out this option to not set a random seed."
   echo "       Default: $SEED"
   echo " -h    Print this help."
@@ -54,6 +57,7 @@ print_variables() {
   echo "  Outputs map file:               $OUTPUTS_MAP"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
+  echo "  Load weights from checkpoint:   $LOAD_CKPT"
   echo "  Random seed:                    $SEED"
   echo ""
   echo -e "=================================================================\n\n"
@@ -67,6 +71,7 @@ print_computed_variables() {
   echo "  Outputs map file:               $OUTPUTS_MAP"
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Distributed training:           $DISTRIBUTED"
+  echo "  Load weights from checkpoint:   $LOAD_CKPT"
   echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
@@ -174,13 +179,19 @@ compute_nn_per_node() {
 
 read_distributed() {
   if [ -f "$NN_CONFIG" ]; then
-    DISTRIBUTED=$(grep 'distributed_strategy:' $NN_CONFIG)
-    DISTRIBUTED=${DISTRIBUTED//*distributed_strategy: /}
+    TMP=$(grep 'distribute_strategy:' $NN_CONFIG)
+    TMP=${TMP//*distribute_strategy: /}
+    # Remove comments if there are any
+    DISTRIBUTED=${TMP%#*}
     # Remove trailing new lines and spaces
-    DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n ']/}"
+    DISTRIBUTED="${DISTRIBUTED//[$'\t\r\n\" ']/}"
   else
     echo -e "\nError: YAML configuration file does not exist.\n"
     error_exit
+  fi
+
+  if [[ $DISTRIBUTED == "" ]]; then
+    DISTRIBUTED="None"
   fi
 }
 
@@ -212,9 +223,9 @@ check_outputs_file_exists() {
 }
 
 set_var_ident_str() {
-    # Watch out: head starts at index 1
+  # Watch out: head starts at index 1
   start=$(($1 + 1))
-  end=$(($1 + 1))
+  end=$(($2 + 1))
 
   var_ident_str=""
   concat=""
@@ -282,9 +293,10 @@ else
   found_n=0
   found_c=0
   found_s=0
+  found_l=0
 
   # Parse options
-  while getopts "i:o:m:n:c:s:h" opt; do
+  while getopts "i:o:m:n:c:l:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -335,14 +347,31 @@ else
         error_exit
       fi
       ;;
+    l)
+      found_l=1
+      lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+      if [[ $lower_input == "true" || $lower_input == "t" ]]; then
+        LOAD_CKPT="True"
+      elif [[ $lower_input == "false" || $lower_input == "f" ]]; then
+        LOAD_CKPT="False"
+      else
+        echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f')."
+        error_exit
+      fi
+      ;;
     s)
       found_s=1
       re='^[+-]?[0-9]+$'
       if [[ $OPTARG =~ $re ]]; then
         SEED=$OPTARG
       else
-        echo -e "\nError: Invalid value for option -s (random seed). Must be an integer."
-        error_exit
+        cap_input=$(echo "$OPTARG" | tr '[:lower:]' '[:upper:]')
+        if [[ $cap_input == "NULL" ]]; then
+          SEED="NULL"
+        else
+          echo -e "\nError: Invalid value for option -s (random seed). Must be an integer."
+          error_exit
+        fi
       fi
       ;;
     :)
@@ -595,6 +624,58 @@ else
     done
   fi
 
+  # load from checkpoint
+  if [[ $found_l == 0 ]]; then
+    echo -e "\nLoad from checkpoint not given. Do you wish to use default value LOAD_CKPT=$LOAD_CKPT?."
+
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please type whether to load from checkpoint ('True', 't', 'False', 'f') or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            lower_input=$(echo $input | tr '[:upper:]' '[:lower:]')
+            if [[ $lower_input == "false" || $lower_input == "f" ]]; then
+              LOAD_CKPT="False"
+              break 2
+            elif [[ $lower_input == "true" || $lower_input == "t" ]]; then
+              LOAD_CKPT="True"
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f'). Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f'). Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f').\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
   # random seed
   if [[ $found_s == 0 ]]; then
     echo -e "\nRandom seed not given. Do you wish to use default value SEED=$SEED? If SEED is NULL, no random seed will be set."
@@ -675,68 +756,6 @@ fi
 ###################################
 want_to_continue
 
-##########################
-# Exceeding compute time #
-##########################
-DISTRIBUTED_NETS=2
-NORMAL_NETS=1
-if [[ $DISTRIBUTED == "True" ]]; then
-  NETS_IN_TIME=$DISTRIBUTED_NETS
-elif [[ $DISTRIBUTED == "False" ]]; then
-  NETS_IN_TIME=$NORMAL_NETS
-else
-  echo -e "\nUnknown value for distributed strategy: $DISTRIBUTED. Must be True or False."
-  error_exit
-fi
-
-if (($NN_PER_NODE > $NETS_IN_TIME)); then
-  echo -e "\n\nInfo: Training $NN_PER_NODE nets per node may lead to exceeding the node reservation time limit (12h for GPU partition)."
-  echo "      From experience, we can fully train about $NORMAL_NETS net in 12 hours ($DISTRIBUTED_NETS nets with distributed training). "
-  echo "      If the time limit is exceeded, training will be aborted and there may not be any log output."
-  echo -e "      (Tensorboard and model weights files should still be saved.)\n"
-
-  outer_counter=0
-  while [ $outer_counter -lt 3 ]; do
-    read -r -e -p "Change current value of $NN_PER_NODE NNs per node to $NETS_IN_TIME NNs per node? [y]/n: " input
-
-    if [[ $input == "y" || $input == "" ]]; then
-      NN_PER_NODE=$NETS_IN_TIME
-      NUM_NODES=$((($NUM_OUTPUTS + $NN_PER_NODE - 1) / $NN_PER_NODE))
-      echo -e "\nContinuing with $NN_PER_NODE NNs per node and $NUM_NODES nodes.\n"
-
-      if (($NUM_NODES > 20)); then
-        echo -e "\nInfo: Cannot run $1 nodes/jobs simultaneously because it exceeds the maximum number of running jobs per user (max running jobs=$MAX_RUNNING_JOBS)."
-        echo -e "      The jobs exceeding the job limit will be scheduled and will start once running jobs have finished.\n"
-
-        inner_counter=0
-        while [ $inner_counter -lt 3 ]; do
-          read -r -e -p "Do you wish to continue? [y]/n: " input
-          if [[ $input == "y" || $input == "" ]]; then
-            break 2
-          elif [[ $input == "n" ]]; then
-            graceful_exit
-          else
-            case_counter $inner_counter
-          fi
-          inner_counter=$(($inner_counter + 1))
-        done
-      fi
-
-    elif [[ $input == "n" ]]; then
-      echo -e "\nKeeping $NN_PER_NODE NNs per node and $NUM_NODES nodes.\n"
-      break
-
-    else
-      case_counter $outer_counter
-    fi
-    outer_counter=$(($outer_counter + 1))
-  done
-
-  echo -e "\n\nRunning script with the following variables:"
-  print_computed_variables
-  want_to_continue
-fi
-
 ########################
 # Random seed to false #
 ########################
@@ -756,13 +775,17 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   TRAIN_INDICES="$i-$END_INDEX"
 
   # Set variable VAR_IDENT_STR
-  set_var_ident_str "$i" $END_INDEX
+  set_var_ident_str "$i" "$END_INDEX"
   JOB_NAME="castle_training_${VAR_IDENT_STR}"
+  # Check size of string (otherwise this may cause problems saving files
+  if [[ ${#JOB_NAME} -gt 50 ]]; then
+    JOB_NAME="castle_training"
+  fi
 
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -s "$SEED" -j "$JOB_NAME"
+  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -s "$SEED" -j "$JOB_NAME"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

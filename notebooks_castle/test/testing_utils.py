@@ -3,14 +3,27 @@ import shutil
 
 import tensorflow as tf
 
+from neural_networks.data_generator import build_valid_generator
 from neural_networks.models import generate_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
 from neural_networks.training import train_all_models
 
 
-def delete_dir(folder):
-    if os.path.isdir(folder):
-        shutil.rmtree(folder, ignore_errors=True)
+def delete_output_dirs(model_description, setup):
+    def _delete_output_dir(md):
+        save_dir = md.get_path(setup.nn_output_path)
+        if os.path.isdir(save_dir):
+            shutil.rmtree(save_dir, ignore_errors=True)
+
+    if isinstance(model_description, list):
+        for el in model_description:
+            _delete_output_dir(el)
+    else:
+        _delete_output_dir(model_description)
+
+    tb_dir = setup.tensorboard_folder
+    if os.path.isdir(tb_dir):
+        shutil.rmtree(tb_dir, ignore_errors=True)
 
 
 def set_memory_growth_gpu():
@@ -34,3 +47,19 @@ def train_model_if_not_exists(setup):
                 raise ValueError("Tests not yet configured for MultiWorkMirroredStrategy")
             else:
                 train_all_models([md], setup)
+
+
+def build_test_gen(model_description, setup):
+    input_vars_dict = model_description.input_vars_dict
+    output_vars_dict = model_description.output_vars_dict
+    if setup.distribute_strategy == "mirrored":
+        num_replicas = model_description.strategy.num_replicas_in_sync
+    else:
+        num_replicas = None
+    # Make sure that the batch size is small
+    setup.use_val_batch_size = True
+    setup.val_batch_size = 32
+
+    return build_valid_generator(input_vars_dict, output_vars_dict, setup,
+                                 input_pca_vars_dict=setup.input_pca_vars_dict,
+                                 num_replicas_distributed=num_replicas)

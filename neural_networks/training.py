@@ -19,6 +19,7 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False):
         outModel = model_description.get_filename() + '_model.h5'
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):
+            # todo: change for CASTLE and include from checkpoint
             train_save_model(model_description, setup, from_checkpoint, timestamp)
         else:
             print(outPath + '/' + outModel, ' exists; skipping...')
@@ -39,6 +40,7 @@ def train_save_model(
 
     # If this is the continuation of a previous training, load the model weights
     if from_checkpoint:
+        print(f"\nLoading model weights from checkpoint.\n")
         load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
 
     with build_train_generator(

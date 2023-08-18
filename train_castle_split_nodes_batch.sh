@@ -11,10 +11,15 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_20_mirrored_custom_multi_worker/%x_slurm.%j.out
+#SBATCH --output=output_castle/training_21_mirrored_custom_multi_worker/%x_slurm_%j.out
+#SBATCH --error=output_castle/training_21_mirrored_custom_multi_worker/%x_error_slurm_%j.out
+#SBATCH --dependency=afterok:6555265
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
+
+# For starting one job after another has finished, add
+# #SBATCH --dependency=afterok:$JOBID1
 
 display_help() {
   echo ""
@@ -27,6 +32,7 @@ display_help() {
   echo " -i    Text file with input list for CASTLE networks (.txt)."
   echo " -o    Text file with output list for CASTLE networks (.txt)."
   echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
+  echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
@@ -48,9 +54,10 @@ found_o=0
 found_x=0
 found_s=0
 found_j=0
+found_l=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:h" opt; do
+while getopts "c:i:o:x:s:j:l:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -103,6 +110,18 @@ while getopts "c:i:o:x:s:j:h" opt; do
     found_j=1
     JOB_NAME=$OPTARG
     ;;
+  l)
+    found_l=1
+    lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+    if [[ $lower_input == "true" || $lower_input == "t" ]]; then
+      LOAD_CKPT="True"
+    elif [[ $lower_input == "false" || $lower_input == "f" ]]; then
+      LOAD_CKPT="False"
+    else
+      echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f')."
+      error_exit
+    fi
+    ;;
   :)
     echo -e "\nOption $opt requires an argument."
     error_exit_help
@@ -124,7 +143,7 @@ elif ((found_o == 0)); then
   echo -e "\nError: Failed to provide CASTLE outputs list .txt file.\n"
   error_exit
 elif ((found_x == 0)); then
-  echo -e "\nError: Failed to outputs training indices.\n"
+  echo -e "\nError: Failed to provide training indices.\n"
   error_exit
 fi
 
@@ -134,6 +153,9 @@ fi
 if ((found_j == 0)); then
   JOB_NAME="castle_training_${START_END_IDX}"
 fi
+if ((found_l == 0)); then
+  LOAD_CKPT="False"
+fi
 
 ##################
 # Start training #
@@ -141,4 +163,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -s "$SEED" >"output_castle/training_20_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -s "$SEED" >"output_castle/training_21_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

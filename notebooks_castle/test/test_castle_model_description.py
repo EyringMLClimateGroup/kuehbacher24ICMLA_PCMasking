@@ -5,25 +5,26 @@ import unittest
 import tensorflow as tf
 from mock import patch
 
-from neural_networks.load_models import load_models
+from neural_networks.load_models import load_models, load_model_weights_from_checkpoint
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
-from notebooks_castle.test.testing_utils import delete_dir, set_memory_growth_gpu, train_model_if_not_exists
+from notebooks_castle.test.testing_utils import delete_output_dirs, set_memory_growth_gpu, train_model_if_not_exists, \
+    build_test_gen
 from utils.setup import SetupNeuralNetworks
 
-class TestCastleSetup(unittest.TestCase):
+
+class TestCastleModelDescription(unittest.TestCase):
 
     def setUp(self):
-        logging.basicConfig(level=logging.INFO)
 
         try:
             set_memory_growth_gpu()
         except RuntimeError:
-            logging.warning("GPU growth could not be enabled. "
-                            "When running multiple tests, this may be because the physical drivers are already "
-                            "initialized, in which case memory growth may already be enabled. "
-                            "If memory growth is not enabled, the tests may fail with CUDA error.")
+            print("\nGPU growth could not be enabled. "
+                  "When running multiple tests, this may be because the physical drivers are already "
+                  "initialized, in which case memory growth may already be enabled. "
+                  "If memory growth is not enabled, the tests may fail with CUDA error.")
 
         # Multiple inputs and outputs, both 2d and 3d
         # Inputs: ps (3d) and lhflx (2d)
@@ -38,7 +39,7 @@ class TestCastleSetup(unittest.TestCase):
         self.castle_setup_few_networks = SetupNeuralNetworks(argv_s2)
 
     def test_create_castle_model_description(self):
-        logging.info("Testing creating model description instances with CASTLE models.")
+        print("\nTesting creating model description instances with CASTLE models.")
 
         self.castle_setup_many_networks.distribute_strategy = ""
 
@@ -49,12 +50,12 @@ class TestCastleSetup(unittest.TestCase):
         self.assertEqual(len(model_descriptions), self.num_models_config_1)
 
     def test_create_castle_model_description_distributed(self):
-        logging.info("Testing creating model description instances with distributed CASTLE models.")
+        print("\nTesting creating model description instances with distributed CASTLE models.")
 
         self.castle_setup_many_networks.distribute_strategy = "mirrored"
         if not len(tf.config.list_physical_devices("GPU")):
-            logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
-                            "Exiting test.")
+            print("\nTensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
+                  "Exiting test.")
             return
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
@@ -65,8 +66,8 @@ class TestCastleSetup(unittest.TestCase):
 
     @patch('neural_networks.models.tf.config.get_visible_devices')
     def test_create_castle_model_description_distributed_value_error(self, mocked_visible_devices):
-        logging.info("Testing raise ValueError when creating model description instances with distributed "
-                     "CASTLE models without visible GPUs.")
+        print("\nTesting raise ValueError when creating model description instances with distributed "
+              "CASTLE models without visible GPUs.")
         # Mock that there aren't any visible devices
         mocked_visible_devices.return_value = []
 
@@ -76,15 +77,12 @@ class TestCastleSetup(unittest.TestCase):
             _ = generate_models(self.castle_setup_many_networks)
 
     def test_train_and_save_castle_model_description(self):
-        logging.info("Testing training 2 model description instances with CASTLE models.")
-
-        # Delete existing output directories
-        delete_dir(self.castle_setup_many_networks.nn_output_path)
-        delete_dir(self.castle_setup_many_networks.tensorboard_folder)
+        print("\nTesting training 2 model description instances with CASTLE models.")
 
         self.castle_setup_many_networks.distribute_strategy = ""
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
+        delete_output_dirs(model_descriptions, self.castle_setup_many_networks)
 
         # Only test train the first two models
         train_model_descriptions = model_descriptions[:2]
@@ -93,20 +91,17 @@ class TestCastleSetup(unittest.TestCase):
         self._assert_saved_files(train_model_descriptions)
 
     def test_train_and_save_castle_model_description_distributed(self):
-        logging.info("Testing distributed training of 2 model description instances with distributed CASTLE models.")
-
-        # Delete existing output directories
-        delete_dir(self.castle_setup_many_networks.nn_output_path)
-        delete_dir(self.castle_setup_many_networks.tensorboard_folder)
+        print("\nTesting distributed training of 2 model description instances with distributed CASTLE models.")
 
         self.castle_setup_many_networks.distribute_strategy = "mirrored"
 
         if not len(tf.config.list_physical_devices("GPU")):
-            logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
-                            "Exiting test.")
+            print("\nTensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
+                  "Exiting test.")
             return
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
+        delete_output_dirs(model_descriptions, self.castle_setup_many_networks)
 
         # Only test train the first two models
         train_model_descriptions = model_descriptions[:2]
@@ -123,7 +118,7 @@ class TestCastleSetup(unittest.TestCase):
             self.assertTrue(os.path.isdir(self.castle_setup_many_networks.tensorboard_folder))
 
     def test_load_castle_model_description(self):
-        logging.info("Testing loading of model description instance with trained CASTLE models.")
+        print("\nTesting loading of model description instance with trained CASTLE models.")
 
         self.castle_setup_few_networks.distribute_strategy = ""
 
@@ -134,7 +129,7 @@ class TestCastleSetup(unittest.TestCase):
                          len(self.castle_setup_few_networks.output_order))
 
     def test_load_castle_model_description_distributed(self):
-        logging.info("Testing loading of model description instance with distributed trained CASTLE models.")
+        print("\nTesting loading of model description instance with distributed trained CASTLE models.")
 
         train_model_if_not_exists(self.castle_setup_few_networks)
 
@@ -142,3 +137,79 @@ class TestCastleSetup(unittest.TestCase):
 
         self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
                          len(self.castle_setup_few_networks.output_order))
+
+    def test_load_ckpt_castle_model_description(self):
+        print("\nTesting loading model weights from checkpoint for CASTLE models.")
+
+        self.castle_setup_few_networks.distribute_strategy = ""
+
+        train_model_if_not_exists(self.castle_setup_few_networks)
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+
+        for md in model_descriptions:
+            # Evaluate the model
+            test_gen = build_test_gen(md, self.castle_setup_few_networks)
+            print(f"\nEvaluated untrained model {md}.")
+            with test_gen:
+                md.model.evaluate(test_gen, verbose=2)
+
+            load_model_weights_from_checkpoint(md, which_checkpoint="best")
+
+            print(f"\nEvaluated model {md} with loaded weights.")
+            with test_gen:
+                md.model.evaluate(test_gen, verbose=2)
+
+    def test_load_ckpt_castle_model_description_distributed(self):
+        print("\nTesting loading model weights from checkpoint for CASTLE models.")
+
+        self.castle_setup_few_networks.distribute_strategy = "mirrored"
+
+        train_model_if_not_exists(self.castle_setup_few_networks)
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+
+        for md in model_descriptions:
+            # Evaluate the model
+            test_gen = build_test_gen(md, self.castle_setup_few_networks)
+            print(f"\nEvaluated untrained model {md}.")
+            with test_gen:
+                md.model.evaluate(test_gen, verbose=2)
+
+            load_model_weights_from_checkpoint(md, which_checkpoint="best")
+
+            print(f"\nEvaluated model {md} with loaded weights.")
+            with test_gen:
+                md.model.evaluate(test_gen, verbose=2)
+
+    def test_train_load_ckpt_castle_model_description(self):
+        print("\nTesting continue training with loaded model weights for CASTLE model.")
+
+        self.castle_setup_few_networks.distribute_strategy = ""
+
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+        delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
+
+        # First training
+        train_all_models(model_descriptions, self.castle_setup_few_networks)
+
+        del model_descriptions
+
+        # Train again from checkpoint
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+        train_all_models(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)
+
+    def test_train_load_ckpt_castle_model_description_distributed(self):
+        print("\nTesting continue training with loaded model weights for CASTLE model.")
+
+        self.castle_setup_few_networks.distribute_strategy = "mirrored"
+
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+        delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
+
+        # First training
+        train_all_models(model_descriptions, self.castle_setup_few_networks)
+
+        del model_descriptions
+
+        # Train again from checkpoint
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+        train_all_models(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)

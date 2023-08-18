@@ -102,7 +102,7 @@ class ModelDescription:
                 print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.get_task_info()}\n\n")
 
                 # Use NCCL communication protocol
-                implementation = tf.distribute.experimental.CommunicationImplementation.NCCL
+                implementation = tf.distribute.experimental.CommunicationImplementation.AUTO
                 communication_options = tf.distribute.experimental.CommunicationOptions(implementation=implementation)
 
                 # Declare distribution strategy

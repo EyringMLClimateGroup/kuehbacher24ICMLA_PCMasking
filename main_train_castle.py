@@ -14,12 +14,14 @@ def train_castle():
     argv = ["-c", Path("nn_config", "castle", "cfg_castle_NN_Creation.yml")]
     setup = SetupNeuralNetworks(argv)
 
+    load_weights_from_ckpt = False
+
     model_descriptions = generate_models(setup)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup)
+        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
     else:
-        train_all_models(model_descriptions, setup)
+        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
 
 
 def set_memory_growth_gpu():
