@@ -12,7 +12,7 @@ from .cbrain.save_weights import save_norm
 from .data_generator import build_train_generator, build_valid_generator
 
 
-def  train_all_models(model_descriptions, setup):
+def train_all_models(model_descriptions, setup):
     """ Train and save all the models """
     if setup.distribute_strategy == "mirrored":
         if any(md.strategy.num_replicas_in_sync == 0 for md in model_descriptions):
@@ -138,8 +138,13 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
         task_type, task_id = (model_description.strategy.cluster_resolver.task_type,
                               model_description.strategy.cluster_resolver.task_id)
         print(f"\nMultiworker task_type={task_type}, task_id={task_type}")
-        if _is_chief(task_type, task_id):
-            model_description.save_model(setup.nn_output_path)
+
+        # Apparently, it is important to save model in all workers, not just the chief
+        write_model_path = write_filepath(setup.nn_output_path, task_type, task_id)
+        model_description.save(write_model_path)
+        # Delete temporary models from the works
+        if not _is_chief(task_type, task_id):
+            tf.io.gfile.rmtree(os.path.dirname(write_model_path))
     else:
         model_description.save_model(setup.nn_output_path)
 
@@ -159,7 +164,6 @@ def train_save_model(model_description, setup, timestamp=datetime.now().strftime
             fmt='%1.6e',
             delimiter=",",
         )
-
 
 
 def _is_chief(task_type, task_id):
