@@ -96,25 +96,7 @@ class ModelDiagnostics():
 
                 # For CASTLE, we just want the prediction for Y
                 if self.setup.nn_type == "castleNN":
-                    try:
-                        print(pred.shape)
-                    except:
-                        print("pred is not an array")
-
-                    print(f"\nCastle output type: {self.setup.castle_output}")
-
-                    if self.setup.castle_output == "list":
-                        # list
-                        pred = pred[0]
-                    elif self.setup.castle_output == "stack":
-                        # stack
-                        pred = pred[0, :]
-                    else:
-                        # concat
-                        pred = pred[:, 0]  # shape (batch_size)
-                        # Need to expand the axis so that it has shape (batch_size, 1) for further processing
-                        pred = np.expand_dims(pred, axis=1)
-                    print(f"Prediction shape: {pred.shape=}")
+                    pred = pred[:, 0]  # shape (batch_size)
 
                 # Inverse transform
                 truth = valid_gen.output_transform.inverse_transform(truth)
@@ -133,15 +115,7 @@ class ModelDiagnostics():
 
                     # For CASTLE, we just want the prediction for Y
                     if self.setup.nn_type == "castleNN":
-                        # stack
-                        # pred = pred[0, :]
-                        # list
-                        # pred = pred[0]
-                        # concat
                         p_tmp = p_tmp[:, 0]  # shape (batch_size)
-                        # Need to expand the axis so that it has shape (batch_size, 1) for further processing
-                        p_tmp = np.expand_dims(p_tmp, axis=1)
-                        print(f"{p_tmp.shape=}")
 
                     # Inverse transform
                     truth[iTime, :] = valid_gen.output_transform.inverse_transform(t_tmp)
