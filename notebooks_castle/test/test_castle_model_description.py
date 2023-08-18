@@ -40,7 +40,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_create_castle_model_description(self):
         logging.info("Testing creating model description instances with CASTLE models.")
 
-        self.castle_setup_many_networks.strategy = ""
+        self.castle_setup_many_networks.distribute_strategy = ""
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
 
@@ -51,7 +51,7 @@ class TestCastleSetup(unittest.TestCase):
     def test_create_castle_model_description_distributed(self):
         logging.info("Testing creating model description instances with distributed CASTLE models.")
 
-        self.castle_setup_many_networks.strategy = "mirrored"
+        self.castle_setup_many_networks.distribute_strategy = "mirrored"
         if not len(tf.config.list_physical_devices("GPU")):
             logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
                             "Exiting test.")
@@ -70,7 +70,7 @@ class TestCastleSetup(unittest.TestCase):
         # Mock that there aren't any visible devices
         mocked_visible_devices.return_value = []
 
-        self.castle_setup_many_networks.strategy = "mirrored"
+        self.castle_setup_many_networks.distribute_strategy = "mirrored"
 
         with self.assertRaises(EnvironmentError):
             _ = generate_models(self.castle_setup_many_networks)
@@ -82,7 +82,7 @@ class TestCastleSetup(unittest.TestCase):
         delete_dir(self.castle_setup_many_networks.nn_output_path)
         delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
-        self.castle_setup_many_networks.strategy = ""
+        self.castle_setup_many_networks.distribute_strategy = ""
 
         model_descriptions = generate_models(self.castle_setup_many_networks)
 
@@ -99,7 +99,7 @@ class TestCastleSetup(unittest.TestCase):
         delete_dir(self.castle_setup_many_networks.nn_output_path)
         delete_dir(self.castle_setup_many_networks.tensorboard_folder)
 
-        self.castle_setup_many_networks.strategy = "mirrored"
+        self.castle_setup_many_networks.distribute_strategy = "mirrored"
 
         if not len(tf.config.list_physical_devices("GPU")):
             logging.warning("Tensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
