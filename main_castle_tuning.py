@@ -9,7 +9,7 @@ from nni.experiment import Experiment
 from main_train_castle_split_nodes import parse_str_to_bool, parse_str_to_bool_or_int, set_memory_growth_gpu
 
 
-def tune_castle(config, inputs, outputs, indices, load_checkpoint, cont_training, seed, tuning_alg):
+def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metric):
     search_space = {
         'num_hidden_layers': {'_type': 'choice', '_value': list(range(15))},
         'dense_units': {'_type': 'choice', '_value': [32, 64, 128, 256]},
@@ -20,7 +20,7 @@ def tune_castle(config, inputs, outputs, indices, load_checkpoint, cont_training
     }
 
     experiment = Experiment('local')
-    experiment.config.trial_command = f"python -u main_train_castle_split_nodes_tuning.py -c {config} -i {inputs} -o {outputs} -x {indices} -l {load_checkpoint} -t {cont_training} -s {seed}"
+    experiment.config.trial_command = f"python -u main_train_castle_split_nodes_tuning.py -c {config} -i {inputs} -o {outputs} -x {indices} -p {tuning_metric} -s {seed}"
     experiment.config.trial_code_directory = '.'
     experiment.config.search_space = search_space
 
@@ -28,7 +28,9 @@ def tune_castle(config, inputs, outputs, indices, load_checkpoint, cont_training
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
     experiment.config.max_trial_number = 10
+    experiment.config.max_experiment_duration = "12h"
     experiment.config.trial_concurrency = 10
+    experiment.config.trial_gpu_number = 4
 
     experiment.run(5848)
 
@@ -48,28 +50,24 @@ def parse_arguments():
                                                              "specifying the neural networks that are to be trained. "
                                                              "Must be a string in the form 'start-end'.",
                                required=True, type=str)
-    required_args.add_argument("-l", "--load_ckpt",
-                               help="Boolean indicating whether to load weights from checkpoint from previous training.",
-                               required=True, type=parse_str_to_bool)
-    required_args.add_argument("-t", "--continue_training",
-                               help="Boolean indicating whether to continue with previous training. The model "
-                                    "(including optimizer) is loaded and the learning rate is initialized with the "
-                                    "last learning rate from previous training.",
-                               required=True, type=parse_str_to_bool)
 
     required_args.add_argument("-u", "--tuner", help="Tuning algorithm to be used (e.g. TPE, Random, Hyperband).",
                                required=True, type=str)
+    required_args.add_argument("-p", "--tuning_metric",
+                               help="Metric used to measure tuning performance (e.g. 'val_loss', 'val_prediction_loss').",
+                               required=True, type=str)
+
     args = parser.parse_args()
+
     yaml_config_file = Path(args.config_file)
     inputs_file = Path(args.inputs_file)
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
-    load_ckpt = args.load_ckpt
-    continue_training = args.continue_training
     random_seed_parsed = args.seed
     tuning_alg = args.tuner
+    tuning_metric = args.tuning_metric
 
-    return yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, random_seed_parsed, tuning_alg
+    return yaml_config_file, inputs_file, outputs_file, train_idx, random_seed_parsed, tuning_alg, tuning_metric
 
 
 if __name__ == "__main__":
@@ -78,12 +76,12 @@ if __name__ == "__main__":
         print(f"\nAllow memory growth on GPUs.", flush=True)
         set_memory_growth_gpu()
 
-    yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, random_seed, tuner = parse_arguments()
+    yaml_config_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric = parse_arguments()
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning.", flush=True)
     t_init = time.time()
 
-    tune_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, tuner)
+    tune_castle(yaml_config_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

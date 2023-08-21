@@ -9,7 +9,8 @@ from neural_networks.cbrain.learning_rate_schedule import LRUpdate
 from neural_networks.data_generator import build_train_generator, build_valid_generator
 
 
-def train_all_models(model_descriptions, setup, tuning_params, from_checkpoint=False, continue_training=False):
+def train_all_models(model_descriptions, setup, tuning_params, tuning_metric='val_loss', from_checkpoint=False,
+                     continue_training=False):
     """ Train and save all the models """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     for model_description in model_descriptions:
@@ -17,15 +18,15 @@ def train_all_models(model_descriptions, setup, tuning_params, from_checkpoint=F
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):
             # todo: change for CASTLE and include from checkpoint
-            train_save_model(model_description, setup, tuning_params, from_checkpoint=from_checkpoint,
-                             continue_training=continue_training,
+            train_save_model(model_description, setup, tuning_params, tuning_metric=tuning_metric,
+                             from_checkpoint=from_checkpoint, continue_training=continue_training,
                              timestamp=timestamp)
         else:
             print(outPath + '/' + outModel, ' exists; skipping...')
 
 
 def train_save_model(
-        model_description, setup, tuning_params, from_checkpoint=False, continue_training=False,
+        model_description, setup, tuning_params, tuning_metric, from_checkpoint=False, continue_training=False,
         timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")
 ):
     """ Train a model and save all information necessary for CAM """
@@ -68,10 +69,15 @@ def train_save_model(
         input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
     ) as valid_gen:
 
-        model_description.fit_model(
+        history = model_description.fit_model(
             x=train_gen,
             validation_data=valid_gen,
             epochs=setup.epochs,
             callbacks=[lrs, early_stop, report_val_loss_cb, report_val_pred_loss_cb],
             verbose=setup.train_verbose,
         )
+
+    final_metric = history.history[tuning_metric][-1]
+    nni.report_final_result(final_metric)
+    print(f"\nFinal {tuning_metric} is {final_metric}\n")
+

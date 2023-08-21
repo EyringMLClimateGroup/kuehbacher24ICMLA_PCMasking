@@ -198,7 +198,7 @@ class ModelDescription:
 
     def fit_model(self, x, validation_data, epochs, callbacks, verbose=1, steps_per_epoch=None, validation_steps=None):
         """ Train the model """
-        self.model.fit(
+        history = self.model.fit(
             x=x,
             validation_data=validation_data,
             epochs=epochs,
@@ -207,6 +207,8 @@ class ModelDescription:
             steps_per_epoch=steps_per_epoch,
             validation_steps=validation_steps,
         )
+
+        return history
 
     def get_path(self, base_path):
         """ Generate a path based on this model metadata """

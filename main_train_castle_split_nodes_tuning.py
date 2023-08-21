@@ -12,8 +12,7 @@ from neural_networks.tuning.training_mirrored_strategy_tuning import train_all_m
 from utils.setup import SetupNeuralNetworks
 
 
-def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
-                 continue_previous_training):
+def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, metric):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -37,11 +36,9 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, lo
     model_descriptions = generate_models(setup, inputs, selected_outputs, params)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, params, from_checkpoint=load_weights_from_ckpt,
-                                  continue_training=continue_previous_training)
+        train_all_models_mirrored(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
     else:
-        train_all_models(model_descriptions, setup, params, from_checkpoint=load_weights_from_ckpt,
-                         continue_training=continue_previous_training)
+        train_all_models(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
 
 
 def _read_txt_to_list(txt_file):
@@ -100,14 +97,10 @@ if __name__ == "__main__":
                                                              "specifying the neural networks that are to be trained. "
                                                              "Must be a string in the form 'start-end'.",
                                required=True, type=str)
-    required_args.add_argument("-l", "--load_ckpt",
-                               help="Boolean indicating whether to load weights from checkpoint from previous training.",
-                               required=True, type=parse_str_to_bool)
-    required_args.add_argument("-t", "--continue_training",
-                               help="Boolean indicating whether to continue with previous training. The model "
-                                    "(including optimizer) is loaded and the learning rate is initialized with the "
-                                    "last learning rate from previous training.",
-                               required=True, type=parse_str_to_bool)
+
+    required_args.add_argument("-p", "--tuning_metric",
+                               help="Metric used to measure tuning performance (e.g. 'val_loss', 'val_prediction_loss').",
+                               required=True, type=str)
 
     args = parser.parse_args()
 
@@ -115,9 +108,8 @@ if __name__ == "__main__":
     inputs_file = Path(args.inputs_file)
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
-    load_ckpt = args.load_ckpt
-    continue_training = args.continue_training
     random_seed_parsed = args.seed
+    tuning_metric = args.tuning_metric
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -145,11 +137,12 @@ if __name__ == "__main__":
     print(f"Input list .txt file:  {inputs_file}")
     print(f"Output list .txt file: {outputs_file}")
     print(f"Train indices:         {train_idx}\n")
+    print(f"Tuning metric:         {tuning_metric}")
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, tuning_metric)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
