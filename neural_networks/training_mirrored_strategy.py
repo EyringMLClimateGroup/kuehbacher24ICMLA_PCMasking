@@ -59,12 +59,14 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
         load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
 
     if continue_training:
+        print(f"\nContinue training for model {model_description}\n", flush=True)
         model_description.model = load_model_from_previous_training(model_description)
 
         previous_lr_path = Path(save_dir, "learning_rate", model_description.get_filename() + "_model_lr.p")
-        print(f"Loading learning rate from {previous_lr_path}")
-        previous_lr = pickle.load(previous_lr_path)["last_lr"]
-        print(f"Learning rate = {previous_lr}\n")
+        print(f"\nLoading learning rate from {previous_lr_path}", flush=True)
+        with open(previous_lr_path, 'rb') as f:
+            previous_lr = pickle.load(f)["last_lr"]
+        print(f"Learning rate = {previous_lr}\n", flush=True)
 
         # Adjust learning rate for distributed training
         init_lr = previous_lr * model_description.strategy.num_replicas_in_sync

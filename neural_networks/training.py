@@ -21,8 +21,8 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):
             # todo: change for CASTLE and include from checkpoint
-            train_save_model(model_description, setup, from_checkpoint=from_checkpoint, continue_training=False,
-                             timestamp=timestamp)
+            train_save_model(model_description, setup, from_checkpoint=from_checkpoint,
+                             continue_training=continue_training, timestamp=timestamp)
         else:
             print(outPath + '/' + outModel, ' exists; skipping...')
 
@@ -47,12 +47,14 @@ def train_save_model(
 
     # Load whole model (including optimizer) from previous training
     if continue_training:
+        print(f"\nContinue training for model {model_description}\n", flush=True)
         model_description.model = load_model_from_previous_training(model_description)
 
         previous_lr_path = Path(save_dir, "learning_rate", model_description.get_filename() + "_model_lr.p")
-        print(f"\nLoading learning rate from {previous_lr_path}")
-        init_lr = pickle.load(previous_lr_path)["last_lr"]
-        print(f"Learning rate = {init_lr}\n")
+        print(f"\nLoading learning rate from {previous_lr_path}", flush=True)
+        with open(previous_lr_path, 'rb') as f:
+            init_lr = pickle.load(f)["last_lr"]
+        print(f"Learning rate = {init_lr}\n", flush=True)
 
     else:
         init_lr = setup.init_lr
