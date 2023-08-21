@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=90
-#SBATCH --gpus=1
+#SBATCH --gpus=4
 #SBATCH --mem=0
 #SBATCH --constraint=a100_80
 #SBATCH --exclusive
@@ -13,7 +13,7 @@
 #SBATCH --mail-type=END
 #SBATCH --output=output_castle/training_22_custom_continued/%x_slurm_%j.out
 #SBATCH --error=output_castle/training_22_custom_continued/%x_error_slurm_%j.out
-#SBATCH --dependency=afterok:6577380
+#SBATCH --dependency=afterok:6582431
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
