@@ -10,7 +10,7 @@ from neural_networks.castle_model import CASTLE, MSEY, mse_x
 # Todo:
 #  - Implement partial training
 #  - Implement CASTLE code version of loss
-def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eager_execution=False,
+def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, learning_rate=0.001, eager_execution=False,
                  hsic_prediction=False, strategy=None, seed=None):
     """
     Implement neural network with CASTLE (Causal Structure Learning) regularization
@@ -62,7 +62,7 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
         model_ = CASTLE(num_inputs, hidden_layers, activation, rho, alpha, lambda_, relu_alpha=0.3, seed=seed)
         model_.build(input_shape=(None, num_inputs))
         # Compile model
-        return _compile_castle(model_, eager_execution)
+        return _compile_castle(model_, learning_rate, eager_execution)
 
     if strategy is not None:
         with strategy.scope():
@@ -72,9 +72,9 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, eag
     return model
 
 
-def _compile_castle(model, eager_execution):
+def _compile_castle(model, learning_rate, eager_execution):
     optimizer = keras.optimizers.Adam(
-        learning_rate=0.001,
+        learning_rate=learning_rate,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-07,
