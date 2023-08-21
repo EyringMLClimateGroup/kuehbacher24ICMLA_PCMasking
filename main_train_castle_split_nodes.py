@@ -11,7 +11,8 @@ from neural_networks.training_mirrored_strategy import train_all_models as train
 from utils.setup import SetupNeuralNetworks
 
 
-def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt):
+def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
+                 continue_previous_training):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -24,7 +25,8 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, lo
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
         train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
     else:
-        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
+        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                         continue_training=continue_previous_training)
 
 
 def _read_txt_to_list(txt_file):
@@ -91,6 +93,11 @@ if __name__ == "__main__":
     required_args.add_argument("-l", "--load_ckpt",
                                help="Boolean indicating whether to load weights from checkpoint from previous training.",
                                required=True, type=parse_str_to_bool)
+    required_args.add_argument("-t", "--continue_training",
+                               help="Boolean indicating whether to continue with previous training. The model "
+                                    "(including optimizer) is loaded and the learning rate is initialized with the "
+                                    "last learning rate from previous training.",
+                               required=True, type=parse_str_to_bool)
 
     args = parser.parse_args()
 
@@ -99,6 +106,7 @@ if __name__ == "__main__":
     outputs_file = Path(args.outputs_file)
     train_idx = args.train_indices
     load_ckpt = args.load_ckpt
+    continue_training = args.continue_training
     random_seed_parsed = args.seed
 
     if not yaml_config_file.suffix == ".yml":
@@ -131,7 +139,7 @@ if __name__ == "__main__":
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

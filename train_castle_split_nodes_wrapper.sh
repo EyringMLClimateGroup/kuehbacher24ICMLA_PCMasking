@@ -15,6 +15,7 @@ NUM_NODES=20
 NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
 SEED="NULL"
 LOAD_CKPT="False"
+CONTINUE_TRAINING="False"
 
 MAX_RUNNING_JOBS=20
 
@@ -42,6 +43,8 @@ display_help() {
   echo "       Current default: $NN_CONFIG"
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo "       Default: $LOAD_CKPT"
+  echo " -t    Boolean ('False' 'f', 'True', 't')indicating whether to continue with previous training. "
+  echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo " -s    Random seed. Leave out this option to not set a random seed."
   echo "       Default: $SEED"
   echo " -h    Print this help."
@@ -58,6 +61,7 @@ print_variables() {
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Load weights from checkpoint:   $LOAD_CKPT"
+  echo "  Continue training:              $CONTINUE_TRAINING"
   echo "  Random seed:                    $SEED"
   echo ""
   echo -e "=================================================================\n\n"
@@ -72,6 +76,7 @@ print_computed_variables() {
   echo "  NN config file:                 $NN_CONFIG"
   echo "  Distributed training:           $DISTRIBUTED"
   echo "  Load weights from checkpoint:   $LOAD_CKPT"
+  echo "  Continue training:              $CONTINUE_TRAINING"
   echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
@@ -294,9 +299,10 @@ else
   found_c=0
   found_s=0
   found_l=0
+  found_t=0
 
   # Parse options
-  while getopts "i:o:m:n:c:l:s:h" opt; do
+  while getopts "i:o:m:n:c:l:t:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -356,6 +362,18 @@ else
         LOAD_CKPT="False"
       else
         echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f')."
+        error_exit
+      fi
+      ;;
+    t)
+      found_t=1
+      lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+      if [[ $lower_input == "true" || $lower_input == "t" ]]; then
+        CONTINUE_TRAINING="True"
+      elif [[ $lower_input == "false" || $lower_input == "f" ]]; then
+        CONTINUE_TRAINING="False"
+      else
+        echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
         error_exit
       fi
       ;;
@@ -676,6 +694,58 @@ else
     done
   fi
 
+  # continue training
+  if [[ $found_l == 0 ]]; then
+    echo -e "\nBoolean indication whether to continue training not given. Do you wish to use default value CONTINUE_TRAINING=$CONTINUE_TRAINING?."
+
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please type whether to continue training ('True', 't', 'False', 'f') or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            lower_input=$(echo $input | tr '[:upper:]' '[:lower:]')
+            if [[ $lower_input == "false" || $lower_input == "f" ]]; then
+              CONTINUE_TRAINING="False"
+              break 2
+            elif [[ $lower_input == "true" || $lower_input == "t" ]]; then
+              CONTINUE_TRAINING="True"
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f'). Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f'). Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f').\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
   # random seed
   if [[ $found_s == 0 ]]; then
     echo -e "\nRandom seed not given. Do you wish to use default value SEED=$SEED? If SEED is NULL, no random seed will be set."
@@ -785,7 +855,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -s "$SEED" -j "$JOB_NAME"
+  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -c "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

@@ -12,8 +12,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_21_mirrored_custom_multi_worker/%x_slurm_%j.out
-#SBATCH --error=output_castle/training_21_mirrored_custom_multi_worker/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/training_22_custom_continued/%x_slurm_%j.out
+#SBATCH --error=output_castle/training_22_custom_continued/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -34,6 +34,8 @@ display_help() {
   echo " -o    Text file with output list for CASTLE networks (.txt)."
   echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
+  echo " -t    Boolean ('False' 'f', 'True', 't')indicating whether to continue with previous training. "
+  echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
@@ -56,9 +58,10 @@ found_x=0
 found_s=0
 found_j=0
 found_l=0
+found_t=0
 
 # Parse options
-while getopts "c:i:o:x:s:l:j:h" opt; do
+while getopts "c:i:o:x:s:l:t:j:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -123,6 +126,18 @@ while getopts "c:i:o:x:s:l:j:h" opt; do
       error_exit
     fi
     ;;
+  t)
+    found_t=1
+    lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+    if [[ $lower_input == "true" || $lower_input == "t" ]]; then
+      CONTINUE_TRAINING="True"
+    elif [[ $lower_input == "false" || $lower_input == "f" ]]; then
+      CONTINUE_TRAINING="False"
+    else
+      echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
+      error_exit
+    fi
+    ;;
   :)
     echo -e "\nOption $opt requires an argument."
     error_exit_help
@@ -157,6 +172,9 @@ fi
 if ((found_l == 0)); then
   LOAD_CKPT="False"
 fi
+if ((found_t == 0)); then
+  CONTINUE_TRAINING="False"
+fi
 
 ##################
 # Start training #
@@ -171,4 +189,4 @@ cd "${SLURM_SUBMIT_DIR}" || error_exit
 echo "Starting job ${JOB_NAME}: $(date)"
 
 # srun will use gres=gpu:1 by default, but we want to use all 4 gpus
-srun --gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -s "$SEED" >"output_castle/training_21_mirrored_custom_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+srun --gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_22_custom_continued/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

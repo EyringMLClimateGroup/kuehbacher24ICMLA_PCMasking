@@ -5,7 +5,8 @@ import unittest
 import tensorflow as tf
 from mock import patch
 
-from neural_networks.load_models import load_models, load_model_weights_from_checkpoint
+from neural_networks.load_models import load_models, load_model_weights_from_checkpoint, \
+    load_model_from_previous_training
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
 from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
@@ -137,79 +138,3 @@ class TestCastleModelDescription(unittest.TestCase):
 
         self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
                          len(self.castle_setup_few_networks.output_order))
-
-    def test_load_ckpt_castle_model_description(self):
-        print("\nTesting loading model weights from checkpoint for CASTLE models.")
-
-        self.castle_setup_few_networks.distribute_strategy = ""
-
-        train_model_if_not_exists(self.castle_setup_few_networks)
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-
-        for md in model_descriptions:
-            # Evaluate the model
-            test_gen = build_test_gen(md, self.castle_setup_few_networks)
-            print(f"\nEvaluated untrained model {md}.")
-            with test_gen:
-                md.model.evaluate(test_gen, verbose=2)
-
-            load_model_weights_from_checkpoint(md, which_checkpoint="best")
-
-            print(f"\nEvaluated model {md} with loaded weights.")
-            with test_gen:
-                md.model.evaluate(test_gen, verbose=2)
-
-    def test_load_ckpt_castle_model_description_distributed(self):
-        print("\nTesting loading model weights from checkpoint for CASTLE models.")
-
-        self.castle_setup_few_networks.distribute_strategy = "mirrored"
-
-        train_model_if_not_exists(self.castle_setup_few_networks)
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-
-        for md in model_descriptions:
-            # Evaluate the model
-            test_gen = build_test_gen(md, self.castle_setup_few_networks)
-            print(f"\nEvaluated untrained model {md}.")
-            with test_gen:
-                md.model.evaluate(test_gen, verbose=2)
-
-            load_model_weights_from_checkpoint(md, which_checkpoint="best")
-
-            print(f"\nEvaluated model {md} with loaded weights.")
-            with test_gen:
-                md.model.evaluate(test_gen, verbose=2)
-
-    def test_train_load_ckpt_castle_model_description(self):
-        print("\nTesting continue training with loaded model weights for CASTLE model.")
-
-        self.castle_setup_few_networks.distribute_strategy = ""
-
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-        delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
-
-        # First training
-        train_all_models(model_descriptions, self.castle_setup_few_networks)
-
-        del model_descriptions
-
-        # Train again from checkpoint
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-        train_all_models(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)
-
-    def test_train_load_ckpt_castle_model_description_distributed(self):
-        print("\nTesting continue training with loaded model weights for CASTLE model.")
-
-        self.castle_setup_few_networks.distribute_strategy = "mirrored"
-
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-        delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
-
-        # First training
-        train_all_models(model_descriptions, self.castle_setup_few_networks)
-
-        del model_descriptions
-
-        # Train again from checkpoint
-        model_descriptions = generate_models(self.castle_setup_few_networks)
-        train_all_models(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)

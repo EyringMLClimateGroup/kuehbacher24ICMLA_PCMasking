@@ -80,13 +80,24 @@ def load_model_weights_from_checkpoint(model_description, which_checkpoint):
     if which_checkpoint == "best":
         ckpt_path = get_best_ckpt_path(model_description.setup, model_description.model_type, model_description.output,
                                        pc_alpha=model_description.pc_alpha, threshold=model_description.threshold)
+
     elif which_checkpoint == "cont":
         ckpt_path = get_cont_ckpt_path(model_description.setup, model_description.model_type, model_description.output,
                                        pc_alpha=model_description.pc_alpha, threshold=model_description.threshold)
+
     else:
         raise ValueError(f"Which checkpoint value must be in ['best', 'cont']")
 
+    print(f"\nLoading model weights from checkpoint path {ckpt_path}.\n")
     model_description.model.load_weights(ckpt_path)
+
+    return model_description
+
+
+def load_model_from_previous_training(model_description):
+    model, _ = get_model(model_description.setup, model_description.output, model_description.model_type,
+                         pc_alpha=model_description.pc_alpha, threshold=model_description.threshold)
+    return model
 
 
 def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):

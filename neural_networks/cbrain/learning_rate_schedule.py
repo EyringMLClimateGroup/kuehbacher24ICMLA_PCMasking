@@ -14,8 +14,9 @@ class LRUpdate(object):
         self.init_lr = init_lr
         self.step = step
         self.drop = 1.0 / divide
+        self.current_lr = init_lr
 
     def __call__(self, epoch):
-        lr = self.init_lr * np.power(self.drop, np.floor((epoch) / self.step))
-        print(f"\nLearning rate = {lr}\n")
-        return lr
+        self.current_lr = self.init_lr * np.power(self.drop, np.floor((epoch) / self.step))
+        print(f"\nLearning rate = {self.current_lr}\n")
+        return self.current_lr
