@@ -1,17 +1,12 @@
 import os
-import pickle
 from datetime import datetime
 from pathlib import Path
+
 import nni
-
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.callbacks import LearningRateScheduler, EarlyStopping
 
-from .cbrain.learning_rate_schedule import LRUpdate
-from .cbrain.save_weights import save_norm
-from .data_generator import build_train_generator, build_valid_generator
-from .load_models import load_model_weights_from_checkpoint, load_model_from_previous_training
+from neural_networks.cbrain.learning_rate_schedule import LRUpdate
+from neural_networks.data_generator import build_train_generator, build_valid_generator
 
 
 def train_all_models(model_descriptions, setup, tuning_params, from_checkpoint=False, continue_training=False):
@@ -58,7 +53,7 @@ def train_save_model(
         lrs = tf.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=factor,
                                              patience=3, min_lr=1e-8)
 
-    early_stop = EarlyStopping(monitor="val_loss", patience=setup.train_patience)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=setup.train_patience)
 
     report_val_loss_cb = tf.keras.callbacks.LambdaCallback(
         on_epoch_end=lambda epoch, logs: nni.report_intermediate_result(logs['val_loss'])

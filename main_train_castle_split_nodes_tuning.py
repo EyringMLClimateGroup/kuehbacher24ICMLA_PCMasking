@@ -2,12 +2,13 @@ import argparse
 import datetime
 import time
 from pathlib import Path
+import nni
 
 import tensorflow as tf
 
-from neural_networks.models_split_over_nodes import generate_models
-from neural_networks.training import train_all_models
-from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
+from neural_networks.tuning.models_split_over_nodes_tuning import generate_models
+from neural_networks.tuning.training_tuning import train_all_models
+from neural_networks.tuning.training_mirrored_strategy_tuning import train_all_models as train_all_models_mirrored
 from utils.setup import SetupNeuralNetworks
 
 
@@ -19,13 +20,27 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, lo
     inputs = _read_txt_to_list(nn_inputs_file)
     outputs = _read_txt_to_list(nn_outputs_file)
 
+    params = {
+        'num_hidden_layers': 5,
+        'dense_units': 64,
+        'activation_type': 'leakyrelu',
+        'learning_rate': 0.01,
+        'learning_rate_schedule': ('exp', 2, 1),
+        'lambda': 1.0,
+    }
+
+    optimized_params = nni.get_next_parameter()
+    params.update(optimized_params)
+    print(f"Optimized parameters: {params}")
+
     selected_outputs = [outputs[i] for i in train_indices]
-    model_descriptions = generate_models(setup, inputs, selected_outputs)
+    model_descriptions = generate_models(setup, inputs, selected_outputs, params)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
+        train_all_models_mirrored(model_descriptions, setup, params, from_checkpoint=load_weights_from_ckpt,
+                                  continue_training=continue_previous_training)
     else:
-        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+        train_all_models(model_descriptions, setup, params, from_checkpoint=load_weights_from_ckpt,
                          continue_training=continue_previous_training)
 
 
