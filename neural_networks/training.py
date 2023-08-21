@@ -43,7 +43,7 @@ def train_save_model(
 
     # Load model weights from checkpoint
     if from_checkpoint:
-        load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
+        model_description = load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
 
     # Load whole model (including optimizer) from previous training
     if continue_training:

@@ -56,7 +56,7 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
     # If this is the continuation of a previous training, load the model weights
     if from_checkpoint:
         print(f"\nLoading model weights from checkpoint.\n")
-        load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
+        model_description = load_model_weights_from_checkpoint(model_description, which_checkpoint="cont")
 
     if continue_training:
         print(f"\nContinue training for model {model_description}\n", flush=True)

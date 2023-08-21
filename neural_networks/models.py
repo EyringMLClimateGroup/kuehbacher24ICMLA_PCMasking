@@ -45,7 +45,7 @@ class ModelDescription:
     
     """
 
-    def __init__(self, output, inputs, model_type, pc_alpha, threshold, setup):
+    def __init__(self, output, inputs, model_type, pc_alpha, threshold, setup, continue_training=False):
         """
         Parameters
         ----------
@@ -111,10 +111,19 @@ class ModelDescription:
             else:
                 self.strategy = None
 
+            learning_rate = setup.init_lr
+            if continue_training:
+                save_dir = str(self.get_path(setup.nn_output_path))
+                previous_lr_path = Path(save_dir, "learning_rate", self.get_filename() + "_model_lr.p")
+                print(f"\nLoading learning rate from {previous_lr_path}", flush=True)
+                with open(previous_lr_path, 'rb') as f:
+                    learning_rate = pickle.load(f)["last_lr"]
+                print(f"Learning rate = {learning_rate}\n", flush=True)
+
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,
                                       activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_=self.setup.lambda_, strategy=self.strategy)
+                                      lambda_=self.setup.lambda_, learning_rate=learning_rate, strategy=self.strategy)
         else:
             self.model = self._build_model()
 
@@ -317,7 +326,7 @@ def dense_nn(input_shape, output_shape, hidden_layers, activation):
     return model
 
 
-def generate_all_single_nn(setup):
+def generate_all_single_nn(setup, continue_training=False):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
@@ -352,6 +361,7 @@ def generate_all_single_nn(setup):
     for output in output_list:
         model_description = ModelDescription(
             output, inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup,
+            continue_training=continue_training
         )
         model_descriptions.append(model_description)
     return model_descriptions
@@ -435,7 +445,7 @@ def generate_sklasso_single_nn(setup):
     return model_descriptions
 
 
-def generate_models(setup, threshold_dict=False):
+def generate_models(setup, threshold_dict=False, continue_training=False):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
@@ -448,7 +458,7 @@ def generate_models(setup, threshold_dict=False):
         print(f"\n\nBuilding and compiling models.", flush=True)
 
     if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
-        model_descriptions.extend(generate_all_single_nn(setup))
+        model_descriptions.extend(generate_all_single_nn(setup, continue_training))
 
     if setup.do_random_single_nn:
         collected_results, errors = aggregation.collect_results(setup, reuse=True)

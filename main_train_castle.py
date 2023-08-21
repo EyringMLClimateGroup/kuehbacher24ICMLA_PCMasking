@@ -15,13 +15,16 @@ def train_castle():
     setup = SetupNeuralNetworks(argv)
 
     load_weights_from_ckpt = False
+    continue_previous_training = False
 
-    model_descriptions = generate_models(setup)
+    model_descriptions = generate_models(setup, continue_training=continue_previous_training)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
+        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                                  continue_training=continue_previous_training)
     else:
-        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt)
+        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                         continue_training=continue_previous_training)
 
 
 def set_memory_growth_gpu():

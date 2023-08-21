@@ -54,7 +54,7 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
             with test_gen:
                 md.model.evaluate(test_gen, verbose=2)
 
-            load_model_weights_from_checkpoint(md, which_checkpoint="best")
+            md = load_model_weights_from_checkpoint(md, which_checkpoint="best")
 
             print(f"\nEvaluated model {md} with loaded weights.")
             with test_gen:
@@ -75,7 +75,7 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
             with test_gen:
                 md.model.evaluate(test_gen, verbose=2)
 
-            load_model_weights_from_checkpoint(md, which_checkpoint="best")
+            md = load_model_weights_from_checkpoint(md, which_checkpoint="best")
 
             print(f"\nEvaluated model {md} with loaded weights.")
             with test_gen:
@@ -130,7 +130,7 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
             with test_gen:
                 md.model.evaluate(test_gen, verbose=2)
 
-            load_model_from_previous_training(md)
+            md.model = load_model_from_previous_training(md)
 
             print(f"\nEvaluated model {md} with loaded weights.")
             with test_gen:
@@ -151,7 +151,7 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
             with test_gen:
                 md.model.evaluate(test_gen, verbose=2)
 
-            load_model_from_previous_training(md)
+            md.model = load_model_from_previous_training(md)
 
             print(f"\nEvaluated model {md} with loaded weights.")
             with test_gen:
@@ -161,23 +161,18 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
         print("\nTesting continue training with loaded model for CASTLE model.")
 
         self.castle_setup_few_networks.distribute_strategy = ""
-        self.castle_setup_few_networks.epochs = 5
 
-        model_descriptions_1 = generate_models(self.castle_setup_few_networks)
-        model_descriptions_2 = generate_models(self.castle_setup_few_networks)
+        model_descriptions = generate_models(self.castle_setup_few_networks)
+        delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
 
-        for md_1, md_2 in zip(model_descriptions_1, model_descriptions_2):
-            print(f"\nTrain model first time: {md_1}")
-            delete_output_dirs(md_1, self.castle_setup_few_networks)
+        # First training
+        train_all_models(model_descriptions, self.castle_setup_few_networks)
 
-            # First training
-            train_all_models([md_1], self.castle_setup_few_networks)
+        del model_descriptions
 
-            del md_1
-
-            # Train again
-            print(f"\nTrain model second time: {md_2}")
-            train_all_models([md_2], self.castle_setup_few_networks, continue_training=True)
+        # Train again from checkpoint
+        model_descriptions = generate_models(self.castle_setup_few_networks, continue_training=True)
+        train_all_models(model_descriptions, self.castle_setup_few_networks, continue_training=True)
 
     def test_train_load_whole_castle_model_description_distributed(self):
         print("\nTesting continue training with loaded model for CASTLE model.")
@@ -193,5 +188,5 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
         del model_descriptions
 
         # Train again from checkpoint
-        model_descriptions = generate_models(self.castle_setup_few_networks)
+        model_descriptions = generate_models(self.castle_setup_few_networks, continue_training=True)
         train_all_models(model_descriptions, self.castle_setup_few_networks, continue_training=True)
