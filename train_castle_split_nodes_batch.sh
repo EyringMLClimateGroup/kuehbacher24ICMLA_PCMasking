@@ -13,7 +13,6 @@
 #SBATCH --mail-type=END
 #SBATCH --output=output_castle/training_22_custom_continued/%x_slurm_%j.out
 #SBATCH --error=output_castle/training_22_custom_continued/%x_error_slurm_%j.out
-#SBATCH --dependency=afterok:6582431
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -25,7 +24,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: $0 [-h] [-c config.yml] [-i inputs_list.txt] [-o outputs_list.txt] [-x output_indices] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -l load_ckp_weight -t continue_training [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."

@@ -3,7 +3,7 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=40
-#SBATCH --gpus=4
+#SBATCH --gpus-per-node=4
 #SBATCH --hint=nomultithread
 #SBATCH --distribution=block:block  # distribution, might be better to have contiguous blocks
 #SBATCH --mem=0
@@ -12,8 +12,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_22_custom_continued/%x_slurm_%j.out
-#SBATCH --error=output_castle/training_22_custom_continued/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/test_multi_worker/%x_slurm_%j.out
+#SBATCH --error=output_castle/test_multi_worker/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -26,7 +26,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: $0 [-h] [-c config.yml] [-i inputs_list.txt] [-o outputs_list.txt] [-x output_indices] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch_multi_worker.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -l load_ckp_weight -t continue_training [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -189,4 +189,4 @@ cd "${SLURM_SUBMIT_DIR}" || error_exit
 echo "Starting job ${JOB_NAME}: $(date)"
 
 # srun will use gres=gpu:1 by default, but we want to use all 4 gpus
-srun --gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_22_custom_continued/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+srun gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/test_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
