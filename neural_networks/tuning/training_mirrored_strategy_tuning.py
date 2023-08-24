@@ -61,18 +61,16 @@ def train_save_model(model_description, setup, tuning_params, tuning_metric, fro
         lrs = tf.keras.callbacks.LearningRateScheduler(
             LRUpdate(init_lr=learning_rate, step=step_lr, divide=divide_lr)
         )
-    elif lr_schedule_tuple[0] == "plateu":
+    elif lr_schedule_tuple[0] == "plateau":
         factor = lr_schedule_tuple[1]
-        lrs = tf.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=factor,
+        lrs = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=factor,
                                              patience=3, min_lr=1e-8)
 
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=setup.train_patience)
-
     report_val_loss_cb = tf.keras.callbacks.LambdaCallback(
-        on_epoch_end=lambda epoch, logs: nni.report_intermediate_result(logs['val_loss'])
+        on_epoch_end=lambda epoch, logs: nni.report_intermediate_result(logs["val_loss"])
     )
     report_val_pred_loss_cb = tf.keras.callbacks.LambdaCallback(
-        on_epoch_end=lambda epoch, logs: nni.report_intermediate_result(logs['val_prediction_loss'])
+        on_epoch_end=lambda epoch, logs: nni.report_intermediate_result(logs["val_prediction_loss"])
     )
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=setup.train_patience)
