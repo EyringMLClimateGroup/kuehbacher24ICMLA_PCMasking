@@ -3,7 +3,7 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=40
-#SBATCH --gpus-per-node=4
+#SBATCH --gpus=4
 #SBATCH --hint=nomultithread
 #SBATCH --distribution=block:block  # distribution, might be better to have contiguous blocks
 #SBATCH --mem=0
@@ -26,7 +26,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch_multi_worker.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -l load_ckp_weight -t continue_training [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch_multi_worker.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
