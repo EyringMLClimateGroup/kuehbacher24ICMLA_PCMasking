@@ -24,7 +24,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for tuning CASTLE model for specified outputs."
   echo ""
-  echo "Usage: $0 [-h] [-c config.yml] [-i inputs_list.txt] [-o outputs_list.txt] [-x output_indices] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name tune_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -u tuner -p metric [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
