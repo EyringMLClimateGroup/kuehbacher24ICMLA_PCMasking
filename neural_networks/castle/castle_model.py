@@ -4,16 +4,20 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
+from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 
 @tf.keras.utils.register_keras_serializable()
 class CASTLE(keras.Model):
-    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, reg_lambda, relu_alpha=0.3, seed=None,
+    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, lambda_sparsity, lambda_acyclicity,
+                 lambda_reconstruction, relu_alpha=0.3, seed=None,
                  name="castle_model", **kwargs):
         super().__init__(name=name, **kwargs)
         self.rho = rho
         self.alpha = alpha
-        self.reg_lambda = reg_lambda
+        self.lambda_sparsity = lambda_sparsity
+        self.lambda_acyclicity = lambda_acyclicity
+        self.lambda_reconstruction = lambda_reconstruction
         self.seed = seed
 
         self.activation = activation.lower()
@@ -33,6 +37,8 @@ class CASTLE(keras.Model):
         self.sparsity_loss_tracker = keras.metrics.Mean(name="sparsity_loss")
         self.acyclicity_loss_tracker = keras.metrics.Mean(name="acyclicity_loss")
 
+        self.masks = list()
+
         self._build_graph()
 
     def _build_graph(self):
@@ -44,17 +50,27 @@ class CASTLE(keras.Model):
         # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
         # We're using RandomNormal initializers for kernel and bias because the original CASTLE
         # implementation used random normal initialization.
-        # Todo: Check the standard deviation for the input layers. In CASTLE it's initialized as
-        #  tf.Variable(tf.random_normal([self.n_hidden], seed=seed) * 0.01)
-        #  and default values are mean=0.0, stddev=1.0
         self.input_sub_layers = list()
-        for i in range(self.num_input_layers):
-            self.input_sub_layers.append(
-                keras.layers.Dense(self.hidden_layers[0], activation=act_func, name=f"input_sub_layer_{i}",
-                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
-                                                                                      seed=self.seed),
-                                   bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
-                                                                                    seed=self.seed)))
+        # First input layer is not masked
+        dense_layer = keras.layers.Dense(self.hidden_layers[0], activation=act_func, name=f"input_sub_layer_0",
+                                         kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                            seed=self.seed),
+                                         bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                          seed=self.seed))
+        self.input_sub_layers.append(dense_layer)
+
+        for i in range(self.num_input_layers - 1):
+            mask = tf.transpose(
+                tf.one_hot([i] * self.hidden_layers[0], depth=self.num_inputs, on_value=0.0, off_value=1.0, axis=-1))
+            masked_dense_layer = MaskedDenseLayer(self.hidden_layers[0], mask, activation=act_func,
+                                                  name=f"input_sub_layer_{i + 1}",
+                                                  kernel_initializer=keras.initializers.RandomNormal(mean=0.0,
+                                                                                                     stddev=0.01,
+                                                                                                     seed=self.seed),
+                                                  bias_initializer=keras.initializers.RandomNormal(mean=0.0,
+                                                                                                   stddev=0.01,
+                                                                                                   seed=self.seed))
+            self.input_sub_layers.append(masked_dense_layer)
 
         # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
         #   same (shared) hidden layers.
@@ -74,24 +90,10 @@ class CASTLE(keras.Model):
             self.output_sub_layers.append(
                 # No activation function, i.e. linear
                 keras.layers.Dense(self.num_outputs, activation="linear", name=f"output_sub_layer_{i}",
-                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1,
+                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
                                                                                       seed=self.seed),
-                                   bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1,
+                                   bias_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
                                                                                     seed=self.seed)))
-
-    def build(self, input_shape):
-        super().build(input_shape)
-
-        # Mask matrix rows in input layers so that a variable cannot cause itself
-        #    Since the first input sub-layer aims to use all the x-variables to predict y, it does not need a mask.
-        #    For the other sub-layers, we need to mask the x-variable that is to be predicted.
-        # This can only be done after the graph is created because the layer weights are initialized only then
-        for i in range(self.num_input_layers - 1):
-            weights, bias = self.input_sub_layers[i + 1].get_weights()
-            # Create one hot matrix that masks the row of the current input
-            mask = tf.transpose(
-                tf.one_hot([i] * self.hidden_layers[0], depth=self.num_inputs, on_value=0.0, off_value=1.0, axis=-1))
-            self.input_sub_layers[i + 1].set_weights([weights * mask, bias])
 
     def call(self, inputs, **kwargs):
         # Create network graph
@@ -120,12 +122,18 @@ class CASTLE(keras.Model):
         reconstruction_loss = self.compute_reconstruction_loss(x, y_pred)
         acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights)
         sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
-        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
-                                          name="regularization_loss")
 
-        loss = tf.math.add(prediction_loss,
-                           tf.math.multiply(self.reg_lambda, regularization_loss, name="weighted_regularization"),
-                           name="overall_loss")
+        # Weight regularization losses
+        weighted_reconstruction_loss = tf.multiply(self.lambda_reconstruction, reconstruction_loss)
+        weighted_acyclicity_loss = tf.multiply(self.lambda_acyclicity, acyclicity_loss)
+        weighted_sparsity_regularizer = tf.multiply(self.lambda_sparsity, sparsity_regularizer)
+
+        weighted_regularization_loss = tf.math.add(weighted_reconstruction_loss,
+                                                   tf.math.add(weighted_acyclicity_loss, weighted_sparsity_regularizer),
+                                                   name="weighted_regularization_loss")
+
+        loss = tf.math.add(prediction_loss, weighted_regularization_loss, name="overall_loss")
+
         # Update metrics
         self.loss_tracker.update_state(loss)
         self.prediction_loss_tracker.update_state(prediction_loss)
@@ -182,18 +190,20 @@ class CASTLE(keras.Model):
                            name="acyclicity_loss")
 
     def compute_sparsity_loss(self, input_layer_weights):
-        # Compute the l1 - norm for the weight matrices in the input_sublayer
+        # Compute the matrix l1 - norm (maximum absolute column sum norm) for the weight matrices in the input_sublayer
         sparsity_regularizer = 0.0
-        sparsity_regularizer += tf.reduce_sum(tf.norm(input_layer_weights[0], ord=1, axis=1))
+        sparsity_regularizer += tf.reduce_sum(
+            tf.norm(input_layer_weights[0], ord=1, axis=[-2, -1], name="l1_norm_input_layers"))
         for i, weight in enumerate(input_layer_weights[1:]):
             # Ignore the masked row
-            w_1 = tf.slice(weight, [0, 0], [i - 1, -1])
-            w_2 = tf.slice(weight, [i, 0], [-1, -1])
+            w_1 = tf.slice(weight, [0, 0], [i, -1])
+            w_2 = tf.slice(weight, [i + 1, 0], [-1, -1])
 
-            sparsity_regularizer += tf.reduce_sum(tf.norm(w_1, ord=1, axis=1, name="l1_norm_input_layers"),
-                                                  name="w1_reduce_sum") + \
-                                    tf.reduce_sum(tf.norm(w_2, ord=1, axis=1, name="l1_norm_input_layers"),
-                                                  name="w2_reduce_sum")
+            sparsity_regularizer += tf.norm(w_1, ord=1, axis=[-2, -1], name="l1_norm_input_layers") \
+                                    + tf.norm(w_2, ord=1, axis=[-2, -1], name="l1_norm_input_layers")
+
+        # Scale with number of input layers
+        sparsity_regularizer = sparsity_regularizer / len(input_layer_weights)
         return sparsity_regularizer
 
     def get_config(self):
@@ -206,7 +216,9 @@ class CASTLE(keras.Model):
                 "activation": self.activation,
                 "rho": self.rho,
                 "alpha": self.alpha,
-                "reg_lambda": self.reg_lambda,
+                "lambda_sparsity": self.lambda_sparsity,
+                "lambda_acyclicity": self.lambda_acyclicity,
+                "lambda_reconstruction": self.lambda_reconstruction,
                 "relu_alpha": self.relu_alpha,
                 "seed": self.seed,
             }

@@ -12,7 +12,7 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
-from neural_networks.castle import build_castle
+from neural_networks.castle.building_castle import build_castle
 
 
 class ModelDescription:
@@ -123,7 +123,10 @@ class ModelDescription:
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,
                                       activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_=self.setup.lambda_, learning_rate=learning_rate, strategy=self.strategy)
+                                      lambda_sparsity=self.setup.lambda_sparsity,
+                                      lambda_acyclicity=self.setup.lambda_acyclicity,
+                                      lambda_reconstruction=self.setup.lambda_reconstruction,
+                                      learning_rate=learning_rate, strategy=self.strategy)
         else:
             self.model = self._build_model()
 
@@ -235,13 +238,15 @@ class ModelDescription:
             )
         elif self.model_type == "castleNN":
             if self.setup.distribute_strategy == "mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-mirrored/"
             elif self.setup.distribute_strategy == "multi_worker_mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-multi_worker_mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-multi_worker_mirrored/"
             else:
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}/"
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
-                                              lambda_=self.setup.lambda_))
+                                              lambda_sparsity=self.setup.lambda_sparsity,
+                                              lambda_acyclicity=self.setup.lambda_acyclicity,
+                                              lambda_reconstruction=self.setup.lambda_reconstruction))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")

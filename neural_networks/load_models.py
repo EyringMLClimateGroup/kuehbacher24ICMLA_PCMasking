@@ -4,7 +4,8 @@ from pathlib import Path
 import tensorflow as tf
 
 from utils.variable import Variable_Lev_Metadata
-from neural_networks.castle_model import CASTLE
+from neural_networks.castle.castle_model import CASTLE
+from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 
 def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
@@ -38,12 +39,15 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
         )
     elif model_type == "castleNN":
         if setup.distribute_strategy == "mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-mirrored/"
+            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-mirrored/"
         elif setup.distribute_strategy == "multi_worker_mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}-multi_worker_mirrored/"
+            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-multi_worker_mirrored/"
         else:
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_}/"
-        path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta, lambda_=setup.lambda_))
+            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}/"
+        path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta,
+                                          lambda_sparsity=setup.lambda_sparsity,
+                                          lambda_acyclicity=setup.lambda_acyclicity,
+                                          lambda_reconstruction=setup.lambda_reconstruction))
 
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")
@@ -109,11 +113,9 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        act = setup.activation.lower()
-        act = tf.keras.layers.LeakyReLU(alpha=0.3) if act == "leakyrelu" else tf.keras.layers.Activation(act)
-
         # todo: why does custom need activation function?
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE, 'Activation': act})
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE,
+                                                                      'MaskedDenseLayers': MaskedDenseLayer})
 
     else:
         modelname = Path(folder, filename + '_model.h5')

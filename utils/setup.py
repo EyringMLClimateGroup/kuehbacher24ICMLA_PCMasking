@@ -214,7 +214,9 @@ class SetupNeuralNetworks(Setup):
             self.rho = yml_cfg["rho"]
             self.alpha = yml_cfg["alpha"]
             self.beta = yml_cfg["beta"]
-            self.lambda_ = yml_cfg["lambda"]
+            self.lambda_sparsity = yml_cfg["lambda_sparsity"]
+            self.lambda_acyclicity = yml_cfg["lambda_acyclicity"]
+            self.lambda_reconstruction = yml_cfg["lambda_reconstruction"]
 
         elif self.nn_type == "all":
             self.do_single_nn = True

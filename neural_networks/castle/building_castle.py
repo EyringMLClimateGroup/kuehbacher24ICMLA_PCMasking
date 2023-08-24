@@ -4,13 +4,14 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
-from neural_networks.castle_model import CASTLE, MSEY, mse_x
+from neural_networks.castle.castle_model import CASTLE, mse_x
 
 
 # Todo:
 #  - Implement partial training
 #  - Implement CASTLE code version of loss
-def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, learning_rate=0.001, eager_execution=False,
+def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_sparsity, lambda_acyclicity,
+                 lambda_reconstruction, learning_rate=0.001, eager_execution=False,
                  hsic_prediction=False, strategy=None, seed=None):
     """
     Implement neural network with CASTLE (Causal Structure Learning) regularization
@@ -59,7 +60,9 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_, lea
 
     def _build_castle():
         # Build model
-        model_ = CASTLE(num_inputs, hidden_layers, activation, rho, alpha, lambda_, relu_alpha=0.3, seed=seed)
+        model_ = CASTLE(num_inputs, hidden_layers, activation, rho=rho, alpha=alpha, lambda_sparsity=lambda_sparsity,
+                        lambda_acyclicity=lambda_acyclicity, lambda_reconstruction=lambda_reconstruction,
+                        relu_alpha=0.3, seed=seed)
         model_.build(input_shape=(None, num_inputs))
         # Compile model
         return _compile_castle(model_, learning_rate, eager_execution)

@@ -12,7 +12,7 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
-from neural_networks.castle import build_castle
+from neural_networks.castle.building_castle import build_castle
 
 
 class ModelDescription:
@@ -92,7 +92,9 @@ class ModelDescription:
         hidden_layers = [tuning_params['dense_units']] * tuning_params["num_hidden_layers"]
         learning_rate = tuning_params['learning_rate']
         activation = tuning_params['activation_type']
-        lambda_ = tuning_params['lambda']
+        lambda_sparsity = tuning_params['lambda_sparsity']
+        lambda_acyclicity = tuning_params['lambda_acyclicity']
+        lambda_reconstruction = tuning_params['lambda_reconstruction']
 
         if setup.do_castle_nn:
             if setup.distribute_strategy == "mirrored":

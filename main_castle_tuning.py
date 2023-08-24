@@ -18,7 +18,10 @@ def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metri
         'learning_rate': {'_type': 'choice', '_value': [0.001, 0.01, 0.1]},
         'learning_rate_schedule': {'_type': 'choice',
                                    '_value': [('exp', 5, 3), ('exp', 2, 1), ('plateau', 0.1), ('plateau', 0.5)]},
-        'lambda': {'_type': 'choice', '_value': [0.1, 1.0, 2.0]},
+        'lambda_sparsity': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
+        'lambda_acyclicity': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
+        'lambda_reconstruction': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
+
     }
 
     experiment = Experiment('local')
