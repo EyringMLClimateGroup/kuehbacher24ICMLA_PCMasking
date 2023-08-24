@@ -97,12 +97,12 @@ class ModelDescription:
                 # Train with MultiWorkerMirrored strategy across multiple SLURM nodes following
                 #   http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-tf-multi-eng.html
                 # Build multi-worker environment from Slurm variables
-                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver()
+                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver(rpc_layer="nccl")
                 print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.cluster_spec()}\n\n")
                 print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.get_task_info()}\n\n")
 
                 # Use NCCL communication protocol
-                implementation = tf.distribute.experimental.CommunicationImplementation.NCC
+                implementation = tf.distribute.experimental.CommunicationImplementation.NCCL
                 communication_options = tf.distribute.experimental.CommunicationOptions(implementation=implementation)
 
                 # Declare distribution strategy
