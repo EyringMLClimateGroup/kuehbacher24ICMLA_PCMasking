@@ -33,60 +33,14 @@ def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metri
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
     experiment.config.max_trial_number = 30
-    experiment.config.max_experiment_duration = "12h"
+    experiment.config.max_experiment_duration = "718m"  # less than 13h, so that the experiment finishes before the job limit
     experiment.config.trial_concurrency = 10
     experiment.config.trial_gpu_number = 4
 
     # Set to false if multiple exp
     experiment.config.training_service.use_active_gpu = True
 
-    # Find open port
-    port = get_open_port(ip="127.0.0.1", port=8080)
-
-    experiment.run(port=port)
-
-
-def get_open_port(ip, port, tries=10):
-    """
-    Returns an open network port at `ip`.
-    If the given `port` is not open, it iteratively increases the port number
-    by 1 for `tries` times to find an open port.
-
-    Args:
-        ip (str): IP address.
-        port (int): Port number.
-        tries (int): Number of times the port number is increased by if the current
-          port is not open. Default: 10.
-
-    Returns:
-        Port number for open network port (int).
-
-    Raises:
-        ConnectionError: If not open network port could be found.
-
-    """
-    for _ in range(tries):
-        if _port_is_open(ip, port):
-            print(f"\nUsing open port {port} at ip {ip}.\n")
-            return port
-        else:
-            port = port + 1
-    raise ConnectionError("Could not find open port.")
-
-
-def _port_is_open(ip, port):
-    timeout = 30
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(timeout)
-    try:
-        s.connect((ip, port))
-        s.shutdown(socket.SHUT_RDWR)
-        return True
-    except:
-        return False
-    finally:
-        s.close()
+    experiment.run(port=32324)
 
 
 def parse_arguments():
