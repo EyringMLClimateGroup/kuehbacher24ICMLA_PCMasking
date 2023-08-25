@@ -13,11 +13,11 @@ class CASTLE(keras.Model):
                  lambda_reconstruction, relu_alpha=0.3, seed=None,
                  name="castle_model", **kwargs):
         super().__init__(name=name, **kwargs)
-        self.rho = rho
-        self.alpha = alpha
-        self.lambda_sparsity = lambda_sparsity
-        self.lambda_acyclicity = lambda_acyclicity
-        self.lambda_reconstruction = lambda_reconstruction
+        self.rho = tf.cast(rho, tf.float32)
+        self.alpha = tf.cast(alpha, tf.float32)
+        self.lambda_sparsity = tf.cast(lambda_sparsity, tf.float32)
+        self.lambda_acyclicity = tf.cast(lambda_acyclicity, tf.float32)
+        self.lambda_reconstruction = tf.cast(lambda_reconstruction, tf.float32)
         self.seed = seed
 
         self.activation = activation.lower()
