@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=gpu
-#SBATCH --nodes=4
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=40
 #SBATCH --gpus=4
@@ -189,4 +189,4 @@ cd "${SLURM_SUBMIT_DIR}" || error_exit
 echo "Starting job ${JOB_NAME}: $(date)"
 
 # srun will use gres=gpu:1 by default, but we want to use all 4 gpus
-srun gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/test_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+srun --gres=gpu:4 conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/test_multi_worker/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
