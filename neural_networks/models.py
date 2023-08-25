@@ -123,9 +123,7 @@ class ModelDescription:
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=self.setup.hidden_layers,
                                       activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_sparsity=self.setup.lambda_sparsity,
-                                      lambda_acyclicity=self.setup.lambda_acyclicity,
-                                      lambda_reconstruction=self.setup.lambda_reconstruction,
+                                      lambda_weight=self.setup.lambda_weight,
                                       learning_rate=learning_rate, strategy=self.strategy)
         else:
             self.model = self._build_model()
@@ -238,15 +236,13 @@ class ModelDescription:
             )
         elif self.model_type == "castleNN":
             if self.setup.distribute_strategy == "mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
             elif self.setup.distribute_strategy == "multi_worker_mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-multi_worker_mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
             else:
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
-                                              lambda_sparsity=self.setup.lambda_sparsity,
-                                              lambda_acyclicity=self.setup.lambda_acyclicity,
-                                              lambda_reconstruction=self.setup.lambda_reconstruction))
+                                              lambda_weight=self.setup.lambda_weight))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")

@@ -14,14 +14,11 @@ def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metri
     search_space = {
         'num_hidden_layers': {'_type': 'choice', '_value': list(range(15))},
         'dense_units': {'_type': 'choice', '_value': [32, 64, 128, 256]},
-        'activation_type': {'_type': 'choice', '_value': ['relu', 'tanh', 'leakyrelu']},
+        'activation_type': {'_type': 'choice', '_value': ['relu', 'leakyrelu']},
         'learning_rate': {'_type': 'choice', '_value': [0.001, 0.01, 0.1]},
         'learning_rate_schedule': {'_type': 'choice',
                                    '_value': [('exp', 5, 3), ('exp', 2, 1), ('plateau', 0.1), ('plateau', 0.5)]},
-        'lambda_sparsity': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
-        'lambda_acyclicity': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
-        'lambda_reconstruction': {'_type': 'choice', '_value': [0.1, 1.0, 10.]},
-
+        'lambda_weight': {'_type': 'choice', '_value': [0.1, 0.5, 1.0, 10.]},
     }
 
     experiment = Experiment('local')
@@ -32,15 +29,15 @@ def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metri
     experiment.config.tuner.name = tuning_alg
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
-    experiment.config.max_trial_number = 30
+    experiment.config.max_trial_number = 40
     experiment.config.max_experiment_duration = "718m"  # less than 13h, so that the experiment finishes before the job limit
-    experiment.config.trial_concurrency = 10
+    experiment.config.trial_concurrency = 40
     experiment.config.trial_gpu_number = 4
 
     # Set to false if multiple exp
     experiment.config.training_service.use_active_gpu = True
 
-    experiment.run(port=32324)
+    experiment.run(port=32325)
 
 
 def parse_arguments():

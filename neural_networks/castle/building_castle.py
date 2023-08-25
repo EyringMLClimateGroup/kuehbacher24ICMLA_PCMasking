@@ -10,9 +10,8 @@ from neural_networks.castle.castle_model import CASTLE, mse_x
 # Todo:
 #  - Implement partial training
 #  - Implement CASTLE code version of loss
-def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_sparsity, lambda_acyclicity,
-                 lambda_reconstruction, learning_rate=0.001, eager_execution=False,
-                 hsic_prediction=False, strategy=None, seed=None):
+def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_weight, learning_rate=0.001,
+                 eager_execution=False, strategy=None, seed=None):
     """
     Implement neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
@@ -33,10 +32,12 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_spars
         rho (float): Penalty parameter for Lagrangian optimization scheme for acyclicity constraint.
             `rho` must be greater than 0.
         alpha (float): Lagrangian multiplier for Lagrangian optimization scheme for acyclicity constraint.
-        lambda_ (float): Weighting coefficient for the regularization term in the training loss.
+        lambda_weight (float): Weighting coefficient for the regularization term in the training loss.
+        learning_rate (float): Optimizer learning rate: Defaults to 0.001.
         eager_execution (bool): If `True`, the code will be executed eagerly and the model's logic will
             not be wrapped inside a tf.function. Can be used for debugging purposes. Defaults to `False`.
-        hsic_prediction (bool):
+        strategy (tf.distribute.Strategy): State and compute distribution policy for parallelization
+            across GPUs and/or SLURM nodes.
         seed (int): Random seed. Used to make the behavior of the initializer deterministic.
             Note that a seeded initializer will produce the same random values across multiple calls.
 
@@ -60,8 +61,7 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_spars
 
     def _build_castle():
         # Build model
-        model_ = CASTLE(num_inputs, hidden_layers, activation, rho=rho, alpha=alpha, lambda_sparsity=lambda_sparsity,
-                        lambda_acyclicity=lambda_acyclicity, lambda_reconstruction=lambda_reconstruction,
+        model_ = CASTLE(num_inputs, hidden_layers, activation, rho=rho, alpha=alpha, lambda_weight=lambda_weight,
                         relu_alpha=0.3, seed=seed)
         model_.build(input_shape=(None, num_inputs))
         # Compile model

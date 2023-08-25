@@ -23,9 +23,7 @@ class TestCastle(unittest.TestCase):
         self.relu = "relu"
         self.rho = 1.0
         self.alpha = 1.0
-        self.lambda_sparsity = 1.0
-        self.lambda_acyclicity = 1.0
-        self.lambda_reconstruction = 1.0
+        self.lambda_weight = 1.0
 
         self.output_dir = os.path.join(Path(__file__).parent.resolve(), "output")
 
@@ -41,8 +39,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_sparsity, self.lambda_acyclicity, self.lambda_reconstruction,
-                             eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, seed=42)
         self.assertIsNotNone(model)
 
         print(model.summary())
@@ -60,8 +57,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_sparsity, self.lambda_acyclicity, self.lambda_reconstruction,
-                             eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, seed=42)
         self.assertIsNotNone(model)
 
         print(model.summary())
@@ -78,8 +74,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_sparsity, self.lambda_acyclicity, self.lambda_reconstruction,
-                             eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, seed=42)
 
         epochs = 3
         history = self.train_castle(model, epochs=epochs)
@@ -88,8 +83,8 @@ class TestCastle(unittest.TestCase):
 
         train_loss_keys = ["loss", "prediction_loss", "reconstruction_loss", "sparsity_loss", "acyclicity_loss"]
         val_loss_keys = ["val_" + loss for loss in train_loss_keys]
-        # self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
-        # self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
+        self.assertTrue(all(k in history.history.keys() for k in train_loss_keys))
+        self.assertTrue(all(k in history.history.keys() for k in val_loss_keys))
 
         self.assertEqual(len(history.history["loss"]), epochs)
 
@@ -98,8 +93,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_sparsity, self.lambda_acyclicity, self.lambda_reconstruction,
-                             eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, seed=42)
 
         n_samples = 320
         batch_size = 32
@@ -121,8 +115,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_sparsity, self.lambda_acyclicity, self.lambda_reconstruction,
-                             eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, seed=42)
 
         _ = self.train_castle(model, epochs=1)
 
@@ -134,7 +127,7 @@ class TestCastle(unittest.TestCase):
 
         self.assertEqual(loaded_model.alpha, model.alpha)
         self.assertEqual(loaded_model.rho, model.rho)
-        self.assertEqual(loaded_model.lambda_sparsity, model.lambda_sparsity)
+        self.assertEqual(loaded_model.lambda_weight, model.lambda_weight)
         self.assertEqual(len(loaded_model.get_weights()), len(model.get_weights()))
 
     def train_castle(self, model, epochs):

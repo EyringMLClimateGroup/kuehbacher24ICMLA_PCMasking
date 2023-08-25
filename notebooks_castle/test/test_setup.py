@@ -28,4 +28,4 @@ class TestCastleSetup(unittest.TestCase):
         self.assertEqual(castle_setup.rho, yml_cfg["rho"])
         self.assertEqual(castle_setup.alpha, yml_cfg["alpha"])
         self.assertEqual(castle_setup.beta, yml_cfg["beta"])
-        self.assertEqual(castle_setup.lambda_, yml_cfg["lambda"])
+        self.assertEqual(castle_setup.lambda_weight, yml_cfg["lambda_weight"])

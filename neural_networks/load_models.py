@@ -39,15 +39,13 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
         )
     elif model_type == "castleNN":
         if setup.distribute_strategy == "mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-mirrored/"
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
         elif setup.distribute_strategy == "multi_worker_mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-multi_worker_mirrored/"
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
         else:
-            cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}/"
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
         path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta,
-                                          lambda_sparsity=setup.lambda_sparsity,
-                                          lambda_acyclicity=setup.lambda_acyclicity,
-                                          lambda_reconstruction=setup.lambda_reconstruction))
+                                          lambda_weight=setup.lambda_weight))
 
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")

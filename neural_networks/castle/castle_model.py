@@ -9,15 +9,12 @@ from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 @tf.keras.utils.register_keras_serializable()
 class CASTLE(keras.Model):
-    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, lambda_sparsity, lambda_acyclicity,
-                 lambda_reconstruction, relu_alpha=0.3, seed=None,
+    def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, lambda_weight, relu_alpha=0.3, seed=None,
                  name="castle_model", **kwargs):
         super().__init__(name=name, **kwargs)
-        self.rho = tf.cast(rho, tf.float32)
-        self.alpha = tf.cast(alpha, tf.float32)
-        self.lambda_sparsity = tf.cast(lambda_sparsity, tf.float32)
-        self.lambda_acyclicity = tf.cast(lambda_acyclicity, tf.float32)
-        self.lambda_reconstruction = tf.cast(lambda_reconstruction, tf.float32)
+        self.rho = rho
+        self.alpha = alpha
+        self.lambda_weight = lambda_weight
         self.seed = seed
 
         self.activation = activation.lower()
@@ -124,13 +121,11 @@ class CASTLE(keras.Model):
         sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
 
         # Weight regularization losses
-        weighted_reconstruction_loss = tf.multiply(self.lambda_reconstruction, reconstruction_loss)
-        weighted_acyclicity_loss = tf.multiply(self.lambda_acyclicity, acyclicity_loss)
-        weighted_sparsity_regularizer = tf.multiply(self.lambda_sparsity, sparsity_regularizer)
+        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
+                                          name="regularization_loss")
 
-        weighted_regularization_loss = tf.math.add(weighted_reconstruction_loss,
-                                                   tf.math.add(weighted_acyclicity_loss, weighted_sparsity_regularizer),
-                                                   name="weighted_regularization_loss")
+        weighted_regularization_loss = tf.math.multiply(self.lambda_weight, regularization_loss,
+                                                        name="weighted_regularization_loss")
 
         loss = tf.math.add(prediction_loss, weighted_regularization_loss, name="overall_loss")
 
@@ -185,7 +180,7 @@ class CASTLE(keras.Model):
         # Acyclicity loss is computed using the Lagrangian scheme with penalty parameter rho and
         # Lagrangian multiplier alpha.
         h_squared = tf.math.square(h, name="h_squared")
-        return tf.math.add(tf.math.multiply(0.5 * self.rho, h_squared, name="lagrangian_penalty"),
+        return tf.math.add(tf.math.multiply(tf.math.multiply(0.5, self.rho), h_squared, name="lagrangian_penalty"),
                            tf.math.multiply(self.alpha, h, name="lagrangian_optimizer"),
                            name="acyclicity_loss")
 
@@ -216,9 +211,7 @@ class CASTLE(keras.Model):
                 "activation": self.activation,
                 "rho": self.rho,
                 "alpha": self.alpha,
-                "lambda_sparsity": self.lambda_sparsity,
-                "lambda_acyclicity": self.lambda_acyclicity,
-                "lambda_reconstruction": self.lambda_reconstruction,
+                "lambda_weight": self.lambda_weight,
                 "relu_alpha": self.relu_alpha,
                 "seed": self.seed,
             }

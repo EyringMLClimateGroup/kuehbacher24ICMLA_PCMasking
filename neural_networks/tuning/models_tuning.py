@@ -92,9 +92,7 @@ class ModelDescription:
         hidden_layers = [tuning_params['dense_units']] * tuning_params["num_hidden_layers"]
         learning_rate = tuning_params['learning_rate']
         activation = tuning_params['activation_type']
-        lambda_sparsity = tuning_params['lambda_sparsity']
-        lambda_acyclicity = tuning_params['lambda_acyclicity']
-        lambda_reconstruction = tuning_params['lambda_reconstruction']
+        lambda_weight = tf.cast(tuning_params['lambda_weight'], dtype=tf.float32)
 
         if setup.do_castle_nn:
             if setup.distribute_strategy == "mirrored":
@@ -104,12 +102,12 @@ class ModelDescription:
                 # Train with MultiWorkerMirrored strategy across multiple SLURM nodes following
                 #   http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-tf-multi-eng.html
                 # Build multi-worker environment from Slurm variables
-                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver()
+                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver(port_base=33001)
                 print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.cluster_spec()}\n\n")
                 print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.get_task_info()}\n\n")
 
                 # Use NCCL communication protocol
-                implementation = tf.distribute.experimental.CommunicationImplementation.NCC
+                implementation = tf.distribute.experimental.CommunicationImplementation.AUTO
                 communication_options = tf.distribute.experimental.CommunicationOptions(implementation=implementation)
 
                 # Declare distribution strategy
@@ -121,8 +119,7 @@ class ModelDescription:
             self.model = build_castle(num_inputs=len(self.inputs),
                                       hidden_layers=hidden_layers,
                                       activation=activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_sparsity=lambda_sparsity, lambda_acyclicity=lambda_acyclicity,
-                                      lambda_reconstruction=lambda_reconstruction, strategy=self.strategy)
+                                      lambda_weight=lambda_weight, learning_rate=learning_rate, strategy=self.strategy)
         else:
             self.model = self._build_model(learning_rate)
 
@@ -236,16 +233,13 @@ class ModelDescription:
             )
         elif self.model_type == "castleNN":
             if self.setup.distribute_strategy == "mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
             elif self.setup.distribute_strategy == "multi_worker_mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}-multi_worker_mirrored/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
             else:
-                cfg_str = "r{rho}-a{alpha}-b{beta}-lspar{lambda_sparsity}-lacyc{lambda_acyclicity}-lrec{lambda_reconstruction}/"
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
-                                              lambda_sparsity=self.setup.lambda_sparsity,
-                                              lambda_acyclicity=self.setup.lambda_acyclicity,
-                                              lambda_reconstruction=self.setup.lambda_reconstruction))
-
+                                              lambda_weight=self.setup.lambda_weight))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
