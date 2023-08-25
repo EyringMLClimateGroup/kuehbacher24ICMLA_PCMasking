@@ -113,7 +113,6 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        # todo: why does custom need activation function?
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
 
