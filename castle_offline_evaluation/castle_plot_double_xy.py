@@ -26,8 +26,9 @@ vmax = False  # False, 3e-7
 
 project_root = Path(__file__).parent.parent.resolve()
 
-config_file = Path(project_root, "output_castle/training_13_mirrored_custom_list/cfg_castle_NN_Creation.yml")
-plot_dir = Path(project_root, "output_castle/test_diagnostics/plots_double_xy/")
+config_file = Path(project_root, "output_castle/training_19_mirrored_custom_compile/cfg_custom.yml")
+plot_dir = Path(project_root,
+                "output_castle/training_19_mirrored_custom_compile/plots_offline_evaluation/plots_lat_lon/single_plots/")
 
 variable = "prect"  # prect
 
