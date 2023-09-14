@@ -4,7 +4,7 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
-from neural_networks.castle.castle_model import CASTLE, mse_x
+from neural_networks.castle.castle_model import CASTLE
 
 
 # Todo:
@@ -13,7 +13,7 @@ from neural_networks.castle.castle_model import CASTLE, mse_x
 def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_weight, learning_rate=0.001,
                  eager_execution=False, strategy=None, seed=None):
     """
-    Implement neural network with CASTLE (Causal Structure Learning) regularization
+    Builds and compiles a neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
 
@@ -47,8 +47,6 @@ def build_castle(num_inputs, hidden_layers, activation, rho, alpha, lambda_weigh
     Raises:
         ValueError: If `rho` is not greater than 0.
     """
-    print("Using custom CASTLE model with compute_loss. ")
-
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)
     # Force eager execution of tf.data functions as well
@@ -88,7 +86,6 @@ def _compile_castle(model, learning_rate, eager_execution):
 
     model.compile(
         optimizer=optimizer,
-        metrics=[mse_x],
         run_eagerly=eager_execution
     )
 
