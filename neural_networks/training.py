@@ -3,13 +3,15 @@ import pickle
 from datetime import datetime
 from pathlib import Path
 
+import h5py
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.callbacks import LearningRateScheduler, EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping
 
 from .cbrain.learning_rate_schedule import LRUpdate
 from .cbrain.save_weights import save_norm
-from .data_generator import build_train_generator, build_valid_generator
+from .data_generator import build_train_generator, build_valid_generator, build_additional_valid_generator
+from .extra_validation_callback import ExtraValidation
 from .load_models import load_model_weights_from_checkpoint, load_model_from_previous_training
 
 
@@ -62,14 +64,12 @@ def train_save_model(
     lrs = tf.keras.callbacks.LearningRateScheduler(
         LRUpdate(init_lr=init_lr, step=setup.step_lr, divide=setup.divide_lr)
     )
+    tensorboard_log_dir = Path(model_description.get_path(setup.tensorboard_folder),
+                               "{timestamp}-{filename}".format(timestamp=timestamp,
+                                                               filename=model_description.get_filename()))
 
     tensorboard = tf.keras.callbacks.TensorBoard(
-        log_dir=Path(
-            model_description.get_path(setup.tensorboard_folder),
-            "{timestamp}-{filename}".format(
-                timestamp=timestamp, filename=model_description.get_filename()
-            ),
-        ),
+        log_dir=tensorboard_log_dir,
         histogram_freq=0,
         write_graph=True,
         write_images=False,
@@ -107,39 +107,90 @@ def train_save_model(
     ) as train_gen, build_valid_generator(
         input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
     ) as valid_gen:
-        model_description.fit_model(
-            x=train_gen,
-            validation_data=valid_gen,
-            epochs=setup.epochs,
-            #             callbacks=[lrs, tensorboard, early_stop],
-            callbacks=[lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best],
-            verbose=setup.train_verbose,
+        train_dataset = convert_generator_to_dataset(train_gen, name="train_dataset")
+        val_dataset = convert_generator_to_dataset(valid_gen, name="val_dataset")
+
+    train_gen_input_transform = train_gen.input_transform
+    train_gen_output_transform = train_gen.output_transform
+
+    del train_gen
+    del valid_gen
+
+    # Get additional datasets
+    if setup.nn_type == "castleNN" and setup.additional_val_datasets:
+        additional_validation_datasets = {}
+        for name_and_data in setup.additional_val_datasets:
+            print(f"\nLoading additional dataset {name_and_data['name']}\n")
+            data_path = name_and_data['data']
+            with build_additional_valid_generator(input_vars_dict, output_vars_dict, data_path, setup) as data_gen:
+                dataset = convert_generator_to_dataset(data_gen, name=name_and_data["name"] + "_dataset")
+            del data_gen
+            additional_validation_datasets[name_and_data["name"]] = dataset
+
+        extra_validation = ExtraValidation(additional_validation_datasets, tensorboard_path=tensorboard_log_dir)
+
+        callbacks = [extra_validation, lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
+    else:
+        callbacks = [lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
+
+    model_description.fit_model(
+        x=train_dataset,
+        validation_data=val_dataset,
+        epochs=setup.epochs,
+        callbacks=callbacks,
+        verbose=setup.train_verbose,
+    )
+
+    model_description.save_model(setup.nn_output_path)
+
+    # Save last learning rate
+    last_lr = {"last_lr": lrs.schedule.current_lr}
+    last_lr_path = Path(save_dir, "learning_rate", model_description.get_filename() + "_model_lr.p")
+    Path(last_lr_path.parent).mkdir(parents=True, exist_ok=True)
+
+    with open(last_lr_path, 'wb') as f:
+        pickle.dump(last_lr, f)
+
+    # Saving norm after saving the model avoids having to create
+    # the folder ourselves
+    if "pca" not in model_description.model_type:
+        save_norm(
+            input_transform=train_gen_input_transform,
+            output_transform=train_gen_output_transform,
+            save_dir=save_dir,
+            filename=model_description.get_filename(),
         )
 
-        model_description.save_model(setup.nn_output_path)
+    if setup.do_sklasso_nn:
+        np.savetxt(
+            save_dir + f"/{model_description.get_filename()}_sklasso_coefs.txt",
+            model_description.lasso_coefs,
+            fmt='%1.6e',
+            delimiter=",",
+        )
 
-        # Save last learning rate
-        last_lr = {"last_lr": lrs.schedule.current_lr}
-        last_lr_path = Path(save_dir, "learning_rate", model_description.get_filename() + "_model_lr.p")
-        Path(last_lr_path.parent).mkdir(parents=True, exist_ok=True)
 
-        with open(last_lr_path, 'wb') as f:
-            pickle.dump(last_lr, f)
+def normalize(data, generator):
+    data_x = data["vars"][:, generator.input_idxs]
+    data_y = data["vars"][:, generator.output_idxs]
 
-        # Saving norm after saving the model avoids having to create
-        # the folder ourselves
-        if "pca" not in model_description.model_type:
-            save_norm(
-                input_transform=train_gen.input_transform,
-                output_transform=train_gen.output_transform,
-                save_dir=save_dir,
-                filename=model_description.get_filename(),
-            )
+    # Normalize
+    data_x = generator.input_transform.transform(data_x)
+    data_y = generator.output_transform.transform(data_y)
 
-        if setup.do_sklasso_nn:
-            np.savetxt(
-                save_dir + f"/{model_description.get_filename()}_sklasso_coefs.txt",
-                model_description.lasso_coefs,
-                fmt='%1.6e',
-                delimiter=",",
-            )
+    # Delete data to save memory
+    del data
+
+    return data_x, data_y
+
+
+def convert_generator_to_dataset(generator, name):
+    data = h5py.File(generator.data_fn, "r")
+    batch_size = generator.batch_size
+
+    inputs, outputs = normalize(data, generator)
+    dataset = tf.data.Dataset.from_tensor_slices((inputs, outputs), name=name)
+
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+
+    return dataset

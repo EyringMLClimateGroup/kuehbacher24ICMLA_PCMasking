@@ -10,7 +10,8 @@ from tensorflow.keras.callbacks import LearningRateScheduler, EarlyStopping
 
 from .cbrain.learning_rate_schedule import LRUpdate
 from .cbrain.save_weights import save_norm
-from .data_generator import build_train_generator, build_valid_generator
+from .data_generator import build_train_generator, build_valid_generator, build_additional_valid_generator
+from .extra_validation_callback import ExtraValidation
 from .load_models import load_model_weights_from_checkpoint, load_model_from_previous_training
 
 
@@ -77,13 +78,11 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
         LRUpdate(init_lr=init_lr, step=setup.step_lr, divide=setup.divide_lr)
     )
 
+    tensorboard_log_dir = Path(model_description.get_path(setup.tensorboard_folder),
+                               "{timestamp}-{filename}".format(timestamp=timestamp,
+                                                               filename=model_description.get_filename()))
     tensorboard = tf.keras.callbacks.TensorBoard(
-        log_dir=Path(
-            model_description.get_path(setup.tensorboard_folder),
-            "{timestamp}-{filename}".format(
-                timestamp=timestamp, filename=model_description.get_filename()
-            ),
-        ),
+        log_dir=tensorboard_log_dir,
         histogram_freq=0,
         write_graph=True,
         write_images=False,
@@ -115,36 +114,13 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
         verbose=1
     )
 
-    def normalize(data, generator):
-        data_x = data["vars"][:, generator.input_idxs]
-        data_y = data["vars"][:, generator.output_idxs]
-
-        # Normalize
-        data_x = generator.input_transform.transform(data_x)
-        data_y = generator.output_transform.transform(data_y)
-
-        # Delete data to save memory
-        del data
-
-        return data_x, data_y
-
     with build_train_generator(input_vars_dict, output_vars_dict, setup, input_pca_vars_dict=setup.input_pca_vars_dict,
                                num_replicas_distributed=model_description.strategy.num_replicas_in_sync) as train_gen, \
             build_valid_generator(input_vars_dict, output_vars_dict, setup,
                                   input_pca_vars_dict=setup.input_pca_vars_dict,
                                   num_replicas_distributed=model_description.strategy.num_replicas_in_sync) as valid_gen:
-        train_data = h5py.File(train_gen.data_fn, "r")
-        val_data = h5py.File(valid_gen.data_fn, "r")
-
-        train_batch_size = train_gen.batch_size
-        val_batch_size = valid_gen.batch_size
-
-        train_data_inputs, train_data_outputs = normalize(train_data, train_gen)
-        val_data_inputs, val_data_outputs = normalize(val_data, valid_gen)
-
-        train_dataset = tf.data.Dataset.from_tensor_slices((train_data_inputs, train_data_outputs),
-                                                           name="train_dataset")
-        val_dataset = tf.data.Dataset.from_tensor_slices((val_data_inputs, val_data_outputs), name="val_dataset")
+        train_dataset = convert_generator_to_dataset(train_gen, name="train_dataset")
+        val_dataset = convert_generator_to_dataset(valid_gen, name="val_dataset")
 
     train_gen_input_transform = train_gen.input_transform
     train_gen_output_transform = train_gen.output_transform
@@ -158,15 +134,32 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
     options = tf.data.Options()
     options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
 
-    train_dataset = train_dataset.batch(train_batch_size, drop_remainder=True).with_options(options)
-    val_dataset = val_dataset.batch(val_batch_size, drop_remainder=True).with_options(options)
+    train_dataset = train_dataset.with_options(options)
+    val_dataset = val_dataset.with_options(options)
+
+    # Get additional datasets
+    if setup.nn_type == "castleNN" and setup.additional_val_datasets:
+        additional_validation_datasets = {}
+        for name_and_data in setup.additional_val_datasets:
+            print(f"\nLoading additional dataset {name_and_data['name']}\n")
+            data_path = name_and_data['data']
+            with build_additional_valid_generator(input_vars_dict, output_vars_dict, data_path, setup) as data_gen:
+                dataset = convert_generator_to_dataset(data_gen, name=name_and_data["name"] + "_dataset")
+            del data_gen
+            dataset = dataset.with_options(options)
+            additional_validation_datasets[name_and_data["name"]] = dataset
+
+        extra_validation = ExtraValidation(additional_validation_datasets, tensorboard_path=tensorboard_log_dir)
+
+        callbacks = [extra_validation, lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
+    else:
+        callbacks = [lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
 
     model_description.fit_model(
         x=train_dataset,
         validation_data=val_dataset,
         epochs=setup.epochs,
-        #             callbacks=[lrs, tensorboard, early_stop],
-        callbacks=[lrs, tensorboard, early_stop, checkpoint_best, checkpoint_cont],
+        callbacks=callbacks,
         verbose=setup.train_verbose
     )
 
@@ -208,6 +201,32 @@ def train_save_model(model_description, setup, from_checkpoint=False, continue_t
             fmt='%1.6e',
             delimiter=",",
         )
+
+
+def normalize(data, generator):
+    data_x = data["vars"][:, generator.input_idxs]
+    data_y = data["vars"][:, generator.output_idxs]
+
+    # Normalize
+    data_x = generator.input_transform.transform(data_x)
+    data_y = generator.output_transform.transform(data_y)
+
+    # Delete data to save memory
+    del data
+
+    return data_x, data_y
+
+
+def convert_generator_to_dataset(generator, name):
+    data = h5py.File(generator.data_fn, "r")
+    batch_size = generator.batch_size
+
+    inputs, outputs = normalize(data, generator)
+    dataset = tf.data.Dataset.from_tensor_slices((inputs, outputs), name=name)
+
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+
+    return dataset
 
 
 def _is_chief(task_type, task_id):
