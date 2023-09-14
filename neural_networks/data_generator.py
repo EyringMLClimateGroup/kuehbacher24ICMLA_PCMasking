@@ -127,6 +127,48 @@ def build_valid_generator(
     return valid_gen
 
 
+def build_additional_valid_generator(
+        input_vars_dict,
+        output_vars_dict,
+        filepath,
+        setup,
+        nlat=64,
+        nlon=128,
+        test=False,
+        # save_dir=False,
+        num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
+        diagnostic_mode=False,
+):
+    out_scale_dict = load_pickle(
+        Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
+    )
+    input_transform = (setup.input_sub, setup.input_div)
+
+    ngeo = nlat * nlon
+    if diagnostic_mode:
+        batch_size = ngeo
+    else:
+        batch_size = compute_val_batch_size(setup, ngeo, num_replicas_distributed)
+
+    if test:
+        print(f"Test batch size = {batch_size}.", flush=True)
+    else:
+        print(f"Validation batch size = {batch_size}.", flush=True)
+
+    valid_gen = DataGenerator(
+        data_fn=Path(filepath),
+        input_vars_dict=input_vars_dict,
+        output_vars_dict=output_vars_dict,
+        norm_fn=Path(setup.normalization_folder, setup.normalization_fn),
+        input_transform=input_transform,
+        output_transform=out_scale_dict,
+        batch_size=batch_size,
+        shuffle=False,
+        # xarray=True,
+    )
+    return valid_gen
+
+
 def compute_train_batch_size(setup, num_replicas_distributed):
     if setup.distribute_strategy == "mirrored":
         if num_replicas_distributed == 0:
