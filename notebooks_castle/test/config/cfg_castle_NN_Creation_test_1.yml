@@ -117,6 +117,10 @@ alpha: 1.0
 beta: 1.0
 lambda_weight: 1.0
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
+additional_val_datasets:
+  - { name: "plus_4K", data: "/work/bd1179/b309247/pycharm_projects/iglesias-suarez2yxx_spuriouslinks/notebooks_castle/test_data/2022_02_07_TEST_For_Nando_p4K_perc0-1.nc" }
+  - { name: "minus_4K", data: "/work/bd1179/b309247/pycharm_projects/iglesias-suarez2yxx_spuriouslinks/notebooks_castle/test_data/2022_02_07_TEST_For_Nando_m4K_perc0-1.nc" }
+
 
 # Diagnostic configuration
 # ----------------------

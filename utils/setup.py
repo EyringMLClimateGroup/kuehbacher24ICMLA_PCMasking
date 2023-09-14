@@ -215,6 +215,7 @@ class SetupNeuralNetworks(Setup):
             self.alpha = float(yml_cfg["alpha"])
             self.beta = float(yml_cfg["beta"])
             self.lambda_weight = float(yml_cfg["lambda_weight"])
+            self.additional_val_datasets = yml_cfg["additional_val_datasets"]
 
         elif self.nn_type == "all":
             self.do_single_nn = True
