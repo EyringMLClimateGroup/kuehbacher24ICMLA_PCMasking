@@ -57,7 +57,7 @@ class TestCastle(unittest.TestCase):
         logging.info("Testing building and compiling CASTLE model.")
 
         model = build_castle(self.num_inputs, self.hidden_layers, self.leaky_relu, self.rho, self.alpha,
-                             self.lambda_weight, eager_execution=True, seed=42)
+                             self.lambda_weight, eager_execution=True, strategy=strategy, seed=42)
         self.assertIsNotNone(model)
 
         print(model.summary())
