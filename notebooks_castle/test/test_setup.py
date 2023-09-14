@@ -29,3 +29,7 @@ class TestCastleSetup(unittest.TestCase):
         self.assertEqual(castle_setup.alpha, yml_cfg["alpha"])
         self.assertEqual(castle_setup.beta, yml_cfg["beta"])
         self.assertEqual(castle_setup.lambda_weight, yml_cfg["lambda_weight"])
+
+        self.assertIsInstance(castle_setup.additional_val_datasets, list)
+        self.assertIsInstance(castle_setup.additional_val_datasets[0], dict)
+
