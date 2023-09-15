@@ -11,8 +11,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/tuning_2_mirrored_custom/%x_slurm_%j.out
-#SBATCH --error=output_castle/tuning_2_mirrored_custom/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/tuning_3_mirrored_custom/%x_slurm_%j.out
+#SBATCH --error=output_castle/tuning_3_mirrored_custom/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -24,7 +24,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for tuning CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name tune_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -u tuner -p metric [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name tune_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -u tuner -p metric -e search_space.yml [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -33,6 +33,7 @@ display_help() {
   echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
   echo " -u    Tuning algorithm to be used (e.g. TPE, Random, Hyperband, GP)."
   echo " -p    Tuning metric used to measure performance (eg. val_loss, val_prediction_loss)."
+  echo " -e    YAML configuration file for tuning search space."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
@@ -56,6 +57,7 @@ found_s=0
 found_j=0
 found_u=0
 found_p=0
+found_e=0
 
 # Parse options
 while getopts "c:i:o:x:s:j:u:p:h" opt; do
@@ -69,7 +71,7 @@ while getopts "c:i:o:x:s:j:u:p:h" opt; do
     if [[ $OPTARG == *.yml ]]; then
       CONFIG=$OPTARG
     else
-      echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
+      echo -e "\nError: Invalid value for option -c (neural network YAML config). Must be YAML file."
       error_exit
     fi
     ;;
@@ -115,6 +117,15 @@ while getopts "c:i:o:x:s:j:u:p:h" opt; do
     found_p=1
     METRIC=$OPTARG
     ;;
+  e)
+    found_e=1
+    if [[ $OPTARG == *.yml ]]; then
+      SEARCH_SPACE_CONFIG=$OPTARG
+    else
+      echo -e "\nError: Invalid value for option -e (search space YAML config). Must be YAML file."
+      error_exit
+    fi
+    ;;
   u)
     found_u=1
     TUNER=$OPTARG
@@ -153,6 +164,10 @@ if ((found_p == 0)); then
   echo -e "\nError: Failed to provide tuning metric.\n"
   error_exit
 fi
+if ((found_e == 0)); then
+  echo -e "\nError: Failed to provide YAML file for tuning search space configuration.\n"
+  error_exit
+fi
 
 if ((found_s == 0)); then
   SEED="False"
@@ -167,4 +182,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_castle_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -u "$TUNER" -p "$METRIC" -s "$SEED" >"output_castle/tuning_2_mirrored_custom/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_castle_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -s "$SEED" >"output_castle/tuning_3_mirrored_custom/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

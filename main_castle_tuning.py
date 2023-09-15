@@ -2,7 +2,7 @@ import argparse
 import datetime
 import time
 from pathlib import Path
-import socket
+import yaml
 
 import tensorflow as tf
 from nni.experiment import Experiment
@@ -10,17 +10,9 @@ from nni.experiment import Experiment
 from main_train_castle_split_nodes import parse_str_to_bool_or_int, set_memory_growth_gpu
 
 
-def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metric):
-    search_space = {
-        'num_hidden_layers': {'_type': 'choice', '_value': list(range(15))},
-        'dense_units': {'_type': 'choice', '_value': [32, 64, 128, 256]},
-        'activation_type': {'_type': 'choice', '_value': ['relu', 'leakyrelu']},
-        'learning_rate': {'_type': 'choice', '_value': [0.001, 0.01, 0.1]},
-        'learning_rate_schedule': {'_type': 'choice',
-                                   '_value': [('exp', 5, 3), ('exp', 2, 1), ('plateau', 0.1), ('plateau', 0.5)]},
-        'lambda_weight': {'_type': 'choice', '_value': [0.1, 0.5, 1.0, 10.]},
-    }
+# After experiment is done, run nni.experiment.Experiment.view(experiment_id, port=32325) to restart web portal
 
+def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metric, search_space):
     experiment = Experiment('local')
     experiment.config.trial_command = f"python -u main_train_castle_split_nodes_tuning.py -c {config} -i {inputs} -o {outputs} -x {indices} -p {tuning_metric} -s {seed}"
     experiment.config.trial_code_directory = '.'
@@ -40,6 +32,12 @@ def tune_castle(config, inputs, outputs, indices, seed, tuning_alg, tuning_metri
     experiment.run(port=32325)
 
 
+def read_yaml(yaml_file):
+    with open(yaml_file, "r") as read_stream:
+        search_space_config = yaml.safe_load(read_stream)
+    return search_space_config["search_space"]
+
+
 def parse_arguments():
     """
     Parses command line arguments.
@@ -53,6 +51,7 @@ def parse_arguments():
         - Random seed (int/bool)
         - Tuning algorithm (str)
         - Tuning metric (str)
+        - Tuning search space (dict)
 
     """
     parser = argparse.ArgumentParser(description="Generates .txt files for neural network input and output "
@@ -76,6 +75,8 @@ def parse_arguments():
     required_args.add_argument("-p", "--tuning_metric",
                                help="Metric used to measure tuning performance (e.g. 'val_loss', 'val_prediction_loss').",
                                required=True, type=str)
+    required_args.add_argument("-e", "--search_space", help="YAML file with tuning search space.",
+                               required=True, type=read_yaml)
 
     args = parser.parse_args()
 
@@ -86,8 +87,9 @@ def parse_arguments():
     random_seed_parsed = args.seed
     tuning_alg = args.tuner
     tuning_metric = args.tuning_metric
+    search_space = args.search_space
 
-    return yaml_config_file, inputs_file, outputs_file, train_idx, random_seed_parsed, tuning_alg, tuning_metric
+    return yaml_config_file, inputs_file, outputs_file, train_idx, random_seed_parsed, tuning_alg, tuning_metric, search_space
 
 
 if __name__ == "__main__":
@@ -96,12 +98,12 @@ if __name__ == "__main__":
         print(f"\nAllow memory growth on GPUs.", flush=True)
         set_memory_growth_gpu()
 
-    cfg_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric = parse_arguments()
+    cfg_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric, tuning_search_space = parse_arguments()
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning.", flush=True)
     t_init = time.time()
 
-    tune_castle(cfg_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric)
+    tune_castle(cfg_file, inputs_file, outputs_file, train_idx, random_seed, tuner, metric, tuning_search_space)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

@@ -16,6 +16,7 @@ NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
 SEED="NULL"
 TUNER="TPE"
 METRIC="val_loss"
+SEARCH_SPACE_CONFIG="tuning_strategy/search_space_config.yml"
 
 MAX_RUNNING_JOBS=20
 
@@ -28,7 +29,7 @@ display_help() {
   echo "Bash script wrapper for CASTLE tuning that splits tuning of model description list across multiple SLURM nodes."
   echo "Default options for arguments can be specified in this bash script."
   echo ""
-  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-u tuner] [-p metric] [-s seed]"
+  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-u tuner] [-p metric] [e search_space.yml] [-s seed]"
   echo ""
   echo " Options:"
   echo " -i    txt file with input list for CASTLE networks."
@@ -45,6 +46,8 @@ display_help() {
   echo "       Current default: $TUNER"
   echo " -p    Tuning metric used to measure performance (eg. val_loss, val_prediction_loss)."
   echo "       Current default: $METRIC"
+  echo " -e    YAML configuration file for tuning search space."
+  echo "       Current default: $SEARCH_SPACE_CONFIG"
   echo " -s    Random seed. Leave out this option to not set a random seed."
   echo "       Default: $SEED"
   echo " -h    Print this help."
@@ -62,6 +65,7 @@ print_variables() {
   echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Tuning algorithm:               $TUNER"
   echo "  Tuning metric:                  $METRIC"
+  echo "  Search space config file:       $SEARCH_SPACE_CONFIG"
   echo "  Random seed:                    $SEED"
   echo ""
   echo -e "=================================================================\n\n"
@@ -77,6 +81,7 @@ print_computed_variables() {
   echo "  Distributed training:           $DISTRIBUTED"
   echo "  Tuning algorithm:               $TUNER"
   echo "  Tuning metric:                  $METRIC"
+  echo "  Search space config file:       $SEARCH_SPACE_CONFIG"
   echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
@@ -300,6 +305,7 @@ else
   found_s=0
   found_u=0
   found_p=0
+  found_e=0
 
   # Parse options
   while getopts "i:o:m:n:c:u:p:s:h" opt; do
@@ -349,13 +355,22 @@ else
       if [[ $OPTARG == *.yml ]]; then
         NN_CONFIG=$OPTARG
       else
-        echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
+        echo -e "\nError: Invalid value for option -c (neural network YAML config). Must be YAML file."
         error_exit
       fi
       ;;
     p)
       found_p=1
       METRIC=$OPTARG
+      ;;
+    e)
+      found_e=1
+      if [[ $OPTARG == *.yml ]]; then
+        SEARCH_SPACE_CONFIG=$OPTARG
+      else
+        echo -e "\nError: Invalid value for option -e (search space YAML config). Must be YAML file."
+        error_exit
+      fi
       ;;
     u)
       found_u=1
@@ -578,9 +593,9 @@ else
     done
   fi
 
-  # yaml config file
+  # neural network yaml config file
   if [[ $found_c == 0 ]]; then
-    echo -e "\nNo YAML config file given. Do you wish to use default value NN_CONFIG=$NN_CONFIG?"
+    echo -e "\nNo neural network YAML config file given. Do you wish to use default value NN_CONFIG=$NN_CONFIG?"
     outer_counter=0
     while [ $outer_counter -lt 3 ]; do
       read -r -e -p "Enter [y]/n: " input
@@ -593,7 +608,7 @@ else
       elif [[ $answer == "n" ]]; then
         inner_counter=0
         while [ $inner_counter -lt 3 ]; do
-          read -r -e -p "Please supply config .yml file or press Enter to exit: " input
+          read -r -e -p "Please supply neural network config .yml file or press Enter to exit: " input
           if [[ $input == "" ]]; then
             graceful_exit
           else
@@ -603,13 +618,13 @@ else
             else
               case $inner_counter in
               0)
-                echo -e "\nError: Invalid value for YAML config. Must be YAML file. Try again (2 tries left).\n"
+                echo -e "\nError: Invalid value for neural network YAML config. Must be YAML file. Try again (2 tries left).\n"
                 ;;
               1)
-                echo -e "\nError: Invalid value for YAML config. Must be YAML file. Try again (1 try left).\n"
+                echo -e "\nError: Invalid value for neural network YAML config. Must be YAML file. Try again (1 try left).\n"
                 ;;
               2)
-                echo -e "\nError: Invalid value for YAML config.\n"
+                echo -e "\nError: Invalid value for neural network YAML config.\n"
                 error_exit
                 ;;
               esac
@@ -674,6 +689,54 @@ else
           TUNER=$input
           break
         fi
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
+  # search space yaml config file
+  if [[ $found_e == 0 ]]; then
+    echo -e "\nNo search space YAML config file given. Do you wish to use default value SEARCH_SPACE_CONFIG=$SEARCH_SPACE_CONFIG?"
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please supply search space config .yml file or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            if [[ $input == *.yml ]]; then
+              SEARCH_SPACE_CONFIG=$input
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for search space YAML config. Must be YAML file. Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for search space YAML config. Must be YAML file. Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for search space YAML config.\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
       else
         #Unknown input
         case_counter $outer_counter
@@ -791,7 +854,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" tune_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -u "$TUNER" -p "$METRIC" -s "$SEED" -j "$JOB_NAME"
+  sbatch -J "$JOB_NAME" tune_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -s "$SEED" -j "$JOB_NAME"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

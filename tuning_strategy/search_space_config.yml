@@ -1,0 +1,44 @@
+# Search space for CASTLE tunign
+# search_space_config.yml
+---
+documentation:
+  description: Hyperparameter search space for CASTLE tuning.
+
+  authors:
+    - kuehbacher_birgit
+
+  references:
+    - acknow_project
+
+  projects:
+    - usmile
+
+
+search_space:
+  num_hidden_layers:
+    _type: choice
+    _value: list(range(15))
+  dense_units:
+    _type: choice
+    _value: [ 32, 64, 128, 256 ]
+  activation_type:
+    _type: choice
+    _value: [ relu, leakyrelu ]
+  learning_rate:
+    _type: choice
+    _value: [ 0.001, 0.01, 0.1 ]
+  learning_rate_schedule:
+    _type: choice
+    _value:
+      - { schedule: exp, step: 5, divide: 3 }
+      - { schedule: exp, step: 2, divide: 1 }
+      - { schedule: plateau, factor: 0.1 }
+      - { schedule: plateau, factor: 0.5 }
+      - { schedule: plateau, factor: 0.5 }
+      - { schedule: cosine, decay_steps: 100, alpha: 0.0 }
+      - { schedule: cosine, decay_steps: 1000, alpha: 0.0 }
+      - { schedule: linear, decay_steps: 100, end_lr: 1e-6 }
+      - { schedule: linear, decay_steps: 100, end_lr: 1e-8 }
+  lambda_weight:
+    _type: choice
+    _value: [ 0.1, 0.5, 1.0, 10. ]
