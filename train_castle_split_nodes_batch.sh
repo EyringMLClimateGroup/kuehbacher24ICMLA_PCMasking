@@ -11,8 +11,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_23_custom_mirrored_sparsity/%x_slurm_%j.out
-#SBATCH --error=output_castle/training_23_custom_mirrored_sparsity/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/training_24_custom_mirrored/%x_slurm_%j.out
+#SBATCH --error=output_castle/training_24_custom_mirrored/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -32,7 +32,7 @@ display_help() {
   echo " -o    Text file with output list for CASTLE networks (.txt)."
   echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
-  echo " -t    Boolean ('False' 'f', 'True', 't')indicating whether to continue with previous training. "
+  echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -j    SLURM job name."
@@ -180,4 +180,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_23_custom_mirrored_sparsity/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+#conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_24_custom_mirrored/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

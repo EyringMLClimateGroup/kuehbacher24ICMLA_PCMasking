@@ -43,7 +43,7 @@ display_help() {
   echo "       Current default: $NN_CONFIG"
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo "       Default: $LOAD_CKPT"
-  echo " -t    Boolean ('False' 'f', 'True', 't')indicating whether to continue with previous training. "
+  echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo "       Default: $CONTINUE_TRAINING"
   echo " -s    Random seed. Leave out this option to not set a random seed."
@@ -847,16 +847,16 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
 
   # Set variable VAR_IDENT_STR
   set_var_ident_str "$i" "$END_INDEX"
-  JOB_NAME="castle_training_${VAR_IDENT_STR}"
+  JOB_NAME="training_castle_${VAR_IDENT_STR}"
   # Check size of string (otherwise this may cause problems saving files
   if [[ ${#JOB_NAME} -gt 50 ]]; then
-    JOB_NAME="castle_training"
+    JOB_NAME="training_castle"
   fi
 
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -c "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME"
+  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
