@@ -40,19 +40,28 @@ def train_save_model(
     print(f"\nSave directory is: {str(save_dir)}\n", flush=True)
 
     learning_rate = tuning_params["learning_rate"]
-    lr_schedule_tuple = tuning_params["learning_rate_schedule"]
+    lr_schedule_dict = tuning_params["learning_rate_schedule"]
 
-    if lr_schedule_tuple[0] == "exp":
-        step_lr = lr_schedule_tuple[1]
-        divide_lr = lr_schedule_tuple[2]
-
+    if lr_schedule_dict["schedule"] == "exp":
         lrs = tf.keras.callbacks.LearningRateScheduler(
-            LRUpdate(init_lr=learning_rate, step=step_lr, divide=divide_lr)
+            LRUpdate(init_lr=learning_rate, step=lr_schedule_dict["step"], divide=lr_schedule_dict["divide"])
         )
-    elif lr_schedule_tuple[0] == "plateu":
-        factor = lr_schedule_tuple[1]
-        lrs = tf.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=factor,
+    elif lr_schedule_dict["schedule"] == "plateu":
+        lrs = tf.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=lr_schedule_dict["factor"],
                                              patience=3, min_lr=1e-8)
+    elif lr_schedule_dict["schedule"] == "linear":
+        lrs = tf.keras.callbacks.LearningRateScheduler(
+            tf.keras.optimizers.schedules.PolynomialDecay(
+                initial_learning_rate=learning_rate,
+                decay_steps=lr_schedule_dict["decay_steps"],
+                end_learning_rate=lr_schedule_dict["end_lr"]))
+
+    elif lr_schedule_dict["schedule"] == "cosine":
+        lrs = tf.keras.callbacks.LearningRateScheduler(
+            tf.keras.optimizers.schedules.CosineDecay(
+                initial_learning_rate=learning_rate,
+                decay_steps=lr_schedule_dict["decay_steps"],
+                alpha=lr_schedule_dict["alpha"]))
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=setup.train_patience)
 
@@ -80,4 +89,3 @@ def train_save_model(
     final_metric = history.history[tuning_metric][-1]
     nni.report_final_result(final_metric)
     print(f"\nFinal {tuning_metric} is {final_metric}\n")
-
