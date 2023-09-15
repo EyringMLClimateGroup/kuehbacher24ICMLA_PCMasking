@@ -25,7 +25,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, me
         'activation_type': 'leakyrelu',
         'learning_rate': 0.01,
         'learning_rate_schedule': ('exp', 2, 1),
-        'lambda': 1.0,
+        'lambda_weight': 1.0,
     }
 
     optimized_params = nni.get_next_parameter()
