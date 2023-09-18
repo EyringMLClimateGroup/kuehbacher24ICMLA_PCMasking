@@ -148,6 +148,20 @@ def load_single_model(setup, var_name):
     if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or setup.do_castle_nn:
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
+
+    if setup.do_causal_single_nn:
+        models = {}
+        var = Variable_Lev_Metadata.parse_var_name(var_name)
+
+        for pc_alpha in setup.pc_alphas:
+            nn_type = 'CausalSingleNN' if setup.ind_test_name == 'parcorr' else 'CorrSingleNN'
+            models[pc_alpha] = {}
+
+            for threshold in setup.thresholds:
+                models[pc_alpha][threshold] = {}
+                models[pc_alpha][threshold][var] = get_model(setup, var, nn_type, pc_alpha=pc_alpha,
+                                                             threshold=threshold)
+        return models
     else:
         raise NotImplementedError(f"load_single_model is not implemented for neural network type {setup.nn_type}")
 
