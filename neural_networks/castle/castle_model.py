@@ -84,14 +84,19 @@ class CASTLE(keras.Model):
         # implementation used random normal initialization.
         self.input_sub_layers = list()
         # First input layer is not masked
-        self.input_sub_layers.append(
-            keras.layers.Dense(self.hidden_layers[0], activation=act_func, name=f"input_sub_layer_0"))
+        dense_layer = keras.layers.Dense(self.hidden_layers[0], activation=act_func, name=f"input_sub_layer_0",
+                                         kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                            seed=self.seed))
+        self.input_sub_layers.append(dense_layer)
 
         for i in range(self.num_input_layers - 1):
             mask = tf.transpose(
                 tf.one_hot([i] * self.hidden_layers[0], depth=self.num_inputs, on_value=0.0, off_value=1.0, axis=-1))
             masked_dense_layer = MaskedDenseLayer(self.hidden_layers[0], mask, activation=act_func,
-                                                  name=f"input_sub_layer_{i + 1}")
+                                                  name=f"input_sub_layer_{i + 1}",
+                                                  kernel_initializer=keras.initializers.RandomNormal(mean=0.0,
+                                                                                                     stddev=0.01,
+                                                                                                     seed=self.seed))
             self.input_sub_layers.append(masked_dense_layer)
 
         # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
@@ -99,7 +104,9 @@ class CASTLE(keras.Model):
         self.shared_hidden_layers = list()
         for i, n_hidden_layer_nodes in enumerate(self.hidden_layers):
             self.shared_hidden_layers.append(
-                keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}"))
+                keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}",
+                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1,
+                                                                                      seed=self.seed)))
 
         # Output sub-layers: One sub-layer for each input. Each output layer outputs one value, i.e.
         #   reconstructs one input.
@@ -107,7 +114,9 @@ class CASTLE(keras.Model):
         for i in range(self.num_input_layers):
             self.output_sub_layers.append(
                 # No activation function, i.e. linear
-                keras.layers.Dense(self.num_outputs, activation="linear", name=f"output_sub_layer_{i}"))
+                keras.layers.Dense(self.num_outputs, activation="linear", name=f"output_sub_layer_{i}",
+                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                      seed=self.seed)))
 
     def call(self, inputs, **kwargs):
         """Calls the model on new inputs and returns the outputs as tensors.
