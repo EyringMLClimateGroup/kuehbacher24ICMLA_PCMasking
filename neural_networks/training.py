@@ -191,6 +191,6 @@ def convert_generator_to_dataset(generator, name):
     inputs, outputs = normalize(data, generator)
     dataset = tf.data.Dataset.from_tensor_slices((inputs, outputs), name=name)
 
-    dataset = dataset.batch(batch_size, drop_remainder=True)
+    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
 
     return dataset
