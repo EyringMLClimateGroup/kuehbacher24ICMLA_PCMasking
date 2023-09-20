@@ -190,3 +190,7 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
         # Train again from checkpoint
         model_descriptions = generate_models(self.castle_setup_few_networks, continue_training=True)
         train_all_models(model_descriptions, self.castle_setup_few_networks, continue_training=True)
+
+
+if __name__ == "__main__":
+    unittest.main()

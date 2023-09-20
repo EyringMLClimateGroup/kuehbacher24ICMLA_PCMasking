@@ -23,3 +23,7 @@ class TestMaskedDenseLayer(unittest.TestCase):
 
     def test_create_masked_dense_layer(self):
         _ = MaskedDenseLayer(self.units, self.mask)
+
+
+if __name__ == "__main__":
+    unittest.main()

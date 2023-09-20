@@ -11,8 +11,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_24_custom_mirrored/%x_slurm_%j.out
-#SBATCH --error=output_castle/training_24_custom_mirrored/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/training_25_custom_mirrored_additional_val/%x_slurm_%j.out
+#SBATCH --error=output_castle/training_25_custom_mirrored_additional_val/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -180,4 +180,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_24_custom_mirrored/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_25_custom_mirrored_additional_val/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

@@ -36,6 +36,8 @@ class TestCastleSetup(unittest.TestCase):
         argv = ["-c", "config/cfg_castle_NN_Creation_test_2.yml"]
 
         self.castle_setup = SetupDiagnostics(argv)
+        self.castle_setup.distribute_strategy = ""
+
         train_model_if_not_exists(self.castle_setup)
 
         self.castle_models = load_models(self.castle_setup)
@@ -98,3 +100,7 @@ class TestCastleSetup(unittest.TestCase):
         for var in self.castle_models[self.castle_setup.nn_type].keys():
             print(var)
             model_diagnostic.plot_double_xy(itime, var, diff=True, nTime=False, cmap='RdBu_r', save=self.plots_save_dir)
+
+
+if __name__ == "__main__":
+    unittest.main()

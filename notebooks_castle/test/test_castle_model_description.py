@@ -138,3 +138,7 @@ class TestCastleModelDescription(unittest.TestCase):
 
         self.assertEqual(len(loaded_model_description[self.castle_setup_few_networks.nn_type]),
                          len(self.castle_setup_few_networks.output_order))
+
+
+if __name__ == "__main__":
+    unittest.main()

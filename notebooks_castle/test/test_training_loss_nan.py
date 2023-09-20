@@ -70,3 +70,7 @@ class TestTrainingLossNaN(unittest.TestCase):
         train_model_descriptions = model_descriptions[:1]
         train_all_models_mirrored(train_model_descriptions, self.castle_setup)
         # Assert: Monitor the output that training loss is not NaN
+
+
+if __name__ == "__main__":
+    unittest.main()

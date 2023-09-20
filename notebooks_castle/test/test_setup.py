@@ -33,3 +33,6 @@ class TestCastleSetup(unittest.TestCase):
         self.assertIsInstance(castle_setup.additional_val_datasets, list)
         self.assertIsInstance(castle_setup.additional_val_datasets[0], dict)
 
+
+if __name__ == "__main__":
+    unittest.main()

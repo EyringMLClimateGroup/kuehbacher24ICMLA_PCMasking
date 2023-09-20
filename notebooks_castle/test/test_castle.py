@@ -148,3 +148,7 @@ class TestCastle(unittest.TestCase):
         )
 
         return history
+
+
+if __name__ == "__main__":
+    unittest.main()
