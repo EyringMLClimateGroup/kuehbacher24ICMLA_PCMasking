@@ -43,7 +43,36 @@ class CASTLE(keras.Model):
 
     def __init__(self, num_inputs, hidden_layers, activation, rho, alpha, lambda_weight, relu_alpha=0.3, seed=None,
                  name="castle_model", **kwargs):
-        super().__init__(name=name, **kwargs)
+        num_input_layers = num_inputs + 1
+        num_outputs = 1
+
+        # Initialize the model as a functional (custom) model
+        input_sub_layers, shared_hidden_layers, output_sub_layers = _build_graph(num_input_layers, num_inputs,
+                                                                                 num_outputs, hidden_layers, relu_alpha,
+                                                                                 activation.lower(), seed)
+
+        inputs = tf.keras.Input(shape=(num_inputs,))
+        # Create network graph
+        inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in input_sub_layers]
+
+        hidden_outputs = list()
+        for hidden_layer in shared_hidden_layers:
+            # Pass all inputs through same hidden layers
+            for x in inputs_hidden:
+                hidden_outputs.append(hidden_layer(x))
+
+            # Outputs become new inputs for next hidden layers
+            inputs_hidden = hidden_outputs[-num_input_layers:]
+
+        yx_outputs = [out_layer(x) for x, out_layer in
+                      zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
+
+        # Stack outputs into one tensor
+        outputs = tf.stack(yx_outputs, axis=1)
+
+        super(CASTLE, self).__init__(name=name, inputs=inputs, outputs=outputs, **kwargs)
+
+        # After the super constructor has been called, we can set self attributes
         self.rho = rho
         self.alpha = alpha
         self.lambda_weight = lambda_weight
@@ -54,10 +83,15 @@ class CASTLE(keras.Model):
 
         self.num_outputs = 1
         self.num_inputs = num_inputs
+
         # The number of input sub-layers is nn_inputs + 1, because we need one sub-layer with all
         # x-variables for the prediction of y, and num_inputs layers for the prediction for each of x-variable
-        self.num_input_layers = self.num_inputs + 1
+        self.num_input_layers = num_input_layers
         self.hidden_layers = hidden_layers
+
+        self.input_sub_layers = input_sub_layers
+        self.shared_hidden_layers = shared_hidden_layers
+        self.output_sub_layers = output_sub_layers
 
         # Metrics
         self.loss_tracker = keras.metrics.Mean(name="loss")
@@ -69,91 +103,6 @@ class CASTLE(keras.Model):
         self.mse_y_tracker = keras.metrics.Mean(name="mse_y")
 
         self.masks = list()
-
-        self._build_graph()
-
-    def _build_graph(self):
-        """Initializes the network layers."""
-        # Create layers
-        # Get activation function
-        act_func = tf.keras.layers.LeakyReLU(alpha=self.relu_alpha) if self.activation == "leakyrelu" \
-            else tf.keras.layers.Activation(self.activation)
-
-        # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
-        # We're using RandomNormal initializers for kernel and bias because the original CASTLE
-        # implementation used random normal initialization.
-        self.input_sub_layers = list()
-        # First input layer is not masked
-        dense_layer = keras.layers.Dense(self.hidden_layers[0], activation=act_func, name=f"input_sub_layer_0",
-                                         kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
-                                                                                            seed=self.seed))
-        self.input_sub_layers.append(dense_layer)
-
-        for i in range(self.num_input_layers - 1):
-            mask = tf.transpose(
-                tf.one_hot([i] * self.hidden_layers[0], depth=self.num_inputs, on_value=0.0, off_value=1.0, axis=-1))
-            masked_dense_layer = MaskedDenseLayer(self.hidden_layers[0], mask, activation=act_func,
-                                                  name=f"input_sub_layer_{i + 1}",
-                                                  kernel_initializer=keras.initializers.RandomNormal(mean=0.0,
-                                                                                                     stddev=0.01,
-                                                                                                     seed=self.seed))
-            self.input_sub_layers.append(masked_dense_layer)
-
-        # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
-        #   same (shared) hidden layers.
-        self.shared_hidden_layers = list()
-        for i, n_hidden_layer_nodes in enumerate(self.hidden_layers):
-            self.shared_hidden_layers.append(
-                keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}",
-                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1,
-                                                                                      seed=self.seed)))
-
-        # Output sub-layers: One sub-layer for each input. Each output layer outputs one value, i.e.
-        #   reconstructs one input.
-        self.output_sub_layers = list()
-        for i in range(self.num_input_layers):
-            self.output_sub_layers.append(
-                # No activation function, i.e. linear
-                keras.layers.Dense(self.num_outputs, activation="linear", name=f"output_sub_layer_{i}",
-                                   kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
-                                                                                      seed=self.seed)))
-
-    def call(self, inputs, **kwargs):
-        """Calls the model on new inputs and returns the outputs as tensors.
-        Overrides base method.
-
-        In this case `call()` just reapplies
-        all ops in the graph to the new inputs
-        (e.g. build a new computational graph from the provided inputs).
-
-        Note: This method should not be called directly.
-        To call a model on an input, always use the `__call__()` method,
-        i.e. `model(inputs)`, which relies on the underlying `call()` method.
-
-        Args:
-            inputs (tf.Tensor): Input tensor.
-            **kwargs: Keyword arguments (see https://www.tensorflow.org/api_docs/python/tf/keras/Model#call
-              for details)
-
-        Returns:
-            An output tensor.
-        """
-        # Create network graph
-        inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in self.input_sub_layers]
-
-        hidden_outputs = list()
-        for hidden_layer in self.shared_hidden_layers:
-            # Pass all inputs through same hidden layers
-            for x in inputs_hidden:
-                hidden_outputs.append(hidden_layer(x))
-
-            # Outputs become new inputs for next hidden layers
-            inputs_hidden = hidden_outputs[-self.num_input_layers:]
-
-        yx_outputs = [out_layer(x) for x, out_layer in
-                      zip(hidden_outputs[-self.num_input_layers:], self.output_sub_layers)]
-        # Stack outputs into one tensor
-        return tf.stack(yx_outputs, axis=1)
 
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """
@@ -311,6 +260,54 @@ class CASTLE(keras.Model):
             }
         )
         return config
+
+
+def _build_graph(num_input_layers, num_inputs, num_outputs, hidden_layers, relu_alpha, activation, seed):
+    """Initializes the network layers."""
+    # Create layers
+    # Get activation function
+    act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation == "leakyrelu" \
+        else tf.keras.layers.Activation(activation)
+
+    # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
+    # We're using RandomNormal initializers for kernel and bias because the original CASTLE
+    # implementation used random normal initialization.
+    input_sub_layers = list()
+    # First input layer is not masked
+    dense_layer = keras.layers.Dense(hidden_layers[0], activation=act_func, name=f"input_sub_layer_0",
+                                     kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                        seed=seed))
+    input_sub_layers.append(dense_layer)
+
+    for i in range(num_input_layers - 1):
+        mask = tf.transpose(
+            tf.one_hot([i] * hidden_layers[0], depth=num_inputs, on_value=0.0, off_value=1.0, axis=-1))
+        masked_dense_layer = MaskedDenseLayer(hidden_layers[0], mask, activation=act_func,
+                                              name=f"input_sub_layer_{i + 1}",
+                                              kernel_initializer=keras.initializers.RandomNormal(mean=0.0,
+                                                                                                 stddev=0.01,
+                                                                                                 seed=seed))
+        input_sub_layers.append(masked_dense_layer)
+
+    # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
+    #   same (shared) hidden layers.
+    shared_hidden_layers = list()
+    for i, n_hidden_layer_nodes in enumerate(hidden_layers):
+        shared_hidden_layers.append(
+            keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}",
+                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.1,
+                                                                                  seed=seed)))
+
+    # Output sub-layers: One sub-layer for each input. Each output layer outputs one value, i.e.
+    #   reconstructs one input.
+    output_sub_layers = list()
+    for i in range(num_input_layers):
+        output_sub_layers.append(
+            # No activation function, i.e. linear
+            keras.layers.Dense(num_outputs, activation="linear", name=f"output_sub_layer_{i}",
+                               kernel_initializer=keras.initializers.RandomNormal(mean=0.0, stddev=0.01,
+                                                                                  seed=seed)))
+    return input_sub_layers, shared_hidden_layers, output_sub_layers
 
 
 def compute_h(matrix, castle_computation=True):
