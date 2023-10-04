@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-from keras.engine.input_spec import InputSpec
 
 
 @tf.keras.utils.register_keras_serializable()
@@ -47,7 +46,7 @@ class MaskedDenseLayer(keras.layers.Layer):
                 f"Kernel shape: {(last_dim, self.units)}. "
                 f"Mask shape: {self.mask.shape}"
             )
-        self.input_spec = InputSpec(min_ndim=2, axes={-1: last_dim})
+        self.input_spec = tf.keras.layers.InputSpec(min_ndim=2, axes={-1: last_dim})
         self.kernel = self.add_weight(
             "kernel",
             shape=[last_dim, self.units],
