@@ -298,13 +298,14 @@ class ModelDiagnostics():
             **kwargs
     ):
         varname = var.var.value
-        print(f"\nPlotting double_yz for variable {varname}\n")
+        print(f"\nPlotting double_yz for variable {varname}.\n")
 
         # Allocate array
         truth = np.zeros([self.nlev, self.nlat])
         pred = np.zeros([self.nlev, self.nlat])
         mean_stats = np.zeros([self.nlev, self.nlat])
         for var in varkeys:
+            print(f"\nProcessing variable {var}.")
             iLev = ModelDiagnostics._build_vars_dict([var])[var.var.value.upper()][0]
 
             if stats is not False:
