@@ -7,6 +7,7 @@ from neural_networks.load_models import load_models
 from neural_networks.model_diagnostics import ModelDiagnostics
 from notebooks_castle.test.testing_utils import set_memory_growth_gpu, train_model_if_not_exists
 from utils.setup import SetupDiagnostics
+from utils.variable import Variable_Lev_Metadata
 
 
 # todo: functions to test
@@ -19,7 +20,7 @@ from utils.setup import SetupDiagnostics
 #  - compute_stats(self, itime, var, nTime=False)
 #  - plot_profiles(vars_dict, varname='', title='', unit='', save=False, stats=False, **kwargs) not in model description
 
-class TestCastleSetup(unittest.TestCase):
+class TestCastleOfflineEval(unittest.TestCase):
 
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
@@ -32,8 +33,8 @@ class TestCastleSetup(unittest.TestCase):
                             "initialized, in which case memory growth may already be enabled. "
                             "If memory growth is not enabled, the tests may fail with CUDA error.")
 
-        # Just two 2d variables, which results in 2 single output networks
-        argv = ["-c", "config/cfg_castle_NN_Creation_test_2.yml"]
+        # Just heating rate (3D variable)
+        argv = ["-c", "config/cfg_castle_NN_Creation_test_3.yml"]
 
         self.castle_setup = SetupDiagnostics(argv)
         self.castle_setup.distribute_strategy = ""
@@ -43,6 +44,8 @@ class TestCastleSetup(unittest.TestCase):
         self.castle_models = load_models(self.castle_setup)
 
         self.castle_setup.model_type = self.castle_setup.nn_type
+
+        self.dict_keys = self.castle_models[self.castle_setup.nn_type].keys()
 
         self.plots_save_dir = os.path.join(Path(__file__).parent.resolve(), "output", "plots")
 
@@ -56,20 +59,24 @@ class TestCastleSetup(unittest.TestCase):
         castle_md = ModelDiagnostics(setup=self.castle_setup,
                                      models=self.castle_models[self.castle_setup.nn_type])
         itime = 1
-        self._plot_diff_true_false(castle_md, itime)
+        self._plot_double_xy_diff_true_false(castle_md, itime)
 
     def test_plot_plot_double_xy_itime_mean(self):
         castle_md = ModelDiagnostics(setup=self.castle_setup,
                                      models=self.castle_models[self.castle_setup.nn_type])
         itime = 'mean'
-        self._plot_diff_true_false(castle_md, itime)
+        self._plot_double_xy_diff_true_false(castle_md, itime)
 
-    # todo: plot_double_xy with range is not working
-    # def test_plot_plot_double_xy_itime_range(self):
+    # def test_plot_plot_double_yz_itime_int(self):
     #     castle_md = ModelDiagnostics(setup=self.castle_setup,
     #                                  models=self.castle_models[self.castle_setup.nn_type])
-    #     itime = 'range'
-    #     self._plot_diff_true_false(castle_md, itime)
+    #
+    #     var = Variable_Lev_Metadata.parse_var_name("tphystnd-0")
+    #     var_keys = [k for k in self.dict_keys if var.var.value in str(k)]
+    #     i_time = 0
+    #     n_time = 30
+    #     _ = castle_md.plot_double_yz(var, var_keys, itime=i_time, nTime=n_time, ilon=64, diff=False,
+    #                                  cmap='RdBu_r', stats=False, show=False, save=self.plots_save_dir)
 
     # todo: adjust shapes from train_gen
     # def test_get_shapley_values(self):
@@ -91,7 +98,7 @@ class TestCastleSetup(unittest.TestCase):
     #         stats = castle_md.mean_stats()
     #         print(f"Stats for variable {var}: \n{stats}\n")
 
-    def _plot_diff_true_false(self, model_diagnostic, itime):
+    def _plot_double_xy_diff_true_false(self, model_diagnostic, itime):
         for var in self.castle_models[self.castle_setup.nn_type].keys():
             print(var)
             model_diagnostic.plot_double_xy(itime, var, diff=False, nTime=False, cmap='RdBu_r',
