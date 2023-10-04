@@ -107,13 +107,13 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
         delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
 
         # First training
-        train_all_models(model_descriptions, self.castle_setup_few_networks)
+        train_all_models_mirrored(model_descriptions, self.castle_setup_few_networks)
 
         del model_descriptions
 
         # Train again from checkpoint
         model_descriptions = generate_models(self.castle_setup_few_networks)
-        train_all_models(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)
+        train_all_models_mirrored(model_descriptions, self.castle_setup_few_networks, from_checkpoint=True)
 
     def test_load_whole_castle_model_description(self):
         print("\nTesting loading the whole model from previous training for CASTLE models.")
@@ -183,13 +183,13 @@ class TestLoadTrainCastleModelDescription(unittest.TestCase):
         delete_output_dirs(model_descriptions, self.castle_setup_few_networks)
 
         # First training
-        train_all_models(model_descriptions, self.castle_setup_few_networks)
+        train_all_models_mirrored(model_descriptions, self.castle_setup_few_networks)
 
         del model_descriptions
 
         # Train again from checkpoint
         model_descriptions = generate_models(self.castle_setup_few_networks, continue_training=True)
-        train_all_models(model_descriptions, self.castle_setup_few_networks, continue_training=True)
+        train_all_models_mirrored(model_descriptions, self.castle_setup_few_networks, continue_training=True)
 
 
 if __name__ == "__main__":
