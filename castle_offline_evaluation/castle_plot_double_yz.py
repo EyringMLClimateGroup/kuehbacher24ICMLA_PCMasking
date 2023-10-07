@@ -7,7 +7,7 @@ import os
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-from castle_offline_evaluation.diagnostic_utils import create_castle_model_description
+from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description
 
 from pathlib import Path
 
