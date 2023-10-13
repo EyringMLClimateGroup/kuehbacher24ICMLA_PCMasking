@@ -9,7 +9,7 @@ def create_castle_model_description(setup, models):
     return model_desc
 
 
-def read_txt_to_list(txt_file):
+def parse_txt_to_list(txt_file):
     line_list = list()
     with open(txt_file, 'r') as f:
         for line in f:
@@ -17,13 +17,26 @@ def read_txt_to_list(txt_file):
     return line_list
 
 
-def read_txt_to_dict(txt_file):
+def parse_txt_to_dict(txt_file):
     line_dict = dict()
     with open(txt_file, 'r') as f:
         for line in f:
             value, key = line.split(":")
             line_dict[key.lstrip().rstrip("\n")] = value.lstrip().rstrip()
     return line_dict
+
+def parse_str_to_bool_or_int(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        try:
+            return int(v)
+        except ValueError:
+            raise ValueError(f"Could not parse {v} to boolean or int.  See option -h for help.")
 
 
 def set_memory_growth_gpu():

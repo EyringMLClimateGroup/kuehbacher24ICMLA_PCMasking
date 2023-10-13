@@ -10,7 +10,7 @@ if __name__ == "__main__":
     # 3 = INFO, WARNING, and ERROR messages are not print
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description, read_txt_to_dict
+from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description, parse_txt_to_dict
 
 from pathlib import Path
 import pickle
@@ -54,8 +54,9 @@ def save_shapley_dict(out_path, var, shap_dict, map_dict):
 
     with open(os.path.join(out_path, out_file), 'wb') as f:
         pickle.dump(shap_dict, f)
-
+    print(f"\nSaving Shapley dictionary {out_file}.")
     return
+
 
 def fill_shapley_dict(result, metric):
     shap_dict = dict()
@@ -77,19 +78,20 @@ def fill_shapley_dict(result, metric):
 if __name__ == "__main__":
     ##########################################
     # Parameters
-    i_time = 'range'
-    metric = 'abs_mean'  # 'mean', 'abs_mean', 'abs_mean_sign'
+    i_time = "range"
+    metric = "abs_mean"  # 'mean', 'abs_mean', 'abs_mean_sign'
     n_time = 5  # 1440 # about month
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    config_file = Path(project_root, "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
+    config_file = Path(project_root,
+                       "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
     plot_dir = Path(project_root, "output_castle/training_28_custom_mirrored_functional/shapley/")
     outputs_map = Path("../output_castle/training_28_custom_mirrored_functional/outputs_map.txt")
 
     variable = "tphystnd-691.39"
     ##########################################
-    map_dict = read_txt_to_dict(outputs_map)
+    map_dict = parse_txt_to_dict(outputs_map)
     save_dir = Path(plot_dir, get_save_str(i_time, num_time=n_time, num_samples=n_samples, shap_metric=metric))
     Path(save_dir).mkdir(parents=True, exist_ok=True)
 
