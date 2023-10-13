@@ -1,18 +1,19 @@
-from utils.constants import ANCIL_FILE
-from utils.variable import Variable_Lev_Metadata
-from utils.utils import read_ancilaries, find_closest_value, find_closest_longitude, get_weights  # , get_pressure
+import gc
 from pathlib import Path
-from neural_networks.load_models import get_var_list
-from neural_networks.data_generator import build_train_generator, build_valid_generator
-from neural_networks.cbrain.utils import load_pickle
-from neural_networks.cbrain.cam_constants import *
+
+import matplotlib.pyplot as plt
 import numpy as np
-from math import pi
 import numpy.ma as ma
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from ipykernel.kernelapp import IPKernelApp
+from math import pi
+
+from neural_networks.cbrain.cam_constants import *
+from neural_networks.data_generator import build_train_generator, build_valid_generator
+from neural_networks.load_models import get_var_list
+from utils.constants import ANCIL_FILE
+from utils.utils import read_ancilaries, find_closest_value, find_closest_longitude  # , get_pressure
+from utils.variable import Variable_Lev_Metadata
 
 
 def in_notebook():
@@ -205,6 +206,10 @@ class ModelDiagnostics():
         background = X_train[np.random.choice(X_train.shape[0], nSamples, replace=False)]
         test = X_test[np.random.choice(X_test.shape[0], nSamples, replace=False)]
 
+        del X_test
+        del X_train
+        gc.collect()
+
         e = shap.DeepExplainer(model, background[:, inputs])
         shap_values = e.shap_values(test[:, inputs], check_additivity=False)
 
@@ -225,8 +230,10 @@ class ModelDiagnostics():
             return shap_values_abs_mean, inputs, self.input_vars_dict
         elif metric == 'abs_mean_sign':
             return shap_values_abs_mean_sign, inputs, self.input_vars_dict
+        elif metric == 'all':
+            return shap_values_mean, shap_values_abs_mean, shap_values_abs_mean_sign, inputs, self.input_vars_dict
         else:
-            print(f"metric not available, only: mean, abs_mean and abs_mean_sign; stop")
+            print(f"metric not available, only: mean, abs_mean, abs_mean_sign and all; stop")
             exit()
 
     # Plotting functions
@@ -250,38 +257,52 @@ class ModelDiagnostics():
             pmean, tmean, bias, mse, pred_mean, true_mean, \
                 pred_sqmean, true_sqmean, pred_var, true_var, r2 = \
                 self.calc_mean_stats(psum, tsum, psqsum, tsqsum, sse, nTime)
-            stats = (stats, locals()[stats])
+            local_vars = locals()
+            if isinstance(stats, list):
+                stats = [(s, local_vars[s]) for s in stats]
+            else:
+                stats = (stats, local_vars[stats])
+
             t, p = np.mean(t, axis=0), np.mean(p, axis=0)
         else:
             t, p = self.get_truth_pred(itime, var, nTime=nTime)
 
-        if show_plot:
-            return self.plot_slices(
-                t,
-                p,
-                itime,
-                var=var,
-                stype='xy',
-                save=save,
-                diff=diff,
-                stats=[False, stats][stats is not False],
-                nTime=nTime,
-                **kwargs
-            )
+        if not isinstance(stats, list):
+            fig, axes = self.plot_slices(t, p, itime, var=var, stype='xy', save=save, diff=diff,
+                                         stats=[False, stats][stats is not False], nTime=nTime, **kwargs)
+            if show_plot:
+                return fig, axes
+            else:
+                plt.close(fig)
+                print(f"\nClosed plot for variable {var}\n")
+                return
         else:
-            fig, axes = self.plot_slices(
-                t,
-                p,
-                itime,
-                var=var,
-                stype='xy',
-                save=save,
-                diff=diff,
-                stats=[False, stats][stats is not False],
-                **kwargs
-            )
+            if show_plot:
+                print(f"\nDisplay plot is not enabled when creating multiple plots.\n"
+                      f"Continuing with creating and saving plots.\n")
+            # Without stats, without and with difference
+            fig, axes = self.plot_slices(t, p, itime, var=var, stype='xy', save=save, diff=False,
+                                         stats=False, nTime=nTime, **kwargs)
             plt.close(fig)
-            print(f"\nClosed plot for variable {var}\n")
+            print(f"Closed plot for variable {var} for {itime} without diff.\n")
+            fig, axes = self.plot_slices(t, p, itime, var=var, stype='xy', save=save, diff=True,
+                                         stats=False, nTime=nTime, **kwargs)
+            plt.close(fig)
+            print(f"Closed plot for variable {var} for {itime} with diff.\n")
+
+            for s in stats:
+                fig, axes = self.plot_slices(t, p, itime, var=var, stype='xy', save=save, diff=False,
+                                             stats=[False, s][s is not False], nTime=nTime, **kwargs)
+                plt.close(fig)
+                print(f"Closed plot for variable {var} with stats={s[0]}, diff=False.\n")
+                fig, axes = self.plot_slices(t, p, itime, var=var, stype='xy', save=save, diff=True,
+                                             stats=[False, s][s is not False], nTime=nTime, **kwargs)
+                plt.close(fig)
+                print(f"Closed plot for variable {var} with stats={s[0]}, diff=True.\n")
+
+            del fig
+            del axes
+            gc.collect()
             return
 
     def plot_double_yz(
@@ -303,7 +324,14 @@ class ModelDiagnostics():
         # Allocate array
         truth = np.zeros([self.nlev, self.nlat])
         pred = np.zeros([self.nlev, self.nlat])
-        mean_stats = np.zeros([self.nlev, self.nlat])
+
+        if isinstance(stats, list):
+            mean_stats = list()
+            for i in range(len(stats)):
+                mean_stats.append(np.zeros([self.nlev, self.nlat]))
+        else:
+            mean_stats = np.zeros([self.nlev, self.nlat])
+
         for var in varkeys:
             print(f"\nProcessing variable {var}.")
             iLev = ModelDiagnostics._build_vars_dict([var])[var.var.value.upper()][0]
@@ -344,16 +372,52 @@ class ModelDiagnostics():
                 hor_tvar = hor_tsqmean - hor_tmean ** 2
                 hor_pvar = hor_psqmean - hor_pmean ** 2
                 hor_r2 = 1 - (hor_mse / hor_tvar)
-                mean_stats[iLev, :] = locals()['hor_' + stats]
 
-        if show_plot:
-            return self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=diff,
-                                    stats=[False, (stats, mean_stats)][stats is not False], **kwargs)
-        else:
+                local_vars = locals()
+                if isinstance(stats, list):
+                    for s, m in zip(stats, mean_stats):
+                        m[iLev, :] = local_vars['hor_' + s]
+                else:
+                    mean_stats[iLev, :] = local_vars['hor_' + stats]
+
+        if not isinstance(stats, list):
             fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=diff,
                                          stats=[False, (stats, mean_stats)][stats is not False], **kwargs)
+            if show_plot:
+                return fig, axes
+            else:
+                plt.close(fig)
+                print(f"\nClosed plot for variable {var}\n")
+                return
+
+        else:
+            if show_plot:
+                print(f"\nDisplay plot is not enabled when creating multiple plots.\n"
+                      f"Continuing with creating and saving plots.\n")
+            # Without stats, without and with difference
+            fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=False,
+                                         stats=False, **kwargs)
             plt.close(fig)
-            print(f"\nClosed plot for variable {var}\n")
+            print(f"Closed plot for variable {var} for {itime} without diff.\n")
+
+            fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=True,
+                                         stats=False, **kwargs)
+            plt.close(fig)
+            print(f"Closed plot for variable {var} for {itime} without diff.\n")
+
+            for s, m in zip(stats, mean_stats):
+                fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=False,
+                                             stats=[False, (s, m)][s is not False], **kwargs)
+                plt.close(fig)
+                print(f"Closed plot for variable {var} with stats={s}, diff=False.\n")
+                fig, axes = self.plot_slices(truth, pred, itime, var=var, stype='yz', save=save, diff=True,
+                                             stats=[False, (s, m)][s is not False], **kwargs)
+                plt.close(fig)
+                print(f"Closed plot for variable {var} with stats={s[0]}, diff=True.\n")
+
+            del fig
+            del axes
+            gc.collect()
             return
 
     def plot_slices(
@@ -464,16 +528,32 @@ class ModelDiagnostics():
         fig.suptitle(title)
         plt.tight_layout()
 
+        def _get_save_dir():
+            if type(itime) is int:
+                idx_time_str = f"step-{itime}"
+            elif type(itime) is str:
+                if nTime:
+                    idx_time_str = f"{itime}-{nTime}"
+                else:
+                    idx_time_str = f"{itime}-all"
+            else:
+                raise ValueError(f"Unkown value for idx_time: {itime}")
+
+            stats_str = f"_stats-{stats[0]}" if stats else ""
+            diff_str = "_with_diff" if diff else "_no_diff"
+            return idx_time_str + stats_str + diff_str
+
         if save:
-            Path(save).mkdir(parents=True, exist_ok=True)
+            save_dir = os.path.join(save, _get_save_dir())
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
             level = "-{}".format(var.level) if var.level else ""
             diff = "_diff" if diff else ""
-            stats = "_stats" if stats else ""
+            stats_str = f"_stats-{stats[0]}" if stats else ""
             t_steps = "-{}steps".format(nTime) if nTime else ""
-            save_str = "{varname}" + level + "_map_time-{itime}" + t_steps + diff + stats + ".png"
-            save_path = Path(save, save_str.format(varname=varname, itime=itime))
+            save_str = f"{varname}" + level + f"_map_time-{itime}" + t_steps + diff + stats_str + ".png"
+            save_path = Path(save_dir, save_str)
             fig.savefig(save_path)
-            print(f"Saved plot {save_path.name}.")
+            print(f"\nSaved plot {save_path.name}.")
         return fig, axes
 
     def get_profiles(
@@ -566,19 +646,37 @@ class ModelDiagnostics():
         # Allocate array
         truth = np.zeros([nTime, self.nlev])
         pred = np.zeros([nTime, self.nlev])
-        mean_stats = np.zeros([self.nlev])
+
+        if isinstance(stats, list):
+            mean_stats = list()
+            for i in range(len(stats)):
+                mean_stats.append(np.zeros([self.nlev, self.nlat]))
+        else:
+            mean_stats = np.zeros([self.nlev, self.nlat])
+
         for var in varkeys:
+            print(f"\nProcessing variable {var}.")
             iLev = ModelDiagnostics._build_vars_dict([var])[var.var.value.upper()][0]
             t, p = self.get_truth_pred(itime, var, nTime=nTime)
 
-            truth[:, iLev] = np.average(
-                np.mean(t[idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=2),
-                weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=1
-            )
-            pred[:, iLev] = np.average(
-                np.mean(p[idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=2),
-                weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=1
-            )
+            if itime == "range":
+                truth[:, iLev] = np.average(
+                    np.mean(t[:, idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=2),
+                    weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=1
+                )
+                pred[:, iLev] = np.average(
+                    np.mean(p[:, idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=2),
+                    weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=1
+                )
+            elif itime == "mean" or isinstance(itime, int):
+                truth[:, iLev] = np.average(
+                    np.mean(t[idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=1),
+                    weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=0
+                )
+                pred[:, iLev] = np.average(
+                    np.mean(p[idx_lats[0]:idx_lats[-1] + 1, idx_lons[0]:idx_lons[-1] + 1], axis=1),
+                    weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1], axis=0
+                )
 
             if stats is not False:
                 psum, tsum, psqsum, tsqsum, sse = self.calc_sums(p, t, nTime)
@@ -598,38 +696,42 @@ class ModelDiagnostics():
                     weights=self.lat_weights[idx_lats[0]:idx_lats[-1] + 1])
                 hor_tvar = hor_tsqmean - hor_tmean ** 2
                 hor_r2 = 1 - (hor_mse / hor_tvar)
-                mean_stats[iLev] = locals()['hor_' + stats]
+                local_vars = locals()
+                if isinstance(stats, list):
+                    for s, m in zip(stats, mean_stats):
+                        m[iLev, :] = local_vars['hor_' + s]
+                else:
+                    mean_stats[iLev, :] = local_vars['hor_' + stats]
 
-        if show_plot:
-            return self.plot_profiles(
-                truth,
-                pred,
-                itime,
-                varname=varname,
-                nTime=nTime,
-                lats=lats,
-                lons=lons,
-                save=save,
-                stats=[False, (stats, mean_stats)][stats is not False],
-                unit=unit,
-                **kwargs
-            )
+        if not isinstance(stats, list):
+            fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
+                                           save=save,
+                                           stats=[False, (stats, mean_stats)][stats is not False], unit=unit, **kwargs)
+            if show_plot:
+                return fig
+            else:
+                plt.close(fig)
+                print(f"\nClosed plot for variable {var}\n")
+                return
         else:
-            fig = self.plot_profiles(
-                truth,
-                pred,
-                itime,
-                varname=varname,
-                nTime=nTime,
-                lats=lats,
-                lons=lons,
-                save=save,
-                stats=[False, (stats, mean_stats)][stats is not False],
-                unit=unit,
-                **kwargs
-            )
+            if show_plot:
+                print(f"\nDisplay plot is not enabled when creating multiple plots.\n"
+                      f"Continuing with creating and saving plots.\n")
+            # Without stats, without and with difference
+            fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
+                                           save=save, stats=False, unit=unit, **kwargs)
+
             plt.close(fig)
-            print(f"\nClosed plot for variable {var}\n")
+            print(f"Closed plot for variable {var} for {itime}.\n")
+
+            for s, m in zip(stats, mean_stats):
+                fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
+                                               save=save, stats=[False, (s, m)][s is not False], unit=unit, **kwargs)
+                plt.close(fig)
+                print(f"Closed plot for variable {var} with stats={s}.\n")
+
+            del fig
+            gc.collect()
             return
 
     def plot_profiles(
@@ -647,7 +749,6 @@ class ModelDiagnostics():
             stats=False,
             **kwargs
     ):
-
         n_cols = [1, 2][stats is not False]
         fig = plt.figure(1, figsize=(12, 5))
         ax1 = plt.subplot(1, n_cols, 1)
@@ -698,11 +799,33 @@ class ModelDiagnostics():
             ax2.legend(loc=0)
 
         fig.suptitle(title)
+
+        def _get_save_dir():
+            if type(itime) is int:
+                idx_time_str = f"step-{itime}"
+            elif type(itime) is str:
+                if nTime:
+                    idx_time_str = f"{itime}-{nTime}"
+                else:
+                    idx_time_str = f"{itime}-all"
+            else:
+                raise ValueError(f"Unknown value for idx_time: {itime}")
+
+            lats_str = f"_lats{lats[0]}_{lats[1]}" if lats else ""
+            lons_str = f"_lons{lons[0]}_{lons[1]}" if lons else ""
+            stats_str = f"_stats-{stats[0]}" if stats else ""
+
+            return idx_time_str + lats_str + lons_str + stats_str
+
         if save:
-            Path(save).mkdir(parents=True, exist_ok=True)
-            save_path = Path(f"{save}/{varname}_profile_time-{itime}.png")
+            save_dir = os.path.join(save, _get_save_dir())
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
+            t_steps = f"-{nTime}steps" if nTime else ""
+            stats_str = f"_stats-{stats[0]}" if stats else ""
+            save_str = f"{varname}" + f"_profile_time-{itime}" + t_steps + stats_str + ".png"
+            save_path = Path(save_dir, save_str)
             fig.savefig(save_path)
-            print(f"\nSaved profile plot {save_path.name}")
+            print(f"\nSaved plot {save_path.name}.")
 
         return fig
 
@@ -742,6 +865,7 @@ class ModelDiagnostics():
     # Statistics computation
     def compute_stats(self, itime, var, nTime=False):
         """Compute statistics in for [lat, lon, var, lev]"""
+        print(f"\nComputing horizontal stats for variable {var}\n")
 
         t, p = self.get_truth_pred(itime, var, nTime=nTime)
         nTime = len(t) if nTime is False else nTime  # Time steps
@@ -810,13 +934,13 @@ class ModelDiagnostics():
     def _build_vars_dict(list_variables):
         """ Convert the given list of Variable_Lev_Metadata into a
         dictionary to be used on the data generator.
-        
+
         Parameters
         ----------
         list_variables : list(Variable_Lev_Metadata)
             List of variables to be converted to the dictionary format
             used by the data generator
-        
+
         Returns
         -------
         vars_dict : dict{str : list(int)}
