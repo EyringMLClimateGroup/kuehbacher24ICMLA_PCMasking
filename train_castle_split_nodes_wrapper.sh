@@ -1,9 +1,4 @@
 #!/bin/bash
-# Arguments
-# $1 should contain the .txt file with NN inputs
-# $2 should contain the .txt file with NN outputs
-# $3 should contain the number of nodes to be trained on
-# $4 should contain the NN config file
 
 ###########################
 # Default argument values #
@@ -696,7 +691,7 @@ else
   fi
 
   # continue training
-  if [[ $found_l == 0 ]]; then
+  if [[ $found_t == 0 ]]; then
     echo -e "\nBoolean indication whether to continue training not given. Do you wish to use default value CONTINUE_TRAINING=$CONTINUE_TRAINING?."
 
     outer_counter=0
