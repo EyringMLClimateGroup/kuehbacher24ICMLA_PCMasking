@@ -6,7 +6,8 @@ from pathlib import Path
 import tensorflow as tf
 
 from castle_offline_evaluation.castle_evaluation_utils import set_memory_growth_gpu, read_txt_to_list, read_txt_to_dict
-from castle_offline_evaluation.castle_shapley_values import shap_single_variable, get_save_str, save_shapley_dict
+from castle_offline_evaluation.castle_shapley_values import shap_single_variable, get_save_str, save_shapley_dict, \
+    fill_shapley_dict
 from utils.variable import Variable_Lev_Metadata
 
 
@@ -15,13 +16,13 @@ def compute_shapley(variables, config_file, var2index, n_time, n_samples, metric
         print(f"\n----")
         t_init_per_var = time.time()
 
-        shap_values, inputs, input_vars_dict = shap_single_variable(var, config_file, n_time, n_samples, metric)
+        results = shap_single_variable(var, config_file, n_time, n_samples, metric)
+        shap_dict = fill_shapley_dict(results, metric)
+        save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(var), shap_dict, var2index)
 
-        save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(var), shap_values, inputs, var2index)
-
-        print(f"\nElapsed time: {datetime.timedelta(seconds=time.time() - t_init_per_var)}"
-              f"\n----\n")
-
+        t_end_per_var = time.time() - t_init_per_var
+        print(f"\nElapsed time: {datetime.timedelta(seconds=t_end_per_var)}\n----\n")
+    return
 
 if __name__ == "__main__":
     # Allow memory growth for GPUs (this seems to be very important, because errors occur otherwise)
@@ -95,4 +96,4 @@ if __name__ == "__main__":
     compute_shapley(output_vars, yaml_config_file, output_map_dict, n_time, n_samples, metric, save_dir)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
-    print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
+    print(f"\n{datetime.datetime.now()} --- Finished. Total elapsed time: {t_total}")
