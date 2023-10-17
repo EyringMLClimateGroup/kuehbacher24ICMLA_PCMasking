@@ -11,8 +11,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/shap/slurm_logs/%x_slurm_%j.out
-#SBATCH --error=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/shap/slurm_logs/%x_error_slurm_%j.out
+#SBATCH --output=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/%x_slurm_%j.out
+#SBATCH --error=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/%x_error_slurm_%j.out
 
 display_help() {
   echo ""
@@ -183,4 +183,4 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/shap/slurm_logs/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
