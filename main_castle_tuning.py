@@ -21,7 +21,7 @@ def tune_castle(config, inputs, outputs, seed, tuning_alg, tuning_metric, search
     experiment.config.tuner.name = tuning_alg
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
-    experiment.config.max_trial_number = 3
+    experiment.config.max_trial_number = 40
     experiment.config.max_experiment_duration = "715m"  # less than 12h, so that the experiment finishes before the job limit
     experiment.config.trial_concurrency = 40
     experiment.config.trial_gpu_number = 4
@@ -29,6 +29,7 @@ def tune_castle(config, inputs, outputs, seed, tuning_alg, tuning_metric, search
     # Set to false if multiple exp
     experiment.config.training_service.use_active_gpu = True
 
+    print(f"\nRunning experiment with tuning algorithm {tuning_alg} and metric {tuning_metric}.\n")
     experiment.run(port=port)
 
 
@@ -104,10 +105,11 @@ if __name__ == "__main__":
 
     cfg_file, inputs_file, outputs_file, random_seed, tuner, metric, tuning_search_space, experiment_port = parse_arguments()
 
-    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning.", flush=True)
+    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning on port {experiment_port}.", flush=True)
     t_init = time.time()
 
-    tune_castle(cfg_file, inputs_file, outputs_file, random_seed, tuner, metric, tuning_search_space, experiment_port)
+    tune_castle(cfg_file, inputs_file, outputs_file, random_seed, tuner, metric, tuning_search_space,
+                port=experiment_port)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
