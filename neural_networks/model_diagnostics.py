@@ -1,3 +1,4 @@
+import h5py
 import gc
 from pathlib import Path
 
@@ -164,20 +165,24 @@ class ModelDiagnostics():
         )
         with self.train_gen as train_gen:
             if itime == 'range':
-                if not nTime: nTime = len(train_gen)
 
-                # X_train, _ = train_gen[0] #TODO: Change this to retrieve all the data
-                n_batches = int((self.ngeo / self.setup.batch_size) * nTime)
-                # print(f"n_batches: {n_batches}")
-                X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
+                if not nTime:
+                    # nTime = len(train_gen)
+                    data = h5py.File(train_gen.data_fn, "r")
+                    X_train = _normalize(data, train_gen)
+                else:
+                    # X_train, _ = train_gen[0] #TODO: Change this to retrieve all the data
+                    n_batches = int((self.ngeo / self.setup.batch_size) * nTime)
+                    # print(f"n_batches: {n_batches}")
+                    X_train = np.zeros([self.ngeo * nTime, len(self.inputs)])
 
-                sIdx = 0
-                eIdx = self.setup.batch_size
+                    sIdx = 0
+                    eIdx = self.setup.batch_size
 
-                for i in range(n_batches):
-                    X_train[sIdx:eIdx, :] = train_gen[i][0]
-                    sIdx += self.setup.batch_size
-                    eIdx += self.setup.batch_size
+                    for i in range(n_batches):
+                        X_train[sIdx:eIdx, :] = train_gen[i][0]
+                        sIdx += self.setup.batch_size
+                        eIdx += self.setup.batch_size
 
         self.valid_gen = build_valid_generator(
             self.input_vars_dict,
@@ -189,16 +194,20 @@ class ModelDiagnostics():
         with self.valid_gen as valid_gen:
             if itime == 'range':
                 # X_test, _ = valid_gen[0] #TODO: Change this to retrieve all the data
-                if not nTime: nTime = len(valid_gen)
-                n_batches = nTime
-                X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
+                if not nTime:
+                    # nTime = len(train_gen)
+                    data = h5py.File(valid_gen.data_fn, "r")
+                    X_test = _normalize(data, valid_gen)
+                else:
+                    n_batches = nTime
+                    X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
 
-                sIdx = 0
-                eIdx = self.ngeo
-                for i in range(n_batches):
-                    X_test[sIdx:eIdx, :] = valid_gen[i][0]
-                    sIdx += self.ngeo
-                    eIdx += self.ngeo
+                    sIdx = 0
+                    eIdx = self.ngeo
+                    for i in range(n_batches):
+                        X_test[sIdx:eIdx, :] = valid_gen[i][0]
+                        sIdx += self.ngeo
+                        eIdx += self.ngeo
 
         if not nSamples: nSamples = len(X_train)
 
@@ -705,8 +714,8 @@ class ModelDiagnostics():
 
         if not isinstance(stats, list):
             fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
-                                           save=save,
-                                           stats=[False, (stats, mean_stats)][stats is not False], unit=unit, **kwargs)
+                                     save=save,
+                                     stats=[False, (stats, mean_stats)][stats is not False], unit=unit, **kwargs)
             if show_plot:
                 return fig
             else:
@@ -719,14 +728,14 @@ class ModelDiagnostics():
                       f"Continuing with creating and saving plots.\n")
             # Without stats, without and with difference
             fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
-                                           save=save, stats=False, unit=unit, **kwargs)
+                                     save=save, stats=False, unit=unit, **kwargs)
 
             plt.close(fig)
             print(f"Closed plot for variable {var} for {itime}.\n")
 
             for s, m in zip(stats, mean_stats):
                 fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
-                                               save=save, stats=[False, (s, m)][s is not False], unit=unit, **kwargs)
+                                         save=save, stats=[False, (s, m)][s is not False], unit=unit, **kwargs)
                 plt.close(fig)
                 print(f"Closed plot for variable {var} with stats={s}.\n")
 
@@ -1032,3 +1041,15 @@ def plot_profiles(
         print(f"\nSaved profile plot {save_path.name}")
 
     plt.show()
+
+
+def _normalize(data, generator):
+    data_x = data["vars"][:, generator.input_idxs]
+
+    # Normalize
+    data_x = generator.input_transform.transform(data_x)
+
+    # Delete data to save memory
+    del data
+    gc.collect()
+    return data_x
