@@ -26,15 +26,15 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, metric):
         "learning_rate": 1e-3,
         "learning_rate_schedule": {"schedule": "exp", "step": 5, "divide": 3},
         "lambda_weight": 1.0,
-        "output_index": [64]
+        "output_index": 64
     }
 
     optimized_params = nni.get_next_parameter()
     params.update(optimized_params)
     print(f"Optimized parameters: {params}")
 
-    selected_outputs = [outputs[i] for i in params["output_index"]]
-    model_descriptions = generate_models(setup, inputs, selected_outputs, params)
+    selected_output = [outputs[params["output_index"]]]
+    model_descriptions = generate_models(setup, inputs, selected_output, params)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
         train_all_models_mirrored(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
