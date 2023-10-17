@@ -1,4 +1,4 @@
-# Search space for CASTLE tunign
+# Search space for CASTLE tuning
 # search_space_config.yml
 ---
 documentation:
@@ -17,10 +17,10 @@ documentation:
 search_space:
   num_hidden_layers:
     _type: choice
-    _value: [4]
+    _value: [9]
   dense_units:
     _type: choice
-    _value: [64]
+    _value: [256]
   activation_type:
     _type: choice
     _value: [ leakyrelu ] #relu
