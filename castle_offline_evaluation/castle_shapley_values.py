@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
     config_file = Path(project_root,
                        "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root, "output_castle/training_28_custom_mirrored_functional/shapley/")
+    plot_dir = Path(project_root, "output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/shap/")
     outputs_map = Path("../output_castle/training_28_custom_mirrored_functional/outputs_map.txt")
 
     variable = "tphystnd-691.39"
