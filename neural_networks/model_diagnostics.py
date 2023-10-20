@@ -714,8 +714,8 @@ class ModelDiagnostics():
 
         if not isinstance(stats, list):
             fig = self.plot_profiles(truth, pred, itime, varname=varname, nTime=nTime, lats=lats, lons=lons,
-                                     save=save,
-                                     stats=[False, (stats, mean_stats)][stats is not False], unit=unit, **kwargs)
+                                     save=save, stats=[False, (stats, mean_stats)][stats is not False], unit=unit,
+                                     **kwargs)
             if show_plot:
                 return fig
             else:
@@ -772,6 +772,7 @@ class ModelDiagnostics():
         labs_to_plot = ['Prediction', 'SPCAM']
         if stats is not False:
             labs_to_plot.append(stats[0])
+
         colors = ['b', 'b', 'k']
         linestyles = ['--', '-', '-']
         for iVar in range(len(vars_to_plot)):
@@ -805,7 +806,10 @@ class ModelDiagnostics():
             ax2.invert_yaxis()
             ax2.set_xlabel(stats[0])
             ax2.set_ylabel('Pressure (hPa)')
-            ax2.legend(loc=0)
+            handles, labels = ax2.get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            ax2.legend(by_label.values(), by_label.keys(), loc=0)
+            # ax2.legend(loc=0)
 
         fig.suptitle(title)
 
