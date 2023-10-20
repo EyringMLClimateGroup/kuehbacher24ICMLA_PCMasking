@@ -1,18 +1,19 @@
 import argparse
 import datetime
+import random
 import time
 from pathlib import Path
+import os
 import nni
-
 import tensorflow as tf
 
 from neural_networks.tuning.models_split_over_nodes_tuning import generate_models
-from neural_networks.tuning.training_tuning import train_all_models
 from neural_networks.tuning.training_mirrored_strategy_tuning import train_all_models as train_all_models_mirrored
+from neural_networks.tuning.training_tuning import train_all_models
 from utils.setup import SetupNeuralNetworks
 
 
-def train_castle(config_file, nn_inputs_file, nn_outputs_file, metric):
+def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -26,14 +27,15 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, metric):
         "learning_rate": 1e-3,
         "learning_rate_schedule": {"schedule": "exp", "step": 5, "divide": 3},
         "lambda_weight": 1.0,
-        "output_index": 64
     }
 
     optimized_params = nni.get_next_parameter()
     params.update(optimized_params)
-    print(f"Optimized parameters: {params}")
+    print(f"\nOptimized parameters: {params}")
 
-    selected_output = [outputs[params["output_index"]]]
+    selected_output = [outputs[var_idx]]
+    print(f"\nTuning network for variable {selected_output[0]}.\n")
+
     model_descriptions = generate_models(setup, inputs, selected_output, params)
 
     if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
@@ -94,6 +96,10 @@ if __name__ == "__main__":
                                required=True)
     required_args.add_argument("-i", "--inputs_file", help=".txt file with NN inputs list.", required=True, type=str)
     required_args.add_argument("-o", "--outputs_file", help=".txt file with NN outputs list.", required=True, type=str)
+    required_args.add_argument("-x", "--var_index",
+                               help="Index of the output variable in outputs_file.txt for which to "
+                                    "compute the Shapley values (int).",
+                               required=True, type=int)
     required_args.add_argument("-p", "--tuning_metric",
                                help="Metric used to measure tuning performance (e.g. 'val_loss', 'val_prediction_loss').",
                                required=True, type=str)
@@ -103,6 +109,7 @@ if __name__ == "__main__":
     yaml_config_file = Path(args.config_file)
     inputs_file = Path(args.inputs_file)
     outputs_file = Path(args.outputs_file)
+    var_index = args.var_index
     random_seed_parsed = args.seed
     tuning_metric = args.tuning_metric
 
@@ -126,12 +133,13 @@ if __name__ == "__main__":
     print(f"\nYAML config file:      {yaml_config_file}")
     print(f"Input list .txt file:  {inputs_file}")
     print(f"Output list .txt file: {outputs_file}")
+    print(f"Output variable index: {var_index}")
     print(f"Tuning metric:         {tuning_metric}")
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, tuning_metric)
+    train_castle(yaml_config_file, inputs_file, outputs_file, var_index, tuning_metric)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

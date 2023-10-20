@@ -12,19 +12,21 @@ from main_train_castle_split_nodes import parse_str_to_bool_or_int, set_memory_g
 
 # After experiment is done, run nni.experiment.Experiment.view(experiment_id, port=32325) to restart web portal
 
-def tune_castle(config, inputs, outputs, seed, tuning_alg, tuning_metric, search_space, port=32325):
+def tune_castle(config, inputs, outputs, var_index, seed, tuning_alg, tuning_metric, search_space,
+                experiment_working_dir, port=32325):
     experiment = Experiment('local')
-    experiment.config.trial_command = f"python -u main_train_castle_split_nodes_tuning.py -c {config} -i {inputs} -o {outputs} -p {tuning_metric} -s {seed}"
+    experiment.config.experiment_working_directory = str(experiment_working_dir)
+    experiment.config.trial_command = f"python -u main_train_castle_split_nodes_tuning.py -c {config} -i {inputs} -o {outputs} -x {var_index} -p {tuning_metric} -s {seed}"
     experiment.config.trial_code_directory = '.'
     experiment.config.search_space = search_space
 
     experiment.config.tuner.name = tuning_alg
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
-    experiment.config.max_trial_number = 40
+    experiment.config.max_trial_number = 3
     experiment.config.max_experiment_duration = "715m"  # less than 12h, so that the experiment finishes before the job limit
-    experiment.config.trial_concurrency = 40
-    experiment.config.trial_gpu_number = 4
+    experiment.config.trial_concurrency = 3
+    experiment.config.trial_gpu_number = 1
 
     # Set to false if multiple exp
     experiment.config.training_service.use_active_gpu = True
@@ -39,9 +41,6 @@ def read_yaml(yaml_file):
     search_space = search_space_config["search_space"]
     # Convert learning rates to float, because yaml doesn't recognize 1e-3 as float
     search_space["learning_rate"]["_value"] = [float(lr) for lr in search_space["learning_rate"]["_value"]]
-    # Make a list out of the range of output start/end indices
-    search_space["output_index"]["_value"] = list(
-        range(search_space["output_index"]["_value"]["start"], search_space["output_index"]["_value"]["end"]))
     return search_space
 
 
@@ -72,7 +71,10 @@ def parse_arguments():
                                required=True)
     required_args.add_argument("-i", "--inputs_file", help=".txt file with NN inputs list.", required=True, type=str)
     required_args.add_argument("-o", "--outputs_file", help=".txt file with NN outputs list.", required=True, type=str)
-
+    required_args.add_argument("-x", "--var_index",
+                               help="Index of the output variable in outputs_file.txt for which to "
+                                    "compute the Shapley values (int).",
+                               required=True, type=int)
     required_args.add_argument("-u", "--tuner", help="Tuning algorithm to be used (e.g. TPE, Random, Hyperband).",
                                required=True, type=str)
     required_args.add_argument("-p", "--tuning_metric",
@@ -88,13 +90,18 @@ def parse_arguments():
     yaml_config_file = Path(args.config_file)
     inputs_file = Path(args.inputs_file)
     outputs_file = Path(args.outputs_file)
+    var_index = args.var_index
+
     random_seed_parsed = args.seed
     tuning_alg = args.tuner
     tuning_metric = args.tuning_metric
     search_space = args.search_space
     port = args.port
 
-    return yaml_config_file, inputs_file, outputs_file, random_seed_parsed, tuning_alg, tuning_metric, search_space, port
+    experiment_working_dir = yaml_config_file.parent
+
+    return yaml_config_file, inputs_file, outputs_file, var_index, random_seed_parsed, tuning_alg, tuning_metric, \
+        search_space, experiment_working_dir, port
 
 
 if __name__ == "__main__":
@@ -103,13 +110,14 @@ if __name__ == "__main__":
         print(f"\nAllow memory growth on GPUs.", flush=True)
         set_memory_growth_gpu()
 
-    cfg_file, inputs_file, outputs_file, random_seed, tuner, metric, tuning_search_space, experiment_port = parse_arguments()
+    cfg_file, inputs_file, outputs_file, var_idx, random_seed, tuner, metric, tuning_search_space, \
+        exp_working_dir, experiment_port = parse_arguments()
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning on port {experiment_port}.", flush=True)
     t_init = time.time()
 
-    tune_castle(cfg_file, inputs_file, outputs_file, random_seed, tuner, metric, tuning_search_space,
-                port=experiment_port)
+    tune_castle(cfg_file, inputs_file, outputs_file, var_idx, random_seed, tuner, metric, tuning_search_space,
+                exp_working_dir, port=experiment_port)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

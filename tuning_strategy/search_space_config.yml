@@ -42,8 +42,3 @@ search_space:
   lambda_weight:
     _type: choice
     _value: [ 1. ] # 0.1, 0.5, 1.0, 10.
-  output_index:
-    _type: choice
-    _value:
-      start: 0
-      end: 65
