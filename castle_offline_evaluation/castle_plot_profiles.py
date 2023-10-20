@@ -10,10 +10,9 @@ if __name__ == "__main__":
     # 3 = INFO, WARNING, and ERROR messages are not print
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
-from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description, parse_txt_to_dict
+from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description
 
 from pathlib import Path
-import pickle
 
 from neural_networks.load_models import load_single_model
 from utils.setup import SetupDiagnostics
