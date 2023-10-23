@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from neural_networks.castle.building_castle import build_castle
-from neural_networks.castle.castle_model import CASTLE
+from neural_networks.castle.castle_model_wo_y import CASTLE
 from notebooks_castle.test.testing_utils import set_memory_growth_gpu
 
 

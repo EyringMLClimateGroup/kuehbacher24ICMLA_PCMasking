@@ -4,7 +4,7 @@ from pathlib import Path
 import tensorflow as tf
 
 from utils.variable import Variable_Lev_Metadata
-from neural_networks.castle.castle_model import CASTLE
+from neural_networks.castle.castle_model_wo_y import CASTLE
 from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 

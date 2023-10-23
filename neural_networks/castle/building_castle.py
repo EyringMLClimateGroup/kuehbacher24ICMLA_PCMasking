@@ -4,7 +4,7 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
-from neural_networks.castle.castle_model import CASTLE
+from neural_networks.castle.castle_model_wo_y import CASTLE
 
 
 # Todo:
