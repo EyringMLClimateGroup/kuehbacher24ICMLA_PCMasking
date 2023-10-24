@@ -142,7 +142,7 @@ git push origin castle
 
 ### SHAP package
 
-Two lines in the SHAP package are changed:  
+Two lines in the SHAP (version 0.42.1) package are changed:  
 ```diff
    112  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
 -  113  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
