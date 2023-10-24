@@ -3,6 +3,10 @@ import tensorflow as tf
 
 def create_castle_model_description(setup, models):
     setup.model_type = setup.nn_type
+
+    if setup.nn_type == "CausalSingleNN":
+        models = models[setup.pc_alphas[0]][setup.thresholds[0]]
+
     model_desc = ModelDiagnostics(setup=setup,
                                   models=models)
 
