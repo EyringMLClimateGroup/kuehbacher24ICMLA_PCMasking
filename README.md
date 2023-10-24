@@ -151,6 +151,6 @@ Two lines in the SHAP package are changed:
 ```
 
 ```diff
-   743  op_handlers["Relu"] = nonlinearity_1d(0)
-+  744  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
+   744  op_handlers["Relu"] = nonlinearity_1d(0)
++  745  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
 ```
