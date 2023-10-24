@@ -13,7 +13,7 @@ display_help() {
   echo " -p    Output directory for shapley dictionaries and plots."
   echo " -t    Number of time samples to select from the data (int, False). Use n_time=False if all data should be selected."
   echo " -s    Number of samples to be used for shapley computation (int)."
-  echo " -e    Metric to be used on shapley values. Can be one of ['mean', 'abs_mean', 'abs_mean_sign']."
+  echo " -e    Metric to be used on shapley values. Can be one of ['mean', 'abs_mean', 'abs_mean_sign', 'all']."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
   echo ""

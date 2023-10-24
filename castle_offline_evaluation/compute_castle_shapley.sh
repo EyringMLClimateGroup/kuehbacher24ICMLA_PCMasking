@@ -8,11 +8,11 @@
 #SBATCH --mem=0
 #SBATCH --prefer=a100_80
 #SBATCH --exclusive
-#SBATCH --time=12:00:00
+#SBATCH --time=5:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/%x_slurm_%j.out
-#SBATCH --error=../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/%x_error_slurm_%j.out
+#SBATCH --output=../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/%x_slurm_%j.out
+#SBATCH --error=../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/%x_error_slurm_%j.out
 
 display_help() {
   echo ""
@@ -28,7 +28,7 @@ display_help() {
   echo " -p    Output directory for shapley dictionaries and plots."
   echo " -t    Number of time samples to select from the data."
   echo " -s    Number of samples to be used for shapley computation."
-  echo " -e    Metric to be used on shapley values. Can be one of ['mean', 'abs_mean', 'abs_mean_sign']."
+  echo " -e    Metric to be used on shapley values. Can be one of ['mean', 'abs_mean', 'abs_mean_sign', 'all']."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
   echo ""
@@ -183,4 +183,4 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"../output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/run_2/shap/slurm_logs/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
