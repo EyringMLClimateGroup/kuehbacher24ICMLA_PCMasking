@@ -147,7 +147,7 @@ Two lines in the SHAP package are changed:
    112  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
 -  113  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
 +  113  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(
-   114        self.model_output.shape) == 3), "The model output must be a vector or a single value!"
++  114        self.model_output.shape) == 3), "The model output must be a vector or a single value!"
 ```
 
 ```diff
