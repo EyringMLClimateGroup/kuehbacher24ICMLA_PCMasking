@@ -14,6 +14,7 @@ from castle_offline_evaluation.castle_evaluation_utils import create_castle_mode
 
 from pathlib import Path
 import pickle
+import shap
 
 from neural_networks.load_models import load_single_model
 from utils.setup import SetupDiagnostics
@@ -84,10 +85,9 @@ if __name__ == "__main__":
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    config_file = Path(project_root,
-                       "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root, "output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/shap/")
-    outputs_map = Path("../output_castle/training_28_custom_mirrored_functional/outputs_map.txt")
+    config_file = Path(project_root, "output_castle/eval_nando/single_nn/cfg_single_nn_diagnostics.yml")
+    plot_dir = Path(project_root, "output_castle/eval_nando/single_nn/plots_offline_evaluation/debug/shap/leaky_relu/")
+    outputs_map = Path("../output_castle/eval_nando/single_nn/outputs_map.txt")
 
     variable = "tphystnd-691.39"
     ##########################################
@@ -95,6 +95,7 @@ if __name__ == "__main__":
     save_dir = Path(plot_dir, get_save_str(i_time, num_time=n_time, num_samples=n_samples, shap_metric=metric))
     Path(save_dir).mkdir(parents=True, exist_ok=True)
 
+    print(f"\nSHAP package version: {shap.__version__}")
     print(f"\n\n{datetime.datetime.now()} --- Start computing Shapley values for variable {variable}.", flush=True)
     t_init = time.time()
 
