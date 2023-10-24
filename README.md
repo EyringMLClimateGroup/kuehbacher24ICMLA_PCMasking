@@ -138,3 +138,20 @@ git push origin castle
 > ```
 > For more information on branches see
 > this [Git branches guide](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell).
+
+
+### SHAP package
+
+Two lines in the SHAP package are changed: 
+l113:
+```diff
+  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
+- assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
++ assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(
+            self.model_output.shape) == 3), "The model output must be a vector or a single value!"
+```
+l743:
+```diff
+ op_handlers["Relu"] = nonlinearity_1d(0)
++ op_handlers["LeakyRelu"] = nonlinearity_1d(0)
+```
