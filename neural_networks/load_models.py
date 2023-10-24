@@ -166,7 +166,7 @@ def load_single_model(setup, var_name):
         raise NotImplementedError(f"load_single_model is not implemented for neural network type {setup.nn_type}")
 
 
-def load_models(setup):
+def load_models(setup, skip_causal_phq=False):
     """ Load all NN models specified in setup """
     models = collections.defaultdict(dict)
 
@@ -190,6 +190,9 @@ def load_models(setup):
                 models[nn_type][pc_alpha][threshold] = {}
                 for output in output_list:
                     output = Variable_Lev_Metadata.parse_var_name(output)
+                    # todo: remove if not necessary
+                    if skip_causal_phq and (str(output) == "phq-3.64" or str(output) == "phq-7.59"):
+                        continue
                     models[nn_type][pc_alpha][threshold][output] = get_model(
                         setup,
                         output,
