@@ -142,16 +142,15 @@ git push origin castle
 
 ### SHAP package
 
-Two lines in the SHAP package are changed: 
-l113:
+Two lines in the SHAP package are changed:  
 ```diff
-  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
-- assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
-+ assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(
-            self.model_output.shape) == 3), "The model output must be a vector or a single value!"
+112  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
+113  - assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
+113  + assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(
+114        self.model_output.shape) == 3), "The model output must be a vector or a single value!"
 ```
-l743:
+
 ```diff
- op_handlers["Relu"] = nonlinearity_1d(0)
-+ op_handlers["LeakyRelu"] = nonlinearity_1d(0)
+743   op_handlers["Relu"] = nonlinearity_1d(0)
+744 + op_handlers["LeakyRelu"] = nonlinearity_1d(0)
 ```
