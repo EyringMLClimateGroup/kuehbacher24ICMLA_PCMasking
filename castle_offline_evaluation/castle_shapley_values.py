@@ -42,7 +42,7 @@ def get_save_str(idx_time, num_time=False, num_samples=False, shap_metric=False)
         else:
             idx_time_str = f"{idx_time}-all"
     else:
-        raise ValueError(f"Unkown value for idx_time: {idx_time}")
+        raise ValueError(f"Unknown value for idx_time: {idx_time}")
 
     samples_str = f"_samples-{num_samples}" if num_samples else "_samples-all"
     metric_str = f"_{shap_metric}" if shap_metric else ""
