@@ -5,7 +5,6 @@ import tensorflow as tf
 
 from neural_networks.data_generator import build_valid_generator
 from neural_networks.models import generate_models
-from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
 from neural_networks.training import train_all_models
 
 
@@ -25,6 +24,13 @@ def delete_output_dirs(model_description, setup):
     if os.path.isdir(tb_dir):
         shutil.rmtree(tb_dir, ignore_errors=True)
 
+def set_strategy(setup, strategy):
+    setup.distribute_strategy = strategy
+    if strategy == "mirrored" and not len(tf.config.list_physical_devices("GPU")):
+        print("\nTensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
+              "Exiting test.")
+        exit(0)
+    return setup
 
 def set_memory_growth_gpu():
     physical_devices = tf.config.list_physical_devices("GPU")
@@ -34,6 +40,10 @@ def set_memory_growth_gpu():
 
 
 def train_model_if_not_exists(setup):
+    if setup.distribute_strategy == "mirrored" and not len(tf.config.list_physical_devices("GPU")):
+        print("\nTensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
+              "Exiting test.")
+        exit(0)
     model_descriptions = generate_models(setup)
 
     for md in model_descriptions:
@@ -41,12 +51,7 @@ def train_model_if_not_exists(setup):
         training_path = str(md.get_path(setup.nn_output_path))
 
         if not os.path.isfile(os.path.join(training_path, trained_model)):
-            if setup.distribute_strategy == "mirrored":
-                train_all_models_mirrored([md], setup)
-            elif setup.distribute_strategy == "multi_worker_mirrored":
-                raise ValueError("Tests not yet configured for MultiWorkMirroredStrategy")
-            else:
-                train_all_models([md], setup)
+            train_all_models([md], setup)
 
 
 def build_test_gen(model_description, setup):

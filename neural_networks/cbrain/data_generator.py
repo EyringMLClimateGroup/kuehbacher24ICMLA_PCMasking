@@ -31,6 +31,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             batch_size=1024,
             shuffle=True,
             xarray=False,
+            input_y=False,
     ):
         # Just copy over the attributes
         self.data_fn, self.norm_fn = data_fn, norm_fn
@@ -42,6 +43,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.input_transform = input_transform
         self.output_transform = output_transform
         self.xarray = xarray
+        self.input_y = input_y
 
     def __len__(self):
         return self.n_batches
@@ -61,6 +63,9 @@ class DataGenerator(tf.keras.utils.Sequence):
         # Normalize
         X = self.input_transform.transform(X)
         Y = self.output_transform.transform(Y)
+
+        if self.input_y:
+            return np.concatenate((Y, X), axis=1)
 
         return X, Y
 

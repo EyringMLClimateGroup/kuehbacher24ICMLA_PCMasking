@@ -6,12 +6,11 @@ import tensorflow as tf
 
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
-from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
 from utils.setup import SetupNeuralNetworks
 
 
 def train_castle():
-    argv = ["-c", Path("nn_config", "castle", "cfg_castle_NN_Creation.yml")]
+    argv = ["-c", Path("nn_config", "castle", "cfg_castle_adapted.yml")]
     setup = SetupNeuralNetworks(argv)
 
     load_weights_from_ckpt = False
@@ -19,12 +18,8 @@ def train_castle():
 
     model_descriptions = generate_models(setup, continue_training=continue_previous_training)
 
-    if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
-                                  continue_training=continue_previous_training)
-    else:
-        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
-                         continue_training=continue_previous_training)
+    train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                     continue_training=continue_previous_training)
 
 
 def set_memory_growth_gpu():

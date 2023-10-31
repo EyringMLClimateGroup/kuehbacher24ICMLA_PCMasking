@@ -11,8 +11,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/training_28_custom_mirrored_functional/%x_slurm_%j.out
-#SBATCH --error=output_castle/training_28_custom_mirrored_functional/%x_error_slurm_%j.out
+#SBATCH --output=output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/%x_slurm_%j.out
+#SBATCH --error=output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -180,4 +180,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/training_28_custom_mirrored_functional/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

@@ -45,7 +45,7 @@ class ModelDescription:
     
     """
 
-    def __init__(self, output, inputs, model_type, pc_alpha, threshold, setup, continue_training=False):
+    def __init__(self, output, inputs, model_type, pc_alpha, threshold, setup, continue_training=False, seed=None):
         """
         Parameters
         ----------
@@ -82,6 +82,8 @@ class ModelDescription:
         self.input_vars_dict = ModelDescription._build_vars_dict(self.inputs)
         self.output_vars_dict = ModelDescription._build_vars_dict([self.output])
 
+        self.seed = seed
+
         setup.input_pca_vars_dict = self.input_pca_vars_dict = False
         if setup.do_pca_nn:
             setup.inputs_pca = self.inputs_pca = self.inputs[:int(setup.n_components)]
@@ -89,25 +91,10 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        if setup.do_castle_nn:
+        if setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
                 self.strategy = tf.distribute.MirroredStrategy()
-            elif setup.distribute_strategy == "multi_worker_mirrored":
-                # Train with MultiWorkerMirrored strategy across multiple SLURM nodes following
-                #   http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-tf-multi-eng.html
-                # Build multi-worker environment from Slurm variables
-                cluster_resolver = tf.distribute.cluster_resolver.SlurmClusterResolver(port_base=33001)
-                print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.cluster_spec()}\n\n")
-                print(f"\n\nCluster resolver cluster spec: \n{cluster_resolver.get_task_info()}\n\n")
-
-                # Use NCCL communication protocol
-                implementation = tf.distribute.experimental.CommunicationImplementation.AUTO
-                communication_options = tf.distribute.experimental.CommunicationOptions(implementation=implementation)
-
-                # Declare distribution strategy
-                self.strategy = tf.distribute.MultiWorkerMirroredStrategy(cluster_resolver=cluster_resolver,
-                                                                          communication_options=communication_options)
             else:
                 self.strategy = None
 
@@ -120,11 +107,8 @@ class ModelDescription:
                     learning_rate = pickle.load(f)["last_lr"]
                 print(f"Learning rate = {learning_rate}\n", flush=True)
 
-            self.model = build_castle(num_inputs=len(self.inputs),
-                                      hidden_layers=self.setup.hidden_layers,
-                                      activation=self.setup.activation, rho=self.setup.rho, alpha=self.setup.alpha,
-                                      lambda_weight=self.setup.lambda_weight,
-                                      learning_rate=learning_rate, strategy=self.strategy)
+            self.model = build_castle(self.setup, num_x_inputs=len(self.inputs), learning_rate=learning_rate,
+                                      strategy=self.strategy, seed=self.seed)
         else:
             self.model = self._build_model()
 
@@ -234,22 +218,38 @@ class ModelDescription:
             path = path / Path(
                 cfg_str.format(alpha_lasso=self.setup.alpha_lasso)
             )
-        elif self.model_type == "castleNN":
+
+        elif self.model_type == "CASTLEOriginal":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}"
             if self.setup.distribute_strategy == "mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
-            elif self.setup.distribute_strategy == "multi_worker_mirrored":
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
-            else:
-                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
+                cfg_str += "-mirrored"
+
             path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
                                               lambda_weight=self.setup.lambda_weight))
 
+        elif self.model_type == "CASTLEAdapted":
+            cfg_str = "r{rho}-a{alpha}-lpred{lambda_prediction}-lspar{lambda_sparsity}-" \
+                      "lrec{lambda_reconstruction}-lacy{lambda_acyclicity}-{acyclicity_constraint}"
+            if self.setup.distribute_strategy == "mirrored":
+                cfg_str += "-mirrored"
+
+            path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha,
+                                              lambda_prediction=self.setup.lambda_prediction,
+                                              lambda_sparsity=self.setup.lambda_sparsity,
+                                              lambda_reconstruction=self.setup.lambda_reconstruction,
+                                              lambda_acyclicity=self.setup.lambda_acyclicity,
+                                              acyclicity_constraint=self.setup.acyclicity_constraint))
+
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
+        str_act = str(self.setup.activation)
+        if str_act.lower() == "leakyrelu" and (
+                self.model_type == "CASTLEOriginal" or self.model_type == "CASTLEAdapted"):
+            str_act += f"_{self.setup.relu_alpha}"
         path = path / Path(
             "hl_{hidden_layers}-act_{activation}-e_{epochs}/".format(
                 hidden_layers=str_hl,
-                activation=self.setup.activation,
+                activation=str_act,
                 epochs=self.setup.epochs,
             )
         )
@@ -271,7 +271,7 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        if self.setup.nn_type == "castleNN":
+        if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
         else:
@@ -327,7 +327,7 @@ def dense_nn(input_shape, output_shape, hidden_layers, activation):
     return model
 
 
-def generate_all_single_nn(setup, continue_training=False):
+def generate_all_single_nn(setup, continue_training=False, seed=None):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
@@ -362,13 +362,13 @@ def generate_all_single_nn(setup, continue_training=False):
     for output in output_list:
         model_description = ModelDescription(
             output, inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup,
-            continue_training=continue_training
+            continue_training=continue_training, seed=seed
         )
         model_descriptions.append(model_description)
     return model_descriptions
 
 
-def generate_all_causal_single_nn(setup, aggregated_results):
+def generate_all_causal_single_nn(setup, aggregated_results, seed=None):
     """ Generate all NN with one output and selected inputs from a pc analysis """
 
     model_descriptions = list()
@@ -388,13 +388,13 @@ def generate_all_causal_single_nn(setup, aggregated_results):
                 # print(f"var_names[parent_idxs]: {var_names[parent_idxs]}")
                 # print(f"parent_idxs: {parent_idxs}")
                 model_description = ModelDescription(
-                    output, parents, setup.nn_type, pc_alpha, threshold, setup=setup,
+                    output, parents, setup.nn_type, pc_alpha, threshold, setup=setup, seed=seed
                 )
                 model_descriptions.append(model_description)
     return model_descriptions
 
 
-def generate_sklasso_single_nn(setup):
+def generate_sklasso_single_nn(setup, seed=None):
     """ 
     sklassoNN: Generate all NN with one output and Lasso (L1) as inputs
     """
@@ -440,13 +440,13 @@ def generate_sklasso_single_nn(setup):
         setup.lasso_coefs = lasso_coefs
         print(f"lasso_inputs: {lasso_inputs}")
         model_description = ModelDescription(
-            output, lasso_inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup,
+            output, lasso_inputs, setup.nn_type, pc_alpha=None, threshold=None, setup=setup, seed=seed
         )
         model_descriptions.append(model_description)
     return model_descriptions
 
 
-def generate_models(setup, threshold_dict=False, continue_training=False):
+def generate_models(setup, threshold_dict=False, continue_training=False, seed=None):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
@@ -458,8 +458,8 @@ def generate_models(setup, threshold_dict=False, continue_training=False):
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
-        model_descriptions.extend(generate_all_single_nn(setup, continue_training))
+    if setup.do_single_nn or setup.do_pca_nn or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+        model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 
     if setup.do_random_single_nn:
         collected_results, errors = aggregation.collect_results(setup, reuse=True)
@@ -472,7 +472,7 @@ def generate_models(setup, threshold_dict=False, continue_training=False):
         #     collected_results, setup.numparents_argv, setup, random=setup.random
         # )
         model_descriptions.extend(
-            generate_all_causal_single_nn(setup, aggregated_results)
+            generate_all_causal_single_nn(setup, aggregated_results, seed=seed)
         )
 
     if setup.do_causal_single_nn:
@@ -481,23 +481,23 @@ def generate_models(setup, threshold_dict=False, continue_training=False):
         aggregated_results, var_names_parents = aggregation.aggregate_results(
             collected_results, setup, threshold_dict=threshold_dict)
         model_descriptions.extend(
-            generate_all_causal_single_nn(setup, aggregated_results)
+            generate_all_causal_single_nn(setup, aggregated_results, seed=seed)
         )
 
     if setup.do_sklasso_nn:
-        model_descriptions.extend(generate_sklasso_single_nn(setup))
+        model_descriptions.extend(generate_sklasso_single_nn(setup, seed=seed))
 
     return model_descriptions
 
 
-def generate_model_sherpa(setup, parents=False, pc_alpha=None, threshold=None):
+def generate_model_sherpa(setup, parents=False, pc_alpha=None, threshold=None, seed=None):
     """ Generate NN model for hyperparameter tuning via Sherpa """
 
     if setup.do_causal_single_nn and parents == False:
         parents = get_parents_sherpa(setup)
 
     model_description = ModelDescription(
-        setup.output, parents, setup.nn_type, pc_alpha, threshold, setup=setup,
+        setup.output, parents, setup.nn_type, pc_alpha, threshold, setup=setup, seed=seed
     )
     return model_description
 

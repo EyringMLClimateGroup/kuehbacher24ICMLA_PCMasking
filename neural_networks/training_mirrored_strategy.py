@@ -32,7 +32,6 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     for model_description in model_descriptions:
-        # todo: change for CASTLE and include from checkpoint
         outModel = model_description.get_filename() + '_model.h5'
         outPath = str(model_description.get_path(setup.nn_output_path))
         if not os.path.isfile(os.path.join(outPath, outModel)):

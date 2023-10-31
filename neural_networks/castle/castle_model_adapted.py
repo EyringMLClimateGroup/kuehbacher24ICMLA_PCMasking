@@ -3,12 +3,13 @@
 # Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
+from tensorflow import keras
 
-from neural_networks.castle.castle_model_base import CASTLEBase, build_graph, compute_h_matrix_exp
+from neural_networks.castle.castle_model_base import CASTLEBase, build_graph, compute_h_matrix_exp, compute_h_log_det
 
 
 @tf.keras.utils.register_keras_serializable()
-class CASTLEOriginal(CASTLEBase):
+class CASTLEAdapted(CASTLEBase):
     """A neural network model with CASTLE (Causal Structure Learning) regularization adapted
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
@@ -46,8 +47,11 @@ class CASTLEOriginal(CASTLEBase):
                  activation,
                  rho,
                  alpha,
-                 beta,
-                 lambda_weight,
+                 lambda_prediction,
+                 lambda_sparsity,
+                 lambda_reconstruction,
+                 lambda_acyclicity,
+                 acyclicity_constraint,
                  relu_alpha=0.3,
                  seed=None,
                  kernel_initializer_input_layers=None,
@@ -65,12 +69,12 @@ class CASTLEOriginal(CASTLEBase):
                  activity_regularizer_input_layers=None,
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
-                 name="castle_original", **kwargs):
+                 name="castle_adapted", **kwargs):
         num_input_layers = num_x_inputs + 1
         num_outputs = 1
 
-        # Initialize the model as a functional (custom) model
-        # Original CASTLE also passes Y as an input to the network. Use `with_y=True`
+        # Initialize the model as a functional (custom) model.
+        # In our adaptation, we don't pass Y as an input to the model
         input_sub_layers, shared_hidden_layers, output_sub_layers = build_graph(num_input_layers=num_input_layers,
                                                                                 num_x_inputs=num_x_inputs,
                                                                                 num_outputs=num_outputs,
@@ -92,9 +96,9 @@ class CASTLEOriginal(CASTLEBase):
                                                                                 activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
                                                                                 activity_regularizer_output_layers=activity_regularizer_output_layers,
                                                                                 relu_alpha=relu_alpha,
-                                                                                seed=seed, with_y=True)
+                                                                                seed=seed, with_y=False)
 
-        inputs = tf.keras.Input(shape=(num_x_inputs + 1,))
+        inputs = tf.keras.Input(shape=(num_x_inputs,))
         # Create network graph
         inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in input_sub_layers]
 
@@ -113,42 +117,60 @@ class CASTLEOriginal(CASTLEBase):
         # Stack outputs into one tensor
         outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
 
-        super(CASTLEOriginal, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
-                                             activation=activation, rho=rho, alpha=alpha, seed=seed,
-                                             kernel_initializer_input_layers=kernel_initializer_input_layers,
-                                             kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                                             kernel_initializer_output_layers=kernel_initializer_output_layers,
-                                             bias_initializer_input_layers=bias_initializer_input_layers,
-                                             bias_initializer_hidden_layers=bias_initializer_hidden_layers,
-                                             bias_initializer_output_layers=bias_initializer_output_layers,
-                                             kernel_regularizer_input_layers=kernel_regularizer_input_layers,
-                                             kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
-                                             kernel_regularizer_output_layers=kernel_regularizer_output_layers,
-                                             bias_regularizer_input_layers=bias_regularizer_input_layers,
-                                             bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
-                                             bias_regularizer_output_layers=bias_regularizer_output_layers,
-                                             activity_regularizer_input_layers=activity_regularizer_input_layers,
-                                             activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
-                                             activity_regularizer_output_layers=activity_regularizer_output_layers,
-                                             name=name, inputs=inputs, outputs=outputs, **kwargs)
+        super(CASTLEAdapted, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers, activation=activation,
+                                            rho=rho, alpha=alpha, seed=seed,
+                                            kernel_initializer_input_layers=kernel_initializer_input_layers,
+                                            kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
+                                            kernel_initializer_output_layers=kernel_initializer_output_layers,
+                                            bias_initializer_input_layers=bias_initializer_input_layers,
+                                            bias_initializer_hidden_layers=bias_initializer_hidden_layers,
+                                            bias_initializer_output_layers=bias_initializer_output_layers,
+                                            kernel_regularizer_input_layers=kernel_regularizer_input_layers,
+                                            kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
+                                            kernel_regularizer_output_layers=kernel_regularizer_output_layers,
+                                            bias_regularizer_input_layers=bias_regularizer_input_layers,
+                                            bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
+                                            bias_regularizer_output_layers=bias_regularizer_output_layers,
+                                            activity_regularizer_input_layers=activity_regularizer_input_layers,
+                                            activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
+                                            activity_regularizer_output_layers=activity_regularizer_output_layers,
+                                            name=name, inputs=inputs, outputs=outputs, **kwargs)
 
         self.num_input_layers = num_input_layers
-        self.lambda_weight = lambda_weight
 
-        self.beta = beta
+        self.lambda_prediction = lambda_prediction
+        self.lambda_sparsity = lambda_sparsity
+        self.lambda_reconstruction = lambda_reconstruction
+        self.lambda_acyclicity = lambda_acyclicity
+
         self.relu_alpha = relu_alpha
 
         self.input_sub_layers = input_sub_layers
         self.shared_hidden_layers = shared_hidden_layers
         self.output_sub_layers = output_sub_layers
 
+        self.acyclicity_constraint = acyclicity_constraint
+        if acyclicity_constraint.upper() == "NOTEARS":
+            self.acyclicity_constraint_func = compute_h_matrix_exp
+        elif acyclicity_constraint.upper() == "DAGMA":
+            self.acyclicity_constraint_func = compute_h_log_det
+        else:
+            raise ValueError(f"Unknown value for acyclicity constraint function: {acyclicity_constraint}")
+
+        # Additional metrics
+        self.metric_dict["weighted_prediction_loss_tracker"] = keras.metrics.Mean(name="weighted_prediction_loss")
+        self.metric_dict["weighted_reconstruction_loss_tracker"] = keras.metrics.Mean(
+            name="weighted_reconstruction_loss")
+        self.metric_dict["weighted_sparsity_loss_tracker"] = keras.metrics.Mean(name="weighted_sparsity_loss")
+        self.metric_dict["weighted_acyclicity_loss_tracker"] = keras.metrics.Mean(name="weighted_acyclicity_loss")
+
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """
         Compute model loss. Overrides base method.
 
         Args:
-            x: Input data. Here, this is actually [y, x].
-            y: Target data. This is `None`, as the target data is already part of the input data.
+            x: Input data.
+            y: Target data.
             y_pred: Predictions returned by the model (output of `model(x)`). In the case of CASTLE,
               `y_pred` contains the prediction for `y` and the reconstruction of `x`.
             sample_weight: Sample weights for weighting the loss function.
@@ -157,26 +179,26 @@ class CASTLEOriginal(CASTLEBase):
             The total loss as a `tf.Tensor`, or `None` if no loss results (which
             is the case when called by `Model.test_step`).
         """
-        # In this case, x contains the true y and x: [y, x]
-        y = x[:, 0]
-
-        input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
+        input_layer_weights = [self.input_sub_layers[0].trainable_variables[0]]
+        input_layer_weights.extend([layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers[1:0]])
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)
+        weighted_prediction_loss = tf.math.multiply(self.lambda_prediction, prediction_loss)
 
-        reconstruction_loss = self.compute_reconstruction_loss_yx(x, y_pred)
-        acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights, compute_h_matrix_exp)
-        sparsity_regularizer = tf.math.multiply(self.beta, self.compute_sparsity_loss(input_layer_weights))
+        reconstruction_loss = self.compute_reconstruction_loss_x(x, y_pred)
+        weighted_reconstruction_loss = tf.math.multiply(self.lambda_reconstruction, reconstruction_loss)
+        acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights, self.acyclicity_constraint_func)
+        weighted_acyclicity_loss = tf.math.multiply(self.lambda_acyclicity, acyclicity_loss)
+        sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
+        weighted_sparsity_regularizer = tf.math.multiply(self.lambda_sparsity, sparsity_regularizer)
 
-        # Weight regularization losses
-        regularization_loss = tf.math.add(reconstruction_loss, tf.math.add(acyclicity_loss, sparsity_regularizer),
+        # Regularization losses
+        regularization_loss = tf.math.add(weighted_reconstruction_loss,
+                                          tf.math.add(weighted_acyclicity_loss, weighted_sparsity_regularizer),
                                           name="regularization_loss")
 
-        weighted_regularization_loss = tf.math.multiply(self.lambda_weight, regularization_loss,
-                                                        name="weighted_regularization_loss")
-
-        loss = tf.math.add(prediction_loss, weighted_regularization_loss, name="overall_loss")
+        loss = tf.math.add(weighted_acyclicity_loss, regularization_loss, name="overall_loss")
 
         # Update metrics
         self.metric_dict["loss_tracker"].update_state(loss)
@@ -184,16 +206,20 @@ class CASTLEOriginal(CASTLEBase):
         self.metric_dict["reconstruction_loss_tracker"].update_state(reconstruction_loss)
         self.metric_dict["sparsity_loss_tracker"].update_state(sparsity_regularizer)
         self.metric_dict["acyclicity_loss_tracker"].update_state(acyclicity_loss)
+        self.metric_dict["weighted_prediction_loss_tracker"].update_state(weighted_prediction_loss)
+        self.metric_dict["weighted_reconstruction_loss_tracker"].update_state(weighted_reconstruction_loss)
+        self.metric_dict["weighted_sparsity_loss_tracker"].update_state(weighted_sparsity_regularizer)
+        self.metric_dict["weighted_acyclicity_loss_tracker"].update_state(weighted_acyclicity_loss)
         self.metric_dict["mse_x_tracker"].update_state(self.compute_mse_x(x, y_pred))
         self.metric_dict["mse_y_tracker"].update_state(self.compute_mse_y(y, y_pred))
 
         return loss
 
     def compute_l2_norm_matrix(self, input_layer_weights):
-        """Compute matrix with l2 - norms of input sub-layer weight matrices:
+        """ Compute matrix with l2 - norms of input sub-layer weight matrices:
         The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
-        Since our weight matrices are of dimension (d+1)x(d+1) (d is the number of x-variables, and we have d+1
-        variables all together, x-variables and y), the resulting matrix will, have dimensions (d+1)x(d+1)
+        Since our weight matrices are of dimension dxd (d is the number of x-variables), but we have d+1
+        variables all together (x-variables and y) we set the first row 0 for y.
 
         Args:
             input_layer_weights (list of tensors): List with weight matrices of the input layers
@@ -203,12 +229,15 @@ class CASTLEOriginal(CASTLEBase):
         """
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
-            l2_norm_matrix.append(tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers"))
+            l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
+                                             tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
         return tf.stack(l2_norm_matrix, axis=1)
 
     def compute_sparsity_regularizer(self, input_layer_weights):
         """ Compute sparsity regularizer from the l1-norms of the input layer weights.
-        We need to account for masked rows in all input layers.
+        The first input layer is not masked and therefore the whole weight matrix can
+        be counted towards the sparsity regularizer. For the other input layers,
+        we need to account for masked rows.
 
         Args:
             input_layer_weights: (list of tensors): List with weight matrices of the input layers
@@ -217,7 +246,9 @@ class CASTLEOriginal(CASTLEBase):
             Tensor, sparsity regularizer value
         """
         sparsity_regularizer = 0.0
-        for i, weight in enumerate(input_layer_weights):
+        sparsity_regularizer += tf.reduce_sum(
+            tf.norm(input_layer_weights[0], ord=1, axis=[-2, -1], name="l1_norm_input_layers"))
+        for i, weight in enumerate(input_layer_weights[1:]):
             # Ignore the masked row
             w_1 = tf.slice(weight, [0, 0], [i, -1])
             w_2 = tf.slice(weight, [i + 1, 0], [-1, -1])
@@ -229,11 +260,11 @@ class CASTLEOriginal(CASTLEBase):
     @staticmethod
     def compute_mse_x(input_true, yx_pred):
         """Computes the MSE between inputs x values and the predicted reconstructions.
-        Here, `input_true` contains both y and x-values."""
-        return tf.metrics.mse(input_true[:, 1:], yx_pred[:, 1:])
+        Here, `input_true` contains only x-values."""
+        return tf.metrics.mse(input_true, yx_pred[:, 1:])
 
     def get_config(self):
-        """Returns the config of `CASTLEOriginal`.
+        """Returns the config of `CASTLEAdapted`.
         Overrides base method.
 
        Config is a Python dictionary (serializable) containing the
@@ -248,14 +279,16 @@ class CASTLEOriginal(CASTLEBase):
        Returns:
            Python dictionary containing the configuration of `CASTLE`.
        """
-        config = super(CASTLEOriginal, self).get_config()
+        config = super(CASTLEAdapted, self).get_config()
         # These are the constructor arguments
         config.update(
             {
-                "beta": self.beta,
-                "lambda_weight": self.lambda_weight,
+                "lambda_prediction": self.lambda_prediction,
+                "lambda_sparsity": self.lambda_sparsity,
+                "lambda_reconstruction": self.lambda_reconstruction,
+                "lambda_acyclicity": self.lambda_acyclicity,
+                "acyclicity_constraint": self.acyclicity_constraint,
                 "relu_alpha": self.relu_alpha,
             }
         )
-
         return config

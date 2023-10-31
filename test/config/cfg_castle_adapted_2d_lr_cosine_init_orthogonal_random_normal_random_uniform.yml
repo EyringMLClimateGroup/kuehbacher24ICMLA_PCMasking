@@ -1,5 +1,5 @@
 # NN_Creation
-# cfg_castle_NN_Creation.yml
+# cfg_castle_adapted.yml
 ---
 documentation:
   description: Options (specifications) for the "NN_Creation" script.
@@ -26,8 +26,8 @@ documentation:
 analysis: 'single' # 'single': gridpoints individually;
 # 'concat': gridpoints contatenated into a
 #           single time-series;
-spcam_parents: [ 'ps' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
-spcam_children: [ 'phq' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
+spcam_parents: [ 'ps', 'lhflx' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
+spcam_children: [ 'flnt', 'prect' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
@@ -67,14 +67,15 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "castleNN" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "castleNN"
+nn_type: "CASTLEAdapted" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
-nn_output_path: output_castle/test/models_castle
+# Paths are relative to project root
+nn_output_path: test/output/models_castle
 
-input_order: [ ps ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
-output_order: [ phq ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
+input_order: [ ps, lhflx ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
+output_order: [ flnt, prect ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
-hidden_layers:  [32, 32]  # [ 256,256,256,256,256,256,256,256,256 ]
+hidden_layers: [ 32, 32 ]  # [ 256,256,256,256,256,256,256,256,256 ]
 activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 
 
@@ -82,41 +83,125 @@ activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 # ----------------------
 ## DATASETS.
 # Tom's: SPCAM_tb_prepoc
-train_data_folder: "./notebooks_castle/test_data/"  #"./SPCAM_tb_preproc", "./notebooks_castle/test_data/"
+train_data_folder: "test/test_data/"  #"./SPCAM_tb_preproc", "test/test_data/"
 # Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TRAIN_For_Nando_shuffle.nc
 #                                 2021_09_02_VALID_For_Nando.nc
 train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle_perc0-0001.nc  # 2021_09_02_TRAIN_For_Nando_shuffle.nc
 valid_data_fn: 2021_09_02_VALID_For_Nando_perc0-0002.nc  #2021_09_02_VALID_For_Nando.nc
 epochs: 2
-train_verbose: 2 # 0:Silent; 1:Continuous update; 2:Summary on epochs
-tensorboard_folder: output_castle/test/tensorboard
+train_verbose: 1 # 0:Silent; 1:Continuous update; 2:Summary on epochs
+tensorboard_folder: output/tensorboard
 
 # From Tom https://github.com/tbeucler/CBRAIN-CAM/tree/master/notebooks/tbeucler_devlog/UW_DATA
-normalization_folder: "./notebooks_castle/test_data/"  #./SPCAM_tb_preproc, "./notebooks_castle/test_data/"
+normalization_folder: "test/test_data/"  #./SPCAM_tb_preproc, "test/test_data/"
 normalization_fn: 001_norm_for_tb_dataset.nc
 
 input_sub: mean
 input_div: maxrs
-out_scale_dict_folder: ./nn_config/scale_dicts/
+out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
 batch_size: 256  #1024
 
 # Learning Rate Scheduler
 init_lr: 0.001 # From train.py (default)
-step_lr: 3 # From 006_8col_pnas_exact.yml
-divide_lr: 5 # From train.py (default)
+## Exponential schedule (original Rasp et al.)
+#lr_schedule: "exponential"
+#step_lr: 3 # From 006_8col_pnas_exact.yml
+#divide_lr: 5 # From train.py (default)
+
+## Plateau schedule
+#lr_schedule: "plateau"
+#monitor: "val_loss"
+#factor: 0.1
+#patience: 10
+#min_lr: 0
+
+## Linear schedule
+#lr_schedule: "linear"
+#decay_steps: 2 # use number of epochs for constant decay
+#end_lr: 1e-8
+
+# Cosine schedule
+lr_schedule: "cosine"
+decay_steps: 2 # use number of epochs for constant decay
+cosine_alpha: 0.0
+warmup_steps: 0
 
 # Early Stopping
 train_patience: 5 # TODO: This number was chosen arbitrarily
 
 
-# CASTLE
-# ----------------------
+# CASTLEAdapted
+# ===================
 rho: 1.0
 alpha: 1.0
-beta: 1.0
-lambda_weight: 1.0
+lambda_prediction: 1.0
+lambda_sparsity: 1.0
+lambda_acyclicity: 1.0
+lambda_reconstruction: 1.0
+acyclicity_constraint: "DAGMA" # DAGMA, NOTEARS
+relu_alpha: 0.3
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
+additional_val_datasets:
+  - { name: "test_1", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
+  - { name: "test_2", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
+
+# Input layers kernel initializer
+#kernel_initializer_input_layers: "RandomNormal"
+#input_init_random_normal_mean: 0.0
+#input_init_random_normal_std: 0.01
+
+#kernel_initializer_input_layers: "RandomUniform"
+#input_init_random_uniform_min_val: 0.0
+#input_init_random_uniform_max_val: 1.0
+#
+#kernel_initializer_input_layers: "VarianceScaling"
+#input_init_variance_scaling_scale: 1.0
+#input_init_variance_scaling_mode: "fan_in"
+#input_init_variance_scaling_distribution: "truncated_normal"
+#
+#kernel_initializer_input_layers: "LecunNormal"
+#kernel_initializer_input_layers: "LecunUniform"
+
+kernel_initializer_input_layers: "Orthogonal"
+input_init_orthogonal_gain: 1.0
+
+
+# Hidden layers kernel initializer
+kernel_initializer_hidden_layers: "RandomNormal"
+hidden_init_random_normal_mean: 0.0
+hidden_init_random_normal_std: 0.01
+
+#kernel_initializer_hidden_layers: "RandomUniform"
+#hidden_output_init_random_uniform_min_val: 0.0
+#hidden_output_init_random_uniform_max_val: 1.0
+#
+#kernel_initializer_hidden_layers: "GlorotUniform"
+#kernel_initializer_hidden_layers: "GlorotNormal"
+#
+#kernel_initializer_hidden_layers: "LecunNormal"
+#kernel_initializer_hidden_layers: "LecunUniform"
+#
+#kernel_initializer_hidden_layers: "HeNormal"
+#kernel_initializer_hidden_layers: "HeUniform"
+
+# Output layers kernel initializer
+#kernel_initializer_output_layers: "RandomNormal"
+#output_init_random_normal_mean: 0.0
+#output_init_random_normal_std: 0.01
+
+kernel_initializer_output_layers: "RandomUniform"
+output_init_random_uniform_min_val: 0.0
+output_init_random_uniform_max_val: 1.0
+#
+#kernel_initializer_output_layers: "GlorotUniform"
+#kernel_initializer_output_layers: "GlorotNormal"
+#
+#kernel_initializer_output_layers: "LecunNormal"
+#kernel_initializer_output_layers: "LecunUniform"
+#
+#kernel_initializer_output_layers: "HeNormal"
+#kernel_initializer_output_layers: "HeUniform"
 
 
 # Diagnostic configuration
@@ -124,7 +209,7 @@ distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for
 ## DATASETS.
 # Gunnar's: SPCAM_gb_prepoc; Tom's: SPCAM_tb_preproc
 # Tom's: SPCAM_tb_prepoc; Aqua_Generalization_Test_Sets
-test_data_folder : "./notebooks_castle/test_data/" # "./SPCAM_tb_preproc"
+test_data_folder: "test/test_data/" # "./SPCAM_tb_preproc"
 # Gunnar's. Train (year/month): 002_train_1_<year/month>.nc 002_train_1_<year/month>_shuffle.nc
 #           Valid (year/month): 000_valid_1_<year/month>.nc
 # Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TEST_For_Nando_shuffle.nc
@@ -132,11 +217,7 @@ test_data_folder : "./notebooks_castle/test_data/" # "./SPCAM_tb_preproc"
 #                          Gener: 2022_02_07_TEST_For_Nando_m4K.nc; 2022_02_07_TEST_For_Nando_p4K.nc
 #                          ClInv: 2021_09_03_TEST_For_Nando_ClInv_shuffle.nc
 #                                 2021_09_03_TEST_For_Nando_ClInv.nc
-test_data_fn : 2021_09_02_TEST_For_Nando_shuffle_perc0-0001.nc # 2021_09_02_VALID_For_Nando.nc #
+test_data_fn: 2021_09_02_TEST_For_Nando_shuffle_perc0-0001.nc # 2021_09_02_VALID_For_Nando.nc #
 # Diagnostics
-diagnostics      : ['map']  # 'map'
-diagnostics_time : ['mean'] # snapshot: int; time-mean: 'mean'
-
-
-
-
+diagnostics: [ 'map' ]  # 'map'
+diagnostics_time: [ 'mean' ] # snapshot: int; time-mean: 'mean'

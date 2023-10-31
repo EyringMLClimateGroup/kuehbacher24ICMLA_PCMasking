@@ -46,10 +46,10 @@ class Setup:
         #         self.verbosity = yml_cfg["verbosity"]
         self.output_folder = yml_cfg["output_folder"]
         self.output_file_pattern = yml_cfg["output_file_pattern"][self.analysis]
-        self.experiment  = yml_cfg["experiment"]
-        self.data_folder = self._evaluate_symlink(yml_cfg["data_folder"])
+        self.experiment = yml_cfg["experiment"]
+        self.data_folder = self._evaluate_data_path(yml_cfg["data_folder"])
 
-        self.region     = yml_cfg["region"]
+        self.region = yml_cfg["region"]
         self.gridpoints = _calculate_gridpoints(self.region)
 
         ## Model's grid
@@ -82,8 +82,10 @@ class Setup:
         # # Note the parenthesis, INDEPENDENCE_TESTS returns functions
         # self.cond_ind_test = INDEPENDENCE_TESTS[self.ind_test_name]()
 
-    def _evaluate_symlink(self, path):
-        if Path(path).is_symlink():
+    def _evaluate_data_path(self, path):
+        if os.path.exists(path):
+            return path
+        elif Path(path).is_symlink():
             return os.path.realpath(path)
         else:
             return Path(self.project_root, path)
@@ -160,7 +162,7 @@ class SetupPCMCIAggregation(Setup):
         self.thresholds = yml_cfg["thresholds"]
         self.area_weighted = yml_cfg["area_weighted"]
         self.pdf = yml_cfg["pdf"]
-        self.aggregate_folder = self._evaluate_symlink(yml_cfg["aggregate_folder"])
+        self.aggregate_folder = self._evaluate_data_path(yml_cfg["aggregate_folder"])
 
     def _setup_plots(self, yml_cfg):
         self.plots_folder = yml_cfg["plots_folder"]
@@ -171,9 +173,9 @@ class SetupPCMCIAggregation(Setup):
 class SetupNeuralNetworks(Setup):
     def __init__(self, argv):
         super().__init__(argv)
+        self._setup_neural_networks(self.yml_cfg)
         self._setup_neural_network_type(self.yml_cfg)
         self._setup_results_aggregation(self.yml_cfg)
-        self._setup_neural_networks(self.yml_cfg)
 
     def _setup_neural_network_type(self, yml_cfg):
         self.nn_type = yml_cfg["nn_type"]
@@ -184,7 +186,6 @@ class SetupNeuralNetworks(Setup):
         self.do_causal_single_nn = False
         self.do_random_single_nn = False
         self.do_sklasso_nn = False
-        self.do_castle_nn = False
 
         # Set do_mirrored_strategy
         try:
@@ -209,13 +210,18 @@ class SetupNeuralNetworks(Setup):
         elif self.nn_type == "CausalSingleNN" or self.nn_type == "CorrSingleNN":
             self.do_causal_single_nn = True
 
-        elif self.nn_type == "castleNN":
-            self.do_castle_nn = True
-            self.rho = float(yml_cfg["rho"])
-            self.alpha = float(yml_cfg["alpha"])
+        elif self.nn_type == "CASTLEOriginal":
             self.beta = float(yml_cfg["beta"])
             self.lambda_weight = float(yml_cfg["lambda_weight"])
-            self.additional_val_datasets = yml_cfg.get("additional_val_datasets")
+            self._set_common_castle_attributes(yml_cfg)
+
+        elif self.nn_type == "CASTLEAdapted":
+            self.lambda_prediction = float(yml_cfg["lambda_prediction"])
+            self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
+            self.lambda_acyclicity = float(yml_cfg["lambda_acyclicity"])
+            self.lambda_reconstruction = float(yml_cfg["lambda_reconstruction"])
+            self.acyclicity_constraint = yml_cfg["acyclicity_constraint"]
+            self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "all":
             self.do_single_nn = True
@@ -224,14 +230,44 @@ class SetupNeuralNetworks(Setup):
         else:
             raise ValueError(f"Unknown Network type: {self.nn_type}")
 
+    def _set_common_castle_attributes(self, yml_cfg):
+        self.rho = float(yml_cfg["rho"])
+        self.alpha = float(yml_cfg["alpha"])
+
+        if yml_cfg["activation"].lower() == "leakyrelu":
+            try:
+                self.relu_alpha = float(yml_cfg["relu_alpha"])
+            except KeyError:
+                self.relu_alpha = 0.3
+
+        self.additional_val_datasets = yml_cfg.get("additional_val_datasets")
+        for name_and_data in self.additional_val_datasets:
+            data = self._evaluate_data_path(name_and_data['data'])
+            if not os.path.exists(data):
+                raise ValueError(f"Data path for additional dataset {name_and_data['data']} does not exist: "
+                                 f"{name_and_data['name']}")
+            name_and_data['data'] = data
+
+        kernel_initializer_input_layers = yml_cfg.get("kernel_initializer_input_layers")
+        self.kernel_initializer_input_layers = _set_initializer_params(kernel_initializer_input_layers,
+                                                                       "input_", yml_cfg)
+
+        kernel_initializer_hidden_layers = yml_cfg.get("kernel_initializer_hidden_layers")
+        self.kernel_initializer_hidden_layers = _set_initializer_params(
+            kernel_initializer_hidden_layers, "hidden_", yml_cfg)
+
+        kernel_initializer_output_layers = yml_cfg.get("kernel_initializer_output_layers")
+        self.kernel_initializer_output_layers = _set_initializer_params(
+            kernel_initializer_output_layers, "output_", yml_cfg)
+
     def _setup_results_aggregation(self, yml_cfg):
         self.thresholds = yml_cfg["thresholds"]
         self.area_weighted = yml_cfg["area_weighted"]
         self.pdf = yml_cfg["pdf"]
-        self.aggregate_folder = self._evaluate_symlink(yml_cfg["aggregate_folder"])
+        self.aggregate_folder = self._evaluate_data_path(yml_cfg["aggregate_folder"])
 
     def _setup_neural_networks(self, yml_cfg):
-        self.nn_output_path = self._evaluate_symlink(yml_cfg["nn_output_path"])
+        self.nn_output_path = self._evaluate_data_path(yml_cfg["nn_output_path"])
 
         input_order = yml_cfg["input_order"]
         self.input_order = [
@@ -250,16 +286,16 @@ class SetupNeuralNetworks(Setup):
         self.train_verbose = yml_cfg["train_verbose"]
         self.tensorboard_folder = yml_cfg["tensorboard_folder"]
 
-        self.train_data_folder = self._evaluate_symlink(yml_cfg["train_data_folder"])
+        self.train_data_folder = self._evaluate_data_path(yml_cfg["train_data_folder"])
         self.train_data_fn = yml_cfg["train_data_fn"]
         self.valid_data_fn = yml_cfg["valid_data_fn"]
 
-        self.normalization_folder = self._evaluate_symlink(yml_cfg["normalization_folder"])
+        self.normalization_folder = self._evaluate_data_path(yml_cfg["normalization_folder"])
         self.normalization_fn = yml_cfg["normalization_fn"]
 
         self.input_sub = yml_cfg["input_sub"]
         self.input_div = yml_cfg["input_div"]
-        self.out_scale_dict_folder = self._evaluate_symlink(yml_cfg["out_scale_dict_folder"])
+        self.out_scale_dict_folder = self._evaluate_data_path(yml_cfg["out_scale_dict_folder"])
         self.out_scale_dict_fn = yml_cfg["out_scale_dict_fn"]
         self.batch_size = yml_cfg["batch_size"]
 
@@ -271,11 +307,111 @@ class SetupNeuralNetworks(Setup):
         self.val_batch_size = yml_cfg.get("val_batch_size")
         self.use_val_batch_size = yml_cfg.get("val_batch_size")
 
+        # Learning rate
         self.init_lr = yml_cfg["init_lr"]
-        self.step_lr = yml_cfg["step_lr"]
-        self.divide_lr = yml_cfg["divide_lr"]
+        # Learning rate schedule
+        lr_schedule = yml_cfg.get("lr_schedule")
+
+        self._set_learning_rate_schedule(lr_schedule, yml_cfg)
 
         self.train_patience = yml_cfg["train_patience"]
+
+    def _set_learning_rate_schedule(self, lr_schedule, yml_cfg):
+        # Backwards compatibility for config files that don't explicitly specify a schedule
+        # In this case, exponential schedule is assumed
+        if lr_schedule is None or lr_schedule == "exponential":
+            self.lr_schedule = {"schedule": "exponential",
+                                "step": yml_cfg["step_lr"],
+                                "divide": yml_cfg["divide_lr"]}
+
+            # Also keep the old attributes to ensure compatibility with old code parts
+            self.step_lr = yml_cfg["step_lr"]
+            self.divide_lr = yml_cfg["divide_lr"]
+        elif lr_schedule == "plateau":
+            self.lr_schedule = {"schedule": "plateau",
+                                "monitor": yml_cfg["monitor"],  # val_loss
+                                "factor": float(yml_cfg["factor"]),
+                                "patience": yml_cfg["patience"],
+                                "min_lr": yml_cfg["min_lr"]}  # 1e-8
+        elif lr_schedule == "linear":
+            self.lr_schedule = {"schedule": "linear",
+                                "decay_steps": yml_cfg["decay_steps"],
+                                "end_lr": yml_cfg["end_lr"]}
+        elif lr_schedule == "cosine":
+            self.lr_schedule = {"schedule": "cosine",
+                                "decay_steps": yml_cfg["decay_steps"],
+                                "alpha": yml_cfg["cosine_alpha"],
+                                "warmup_steps": yml_cfg["warmup_steps"]}
+
+
+def _set_initializer_params(initializer, prefix, yml_cfg):
+    if initializer is None:
+        return None
+    elif initializer == "Constant":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "value": float(yml_cfg[prefix + "init_constant_value"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'value' parameter for tf.keras.initializers.Constant initializer.")
+    elif initializer == "Identity":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "gain": float(yml_cfg[prefix + "init_identity_gain"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'gain' parameter for tf.keras.initializers.Identity initializer.")
+    elif initializer == "Orthogonal":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "gain": float(yml_cfg[prefix + "init_orthogonal_gain"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'gain' parameter for tf.keras.initializers.Orthogonal initializer.")
+    elif initializer == "RandomNormal":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "mean": float(yml_cfg[prefix + "init_random_normal_mean"]),
+                                  "std": float(yml_cfg[prefix + "init_random_normal_std"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'mean' or 'std' parameter for tf.keras.initializers.RandomNormal initializer.")
+    elif initializer == "RandomUniform":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "min_val": float(yml_cfg[prefix + "init_random_uniform_min_val"]),
+                                  "max_val": float(yml_cfg[prefix + "init_random_uniform_max_val"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'min_val' or 'max_val' parameter for tf.keras.initializers.RandomUniform initializer.")
+    elif initializer == "TruncatedNormal":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "mean": float(yml_cfg[prefix + "init_truncated_normal_mean"]),
+                                  "std": float(yml_cfg[prefix + "init_truncated_normal_std"])}
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'mean' or 'std' parameter for tf.keras.initializers.TruncatedNormal initializer.")
+    elif initializer == "VarianceScaling":
+        try:
+            kernel_initializer = {"initializer": initializer,
+                                  "scale": float(yml_cfg[prefix + "init_variance_scaling_scale"]),
+                                  "mode": yml_cfg[prefix + "init_variance_scaling_mode"],
+                                  "distribution": yml_cfg[prefix + "init_variance_scaling_distribution"]}
+
+        except KeyError:
+            raise ValueError(
+                "Missing value for 'mean' or 'std' parameter for tf.keras.initializers.VarianceScaling initializer.")
+    elif initializer in ["GlorotNormal", "GlorotUniform", "HeNormal",
+                         "HeUniform", "LecunNormal", "LecunUniform",
+                         "Ones", "Zeros"]:
+        kernel_initializer = {"initializer": initializer}
+    else:
+        raise ValueError(f"Unknown {prefix} kernel initializer value: {initializer}. Possible values are "
+                         f"['Constant', 'GlorotNormal', 'GlorotUniform', 'HeNormal', 'HeUniform', 'Identity', "
+                         f"'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal', 'RandomNormal', 'RandomUniform', "
+                         f"'TruncatedNormal', 'VarianceScaling', 'Zeros'].")
+    return kernel_initializer
 
 
 class SetupDiagnostics(SetupNeuralNetworks):
@@ -284,7 +420,7 @@ class SetupDiagnostics(SetupNeuralNetworks):
         self._setup_diagnostics(self.yml_cfg)
 
     def _setup_diagnostics(self, yml_cfg):
-        self.test_data_folder = self._evaluate_symlink(yml_cfg["test_data_folder"])
+        self.test_data_folder = self._evaluate_data_path(yml_cfg["test_data_folder"])
         self.test_data_fn = yml_cfg["test_data_fn"]
         self.diagnostics = yml_cfg["diagnostics"]
         self.diagnostics_time = yml_cfg["diagnostics_time"]

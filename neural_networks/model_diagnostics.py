@@ -90,15 +90,27 @@ class ModelDiagnostics():
         with self.valid_gen as valid_gen:
 
             model, inputs = self.models[var]
+            if self.setup.nn_type == "CASTLEOriginal":
+                inputs = [i + 1 for i in inputs]
+                inputs.insert(0, 0)
 
             if isinstance(itime, int):
-
-                X, truth = valid_gen[itime]
+                if self.setup.nn_type == "CASTLEOriginal":
+                    # Here, X is actually [truth, X]
+                    X = valid_gen[itime]
+                    truth = X[:, 0]
+                    # Replace truth in X with zeros to get accurate evaluation results
+                    X[:, 0] = np.zeros_like(truth)
+                    # Need to expand dims to make reshape work later on
+                    truth = np.expand_dims(truth, axis=-1)
+                else:
+                    X, truth = valid_gen[itime]
                 pred = model.predict_on_batch(X[:, inputs])
 
-                # For CASTLE, we just want the prediction for Y
-                if self.setup.nn_type == "castleNN":
-                    pred = pred[:, 0]  # shape (batch_size)
+                # For both CASTLE models, we just want the prediction for Y
+                if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
+                    # Need to expand dims to make reshape work later on
+                    pred = np.expand_dims(pred[:, 0], axis=-1) # shape (batch_size)
 
                 # Inverse transform
                 truth = valid_gen.output_transform.inverse_transform(truth)
@@ -111,13 +123,21 @@ class ModelDiagnostics():
                 truth = np.zeros([nTime, self.ngeo, 1])
                 pred = np.zeros([nTime, self.ngeo, 1])
                 for iTime in range(nTime):
-
-                    X_tmp, t_tmp = valid_gen[iTime]
+                    if self.setup.nn_type == "CASTLEOriginal":
+                        # Here, X_tmp is actually [t_tmp, X_tmp]
+                        X_tmp = valid_gen[iTime]
+                        t_tmp = X_tmp[:, 0]
+                        # Replace t_tmp in X_tmp with zeros to get accurate evaluation results
+                        X_tmp[:, 0] = np.zeros_like(t_tmp)
+                        # Need to expand dims to make reshape work later on
+                        t_tmp = np.expand_dims(t_tmp, axis=-1)
+                    else:
+                        X_tmp, t_tmp = valid_gen[iTime]
                     p_tmp = model.predict_on_batch(X_tmp[:, inputs])
 
                     # For CASTLE, we just want the prediction for Y
-                    if self.setup.nn_type == "castleNN":
-                        p_tmp = p_tmp[:, 0]  # shape (batch_size)
+                    if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
+                        p_tmp = np.expand_dims(p_tmp[:, 0], axis=-1)
 
                     # Inverse transform
                     truth[iTime, :] = valid_gen.output_transform.inverse_transform(t_tmp)
@@ -157,6 +177,10 @@ class ModelDiagnostics():
 
         # Train data as background
         model, inputs = self.models[var]
+        if self.setup.nn_type == "CASTLEOriginal":
+            inputs = [i + 1 for i in inputs]
+            inputs.insert(0, 0)
+
         self.train_gen = build_train_generator(
             self.input_vars_dict,
             self.output_vars_dict,
@@ -165,11 +189,10 @@ class ModelDiagnostics():
         )
         with self.train_gen as train_gen:
             if itime == 'range':
-
                 if not nTime:
                     # nTime = len(train_gen)
                     data = h5py.File(train_gen.data_fn, "r")
-                    X_train = _normalize(data, train_gen)
+                    X_train = self._normalize(data, train_gen)
                 else:
                     # X_train, _ = train_gen[0] #TODO: Change this to retrieve all the data
                     n_batches = int((self.ngeo / self.setup.batch_size) * nTime)
@@ -180,7 +203,15 @@ class ModelDiagnostics():
                     eIdx = self.setup.batch_size
 
                     for i in range(n_batches):
-                        X_train[sIdx:eIdx, :] = train_gen[i][0]
+                        if self.setup.nn_type == "CASTLEOriginal":
+                            # Here, X is actually [truth, X]
+                            t_X = train_gen[i]
+                            t_tmp = t_X[:, 0]
+                            # Replace truth_tmp in truth_X with zeros to get accurate evaluation results
+                            t_X[:, 0] = np.zeros_like(t_tmp)
+                            X_train[sIdx:eIdx, :] = t_X
+                        else:
+                            X_train[sIdx:eIdx, :] = train_gen[i][0]
                         sIdx += self.setup.batch_size
                         eIdx += self.setup.batch_size
 
@@ -197,7 +228,7 @@ class ModelDiagnostics():
                 if not nTime:
                     # nTime = len(train_gen)
                     data = h5py.File(valid_gen.data_fn, "r")
-                    X_test = _normalize(data, valid_gen)
+                    X_test = self._normalize(data, valid_gen)
                 else:
                     n_batches = nTime
                     X_test = np.zeros([self.ngeo * nTime, len(self.inputs)])
@@ -205,7 +236,15 @@ class ModelDiagnostics():
                     sIdx = 0
                     eIdx = self.ngeo
                     for i in range(n_batches):
-                        X_test[sIdx:eIdx, :] = valid_gen[i][0]
+                        if self.setup.nn_type == "CASTLEOriginal":
+                            # Here, X is actually [truth, X]
+                            t_X = valid_gen[i]
+                            t_tmp = t_X[:, 0]
+                            # Replace truth_tmp in truth_X with zeros to get accurate evaluation results
+                            t_X[:, 0] = np.zeros_like(t_tmp)
+                            X_test[sIdx:eIdx, :] = t_X
+                        else:
+                            X_test[sIdx:eIdx, :] = valid_gen[i][0]
                         sIdx += self.ngeo
                         eIdx += self.ngeo
 
@@ -244,6 +283,22 @@ class ModelDiagnostics():
         else:
             print(f"metric not available, only: mean, abs_mean, abs_mean_sign and all; stop")
             exit()
+
+    def _normalize(self, data, generator):
+        data_x = data["vars"][:, generator.input_idxs]
+
+        # Normalize
+        data_x = generator.input_transform.transform(data_x)
+
+        if self.setup.nn_type == "CASTLEOriginal":
+            # In this case, Y is also expected as an input, so we pass some dummy data
+            y = np.zeros_like(data["vars"][:, generator.output_idxs])
+            data_x = np.concatenate((y, data_x), axis=1)
+
+        # Delete data to save memory
+        del data
+        gc.collect()
+        return data_x
 
     # Plotting functions
     def plot_double_xy(
@@ -1047,13 +1102,3 @@ def plot_profiles(
     plt.show()
 
 
-def _normalize(data, generator):
-    data_x = data["vars"][:, generator.input_idxs]
-
-    # Normalize
-    data_x = generator.input_transform.transform(data_x)
-
-    # Delete data to save memory
-    del data
-    gc.collect()
-    return data_x

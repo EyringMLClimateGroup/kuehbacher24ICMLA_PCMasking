@@ -4,7 +4,8 @@ from pathlib import Path
 import tensorflow as tf
 
 from utils.variable import Variable_Lev_Metadata
-from neural_networks.castle.castle_model_wo_y import CASTLE
+from neural_networks.castle.castle_model_adapted import CASTLEAdapted
+from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 
@@ -37,22 +38,36 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
         path = path / Path(
             cfg_str.format(alpha_lasso=setup.alpha_lasso)
         )
-    elif model_type == "castleNN":
+    elif model_type == "CASTLEOriginal":
+        cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}"
         if setup.distribute_strategy == "mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
-        elif setup.distribute_strategy == "multi_worker_mirrored":
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
-        else:
-            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
+            cfg_str += "-mirrored"
+
         path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta,
                                           lambda_weight=setup.lambda_weight))
 
+    elif model_type == "CASTLEAdapted":
+        cfg_str = "r{rho}-a{alpha}-lpred{lambda_prediction}-lspar{lambda_sparsity}-" \
+                  "lrec{lambda_reconstruction}-lacy{lambda_acyclicity}-{acyclicity_constraint}"
+        if setup.distribute_strategy == "mirrored":
+            cfg_str += "-mirrored"
+
+        path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha,
+                                          lambda_prediction=setup.lambda_prediction,
+                                          lambda_sparsity=setup.lambda_sparsity,
+                                          lambda_reconstruction=setup.lambda_reconstruction,
+                                          lambda_acyclicity=setup.lambda_acyclicity,
+                                          acyclicity_constraint=setup.acyclicity_constraint))
+
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")
+    str_act = str(setup.activation)
+    if str_act.lower() == "leakyrelu" and (model_type == "CASTLEOriginal" or model_type == "CASTLEAdapted"):
+        str_act += f"_{setup.relu_alpha}"
     path = path / Path(
         "hl_{hidden_layers}-act_{activation}-e_{epochs}/".format(
             hidden_layers=str_hl,
-            activation=setup.activation,
+            activation=str_act,
             epochs=setup.epochs,
         )
     )
@@ -107,13 +122,18 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
     folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
     filename = get_filename(setup, output)
 
-    if setup.do_castle_nn:
+    if setup.nn_type == "CASTLEOriginal":
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE,
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEOriginal': CASTLEOriginal,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
+    elif setup.nn_type == "CASTLEAdapted":
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
 
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEAdapted': CASTLEAdapted,
+                                                                      'MaskedDenseLayers': MaskedDenseLayer})
     else:
         modelname = Path(folder, filename + '_model.h5')
         print(f"\nLoad model: {modelname}")
@@ -145,7 +165,8 @@ def get_var_list(setup, target_vars):
 
 
 def load_single_model(setup, var_name):
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or setup.do_castle_nn:
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or \
+            setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
 
@@ -171,7 +192,8 @@ def load_models(setup, skip_causal_phq=False):
     models = collections.defaultdict(dict)
 
     output_list = get_var_list(setup, setup.spcam_outputs)
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or setup.do_castle_nn:
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn \
+            or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
         nn_type = setup.nn_type  # if setup.do_random_single_nn else 'SingleNN'
         for output in output_list:
             output = Variable_Lev_Metadata.parse_var_name(output)

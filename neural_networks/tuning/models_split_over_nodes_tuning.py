@@ -19,7 +19,7 @@ def write_inputs_and_outputs_lists(setup, inputs_file, outputs_file):
     print(f"Successfully wrote NN output variables to {outputs_file}.\n")
 
 
-def generate_single_nn_for_output_list(setup, inputs_list, outputs_list, tuning_params):
+def generate_single_nn_for_output_list(setup, inputs_list, outputs_list, tuning_params, seed=None):
     model_descriptions = list()
 
     for output in outputs_list:
@@ -30,7 +30,7 @@ def generate_single_nn_for_output_list(setup, inputs_list, outputs_list, tuning_
     return model_descriptions
 
 
-def generate_models(setup, inputs, outputs, tuning_params):
+def generate_models(setup, inputs, outputs, tuning_params, seed=None):
     """ Generate all NN models specified in setup """
     model_descriptions = list()
 
@@ -40,8 +40,8 @@ def generate_models(setup, inputs, outputs, tuning_params):
                                    f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)
 
-    if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
-        model_descriptions.extend(generate_single_nn_for_output_list(setup, inputs, outputs, tuning_params))
+    if setup.do_single_nn or setup.do_pca_nn or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+        model_descriptions.extend(generate_single_nn_for_output_list(setup, inputs, outputs, tuning_params, seed=seed))
 
     else:
         raise NotImplementedError("Splitting training over SLURM nodes only implemented for "

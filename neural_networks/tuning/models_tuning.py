@@ -94,7 +94,7 @@ class ModelDescription:
         activation = tuning_params['activation_type']
         lambda_weight = tf.cast(tuning_params['lambda_weight'], dtype=tf.float32)
 
-        if setup.do_castle_nn:
+        if setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
                 self.strategy = tf.distribute.MirroredStrategy()
@@ -116,7 +116,7 @@ class ModelDescription:
             else:
                 self.strategy = None
 
-            self.model = build_castle(num_inputs=len(self.inputs),
+            self.model = build_castle(num_x_inputs=len(self.inputs),
                                       hidden_layers=hidden_layers,
                                       activation=activation, rho=self.setup.rho, alpha=self.setup.alpha,
                                       lambda_weight=lambda_weight, learning_rate=learning_rate, strategy=self.strategy)
@@ -268,7 +268,7 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        if self.setup.nn_type == "castleNN":
+        if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
         else:
@@ -454,7 +454,7 @@ def generate_models(setup, tuning_params, threshold_dict=False):
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    if setup.do_single_nn or setup.do_pca_nn or setup.do_castle_nn:
+    if setup.do_single_nn or setup.do_pca_nn or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
         model_descriptions.extend(generate_all_single_nn(setup, tuning_params))
 
     if setup.do_random_single_nn:

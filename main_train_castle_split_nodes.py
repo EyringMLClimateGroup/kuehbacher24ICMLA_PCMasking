@@ -7,12 +7,11 @@ import tensorflow as tf
 
 from neural_networks.models_split_over_nodes import generate_models
 from neural_networks.training import train_all_models
-from neural_networks.training_mirrored_strategy import train_all_models as train_all_models_mirrored
 from utils.setup import SetupNeuralNetworks
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
-                 continue_previous_training):
+                 continue_previous_training, seed):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -20,14 +19,11 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, lo
     outputs = _read_txt_to_list(nn_outputs_file)
 
     selected_outputs = [outputs[i] for i in train_indices]
-    model_descriptions = generate_models(setup, inputs, selected_outputs, continue_training=continue_previous_training)
+    model_descriptions = generate_models(setup, inputs, selected_outputs, continue_training=continue_previous_training,
+                                         seed=seed)
 
-    if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
-                                  continue_training=continue_previous_training)
-    else:
-        train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
-                         continue_training=continue_previous_training)
+    train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                     continue_training=continue_previous_training)
 
 
 def _read_txt_to_list(txt_file):
@@ -123,7 +119,7 @@ if __name__ == "__main__":
         raise ValueError("Given train indices were incorrect. Start indices must be smaller than end index. ")
 
     if random_seed_parsed is False:
-        pass
+        random_seed = None
     else:
         if random_seed_parsed is True:
             random_seed = 42
@@ -140,7 +136,7 @@ if __name__ == "__main__":
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, random_seed)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
