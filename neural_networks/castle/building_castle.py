@@ -11,31 +11,22 @@ from neural_networks.castle.castle_model_adapted import CASTLEAdapted
 
 # Todo:
 #  - Implement partial training
-#  - Implement CASTLE code version of loss
 def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False, strategy=None, seed=None):
     """
     Builds and compiles a neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
 
-    The output of the model is an array of shape [num_x_inputs + 1, batch_size, 1].
-    The first element of the output (output[0]) contains the prediction for the target variable y.
+    The output of the model is an array of shape [batch_size, num_x_inputs + 1].
+    The first element of the output (output[:, 0]) contains the prediction for the target variable y, while
+    the other outputs are reconstructions of the regressors x.
 
     Args:
-        num_x_inputs (int): The number of predictors, i.e. the x-variables. This is also the number of neural network
-            inputs for all input sub-layers.
-        hidden_layers (list of int): A list containing the hidden units for all hidden layers.
-            ``len(hidden_layers)`` gives the number of hidden layers.
-        activation (str, case insensitive): A string specifying the activation function,
-            e.g. `relu`, `linear`, `sigmoid`, `tanh`. In addition to tf.keras specific strings for
-            built-in activation functions, `LeakyReLU` can be used to specify leaky ReLU activation function.
-            See also https://www.tensorflow.org/api_docs/python/tf/keras/layers/Activation.
-        rho (float): Penalty parameter for Lagrangian optimization scheme for acyclicity constraint.
-            `rho` must be greater than 0.
-        alpha (float): Lagrangian multiplier for Lagrangian optimization scheme for acyclicity constraint.
-        lambda_weight (float): Weighting coefficient for the regularization term in the training loss.
+        setup (utils.setup.SetupNeuralNetworks): A utils.setup.SetupNeuralNetworks instance containing
+            specifics for CASTLE model creation (e.g. number of hidden layers, activation function, etc)
+        num_x_inputs (int): The number of regressors, i.e. the x-variables.
         learning_rate (float): Optimizer learning rate: Defaults to 0.001.
-        eager_execution (bool): If `True`, the code will be executed eagerly and the model's logic will
+        eager_execution (bool): If `True`, the code will be executed in eager mode and the model's logic will
             not be wrapped inside a tf.function. Can be used for debugging purposes. Defaults to `False`.
         strategy (tf.distribute.Strategy): State and compute distribution policy for parallelization
             across GPUs and/or SLURM nodes.
@@ -43,12 +34,11 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
             Note that a seeded initializer will produce the same random values across multiple calls.
 
     Returns:
-        tf.keras.Model: A tf.keras model designed according to CASTLE architecture.
+        tf.keras.Model: A tf.keras model designed with CASTLE regularization.
 
     Raises:
         ValueError: If `rho` is not greater than 0.
-        ValueError: If the CASTLE model flavor specified in setup is unknown.
-            Known flavors are: 'CastleOriginal', 'CastleAdapted'
+        ValueError: If the `setup.nn_type` is not one of `['CastleOriginal', 'CastleAdapted']`.
     """
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)
@@ -139,6 +129,24 @@ def _compile_castle(model, learning_rate, eager_execution):
 
 
 def get_kernel_initializer(kernel_initializer, seed):
+    """
+    Parses the kernel initializer from given string to tf.keras.initializers.Initializer instance.
+
+    Args:
+        kernel_initializer (str): String specifying kernel initializer type.
+        seed (int): Random seed for kernel initializer. Used to make the behavior of the initializer
+            deterministic. Note that a seeded initializer will not produce the same random values across
+            multiple calls, but multiple initializers will produce the same sequence when
+            constructed with the same seed value.
+
+    Returns:
+        tf.keras.initializers.Initializer: kernel initializer instance
+
+    Raises:
+        ValueError: If `kernel_initializer` is not in `['Constant', 'GlorotNormal', 'GlorotUniform',
+            'HeNormal', 'HeUniform', 'Identity', 'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal',
+            'RandomNormal', 'RandomUniform','TruncatedNormal', 'VarianceScaling', 'Zeros']`.
+    """
     if kernel_initializer is None:
         kernel_initializer = None
     elif kernel_initializer["initializer"] == "Constant":

@@ -36,8 +36,7 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
 
 def train_save_model(
         model_description, setup, from_checkpoint=False, continue_training=False,
-        timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")
-):
+        timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
     """ Train a model and save all information necessary for CAM """
     if setup.distribute_strategy == "mirrored":
         print(f"\n\nDistributed training of model {model_description}\n", flush=True)
@@ -253,6 +252,14 @@ def set_learning_rate_schedule(learning_rate, schedule):
 
 
 def normalize(data, generator):
+    """Applies input and output transformations from
+    neural_networks.cbrain.data_generator.DataGenerator instance to
+    input and output variables in `data`.
+
+    Args:
+        data: h5py.File object containing input and output variables in data["vars"]
+        generator (neural_networks.cbrain.data_generator.DataGenerator): DataGenerator instance
+    """
     data_x = data["vars"][:, generator.input_idxs]
     data_y = data["vars"][:, generator.output_idxs]
 
@@ -267,6 +274,17 @@ def normalize(data, generator):
 
 
 def convert_generator_to_dataset(generator, name, input_y=False):
+    """Converts an instance of neural_networks.cbrain.data_generator.DataGenerator into
+    a batched tf.data.Dataset object.
+
+    Args:
+        generator (neural_networks.cbrain.data_generator.DataGenerator): DataGenerator instance
+        name: Name of the output dataset
+        input_y: Whether the target y is part of the network inputs.
+
+    Returns:
+        Batched tf.data.Dataset instance
+    """
     data = h5py.File(generator.data_fn, "r")
     batch_size = generator.batch_size
 

@@ -12,20 +12,16 @@ from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 @tf.keras.utils.register_keras_serializable()
 class CASTLEBase(tf.keras.Model, ABC):
-    """A neural network model with CASTLE (Causal Structure Learning) regularization adapted
-    from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
+    """Abstract base class for a neural network model with CASTLE (Causal Structure Learning) regularization
+    adapted from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
 
-    The output of the model is an array of shape [num_x_inputs + 1, batch_size, 1].
-    The first element of the output (output[0]) contains the prediction for the target variable y.
-
-    Key differences to the original paper:
-      - Target y is not passed as an input into the network.
-      - Sparsity loss uses the matrix L1-norm and is averaged over the number of input layers.
+    The output of the model is an array of shape `[batch_size, num_x_inputs + 1]`.
+    The first element of the output (`output[:, 0]`) contains the prediction for the target variable `y`, while
+    the other outputs are reconstructions of the regressors `x`.
 
     Args:
-        num_x_inputs (int): The number of predictors, i.e. the x-variables. This is also the number of neural network
-            inputs for all input sub-layers.
+        num_x_inputs (int): The number of regressors, i.e. the x-variables.
         hidden_layers (list of int): A list containing the hidden units for all hidden layers.
             ``len(hidden_layers)`` gives the number of hidden layers.
         activation (str, case insensitive): A string specifying the activation function,
@@ -35,11 +31,39 @@ class CASTLEBase(tf.keras.Model, ABC):
         rho (float): Penalty parameter for Lagrangian optimization scheme for acyclicity constraint.
             `rho` must be greater than 0.
         alpha (float): Lagrangian multiplier for Lagrangian optimization scheme for acyclicity constraint.
-        relu_alpha (float): Negative float coefficient for leaky ReLU activation function. Default: 0.3.
-        lambda_weight (float): Weighting coefficient for the regularization term in the training loss.
         seed (int): Random seed. Used to make the behavior of the initializer deterministic.
             Note that a seeded initializer will produce the same random values across multiple calls.
-        name (str): Name of the model. Default: "castle_model".
+        kernel_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense input layer.
+        kernel_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense hidden layer.
+        kernel_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense output layer.
+        bias_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense input layer.
+        bias_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense hidden layer.
+        bias_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense output layer.
+        kernel_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense input layer.
+        kernel_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense hidden layer.
+        kernel_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense output layer.
+        bias_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense input layer.
+        bias_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense hidden layer.
+        bias_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense output layer.
+        activity_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense input layer (its "activation").
+        activity_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense hidden layer (its "activation").
+        activity_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense output layer (its "activation").
+        name (string) : Name of the model. Default: "castle_model".
         **kwargs: Keyword arguments.
     """
 
@@ -186,7 +210,7 @@ class CASTLEBase(tf.keras.Model, ABC):
                               name="reconstruction_loss_reduce_mean")
 
     def compute_acyclicity_loss(self, input_layer_weights, acyclicity_loss_func):
-        """Computes the values of the NOTEARS acyclicity constraint."""
+        """Computes the Lagrangian optimization equation with the acyclicity constraint."""
         l2_norm_matrix = self.compute_l2_norm_matrix(input_layer_weights)
 
         h = acyclicity_loss_func(l2_norm_matrix)
@@ -200,15 +224,15 @@ class CASTLEBase(tf.keras.Model, ABC):
                            name="acyclicity_loss")
 
     def compute_l2_norm_matrix(self, input_layer_weights):
-        """ Compute matrix with l2 - norms of input sub-layer weight matrices.
+        """ Compute matrix with L2-norms of input sub-layer weight matrices.
         This method must be overridden in subclassed models."""
         raise NotImplementedError(
             "Unimplemented `neural_networks.castle.castle_model_base.CASTLEBase.compute_l2_norm_matrix()`: "
             "You must subclass `CASTLEBase` with an overridden `compute_l2_norm_matrix()` method.")
 
     def compute_sparsity_loss(self, input_layer_weights):
-        """Computes sparsity loss as the sum of the matrix L1 norm of the input layer weight matrices."""
-        # Compute the matrix l1 - norm (maximum absolute column sum norm) for the weight matrices in the input_sublayer
+        """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
+        # Compute the matrix L1-norm (maximum absolute column sum norm) for the weight matrices in the input_sublayer
         sparsity_regularizer = self.compute_sparsity_regularizer(input_layer_weights)
 
         # Scale with number of input layers
@@ -216,7 +240,7 @@ class CASTLEBase(tf.keras.Model, ABC):
         return sparsity_regularizer
 
     def compute_sparsity_regularizer(self, input_layer_weights):
-        """ Compute sparsity regularizer from the l1-norms of the input layer weights.
+        """ Compute sparsity regularizer from the L1-norms of the input layer weights.
         This method must be overridden in subclassed models."""
         raise NotImplementedError(
             "Unimplemented `neural_networks.castle.castle_model_base.CASTLEBase.compute_sparsity_regularizer().`: "
@@ -224,7 +248,7 @@ class CASTLEBase(tf.keras.Model, ABC):
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):
-        """Computes the MSE between inputs x values and the predicted reconstructions.
+        """Computes the MSE between input x-values and the predicted reconstructions.
         This method must be overridden in subclassed models."""
         raise NotImplementedError(
             "Unimplemented `neural_networks.castle.castle_model_base.CASTLEBase.compute_mse_x().`: "
@@ -302,6 +326,19 @@ class CASTLEBase(tf.keras.Model, ABC):
 
     @classmethod
     def from_config(cls, config):
+        """Creates a layer from its config.
+        Overrides base method.
+
+        This method is the reverse of `get_config`, capable of instantiating the
+        same layer from the config dictionary. It does not handle layer connectivity
+        (handled by Network), nor weights (handled by `set_weights`).
+
+        Args:
+            config: A Python dictionary, typically the output of get_config.
+
+        Returns:
+            A layer instance
+        """
         kernel_initializer_input_layers_config = config.pop("kernel_initializer_input_layers")
         kernel_initializer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
             kernel_initializer_input_layers_config)
@@ -397,7 +434,11 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
                 activity_regularizer_hidden_layers=None,
                 activity_regularizer_output_layers=None,
                 relu_alpha=0.3, seed=None, with_y=False):
-    """Initializes the network layers."""
+    """Builds the network graph.
+
+    Returns:
+        Lists containing network input layers, network hidden layers and network output layers.
+    """
     if kernel_initializer_input_layers is None:
         kernel_initializer_input_layers = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=seed)
     if kernel_initializer_hidden_layers is None:
@@ -462,6 +503,14 @@ def _build_input_sub_layers_with_y(num_input_layers, num_x_inputs, units, act_fu
                                    kernel_regularizer_input_layers,
                                    bias_regularizer_input_layers,
                                    activity_regularizer_input_layers):
+    """
+    Builds input sub-layers where y is part of the network input.
+    There will be `num_input_layers == num_x_inputs + 1` input layers and all input
+    sub-layers are masked.
+
+    Returns:
+        List of network input layers
+    """
     # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
     input_sub_layers = list()
     for i in range(num_input_layers):
@@ -481,6 +530,14 @@ def _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, units, act
                                       kernel_regularizer_input_layers,
                                       bias_regularizer_input_layers,
                                       activity_regularizer_input_layers):
+    """
+    Builds input sub-layers where y is not part of the network input.
+    There will be `num_input_layers == num_x_inputs` input layers. The first
+    input layer is not masked, subsequent input layers are.
+
+    Returns:
+        List of network input layers
+    """
     # Input sub-layers: One sub-layer for each input and each sub-layers receives all the inputs
     input_sub_layers = list()
     # First input layer is not masked
@@ -501,7 +558,7 @@ def _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, units, act
 
 
 def compute_h_matrix_exp(matrix, approximate=True):
-    """Compute the acyclicity constraint function for a (d x d)-matrix M::
+    """Compute the acyclicity constraint from NOTEARS for a (d x d)-matrix M:
 
         h(M) = tr(e^(M * M)) - d
 
@@ -548,7 +605,7 @@ def compute_h_matrix_exp(matrix, approximate=True):
 
 
 def compute_h_log_det(matrix, s=1.0):
-    """Compute the acyclicity constraint function for a (d x d)-matrix W::
+    """Compute the acyclicity constraint function from DAGMA for a (d x d)-matrix W::
 
         h^s(W) = - logdet(sI - W * W) + d log(s)
 
@@ -556,6 +613,7 @@ def compute_h_log_det(matrix, s=1.0):
 
     See Bello et al. (2022). DAGMA: Learning DAGs via M-matrices and a Log-Determinant Acyclicity Characterization.
         https://doi.org/10.48550/arXiv.2209.08037
+    for details.
 
     Args:
         matrix (tensor or numpy array): A matrix with shape with shape `[..., d, d]`.

@@ -13,16 +13,18 @@ class CASTLEOriginal(CASTLEBase):
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
 
-    The output of the model is an array of shape [num_x_inputs + 1, batch_size, 1].
-    The first element of the output (output[0]) contains the prediction for the target variable y.
+    The output of the model is an array of shape `[batch_size, num_x_inputs + 1]`.
+    The first element of the output (`output[:, 0]`) contains the prediction for the target variable `y`, while
+    the other outputs are reconstructions of the regressors `x`.
 
-    Key differences to the original paper:
-      - Target y is not passed as an input into the network.
-      - Sparsity loss uses the matrix L1-norm and is averaged over the number of input layers.
+    As in the original paper, the model receives inputs of the shape `[y, x_1, ..., x_d]`,
+    where `y` is the label to be predicted and x_i are the regressors. There is one input sub-layer for
+    all elements in the input vector (i.e. there are `num_x_inputs` + 1 input sub-layers).
+    The computation of the sparsity loss is slightly adapted from the paper, as in that the matrix
+    L1-norm is used for its computation and the sparsity loss is averaged over the number of input layers.
 
     Args:
-        num_x_inputs (int): The number of predictors, i.e. the x-variables. This is also the number of neural network
-            inputs for all input sub-layers.
+        num_x_inputs (int): The number of regressors, i.e. the x-variables.
         hidden_layers (list of int): A list containing the hidden units for all hidden layers.
             ``len(hidden_layers)`` gives the number of hidden layers.
         activation (str, case insensitive): A string specifying the activation function,
@@ -32,11 +34,42 @@ class CASTLEOriginal(CASTLEBase):
         rho (float): Penalty parameter for Lagrangian optimization scheme for acyclicity constraint.
             `rho` must be greater than 0.
         alpha (float): Lagrangian multiplier for Lagrangian optimization scheme for acyclicity constraint.
-        relu_alpha (float): Negative float coefficient for leaky ReLU activation function. Default: 0.3.
-        lambda_weight (float): Weighting coefficient for the regularization term in the training loss.
+        beta (float): Weighting coefficient for sparsity loss.
+        lambda_weight (float): Weighting coefficient for sum of all regularization losses.
+        relu_alpha (float): Negative slope coefficient for leaky ReLU activation function. Default: 0.3.
         seed (int): Random seed. Used to make the behavior of the initializer deterministic.
             Note that a seeded initializer will produce the same random values across multiple calls.
-        name (str): Name of the model. Default: "castle_model".
+        kernel_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense input layer.
+        kernel_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense hidden layer.
+        kernel_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the kernel
+            weights matrix of the dense output layer.
+        bias_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense input layer.
+        bias_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense hidden layer.
+        bias_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense output layer.
+        kernel_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense input layer.
+        kernel_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense hidden layer.
+        kernel_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the kernel weights matrix of the dense output layer.
+        bias_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense input layer.
+        bias_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense hidden layer.
+        bias_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense output layer.
+        activity_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense input layer (its "activation").
+        activity_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense hidden layer (its "activation").
+        activity_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense output layer (its "activation").
+        name (string) : Name of the model. Default: "castle_original".
         **kwargs: Keyword arguments.
     """
 
@@ -111,7 +144,9 @@ class CASTLEOriginal(CASTLEBase):
                       zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
 
         # Stack outputs into one tensor
-        outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
+        # outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
+        outputs = tf.stack(yx_outputs, axis=1, name="stack_outputs")
+        outputs = tf.reshape(outputs, shape=(tf.shape(outputs)[0], tf.shape(outputs)[1]), name="reshape_output_dims")
 
         super(CASTLEOriginal, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
                                              activation=activation, rho=rho, alpha=alpha, seed=seed,
@@ -190,8 +225,10 @@ class CASTLEOriginal(CASTLEBase):
         return loss
 
     def compute_l2_norm_matrix(self, input_layer_weights):
-        """Compute matrix with l2 - norms of input sub-layer weight matrices:
-        The entry [l2_norm_matrix]_(k,j) is the l2-norm of the k-th row of the weight matrix in input sub-layer j.
+        """Compute matrix with L2-norms of input sub-layer weight matrices.
+        Overrides base method.
+
+        The entry [l2_norm_matrix]_(k,j) is the L2-norm of the k-th row of the weight matrix in input sub-layer j.
         Since our weight matrices are of dimension (d+1)x(d+1) (d is the number of x-variables, and we have d+1
         variables all together, x-variables and y), the resulting matrix will, have dimensions (d+1)x(d+1)
 
@@ -199,7 +236,7 @@ class CASTLEOriginal(CASTLEBase):
             input_layer_weights (list of tensors): List with weight matrices of the input layers
 
         Returns:
-            Tensor of shape (d+1)x(d+1), l2-norm matrix of input layer weights
+            Tensor of shape (d+1)x(d+1), L2-norm matrix of input layer weights
         """
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
@@ -207,8 +244,11 @@ class CASTLEOriginal(CASTLEBase):
         return tf.stack(l2_norm_matrix, axis=1)
 
     def compute_sparsity_regularizer(self, input_layer_weights):
-        """ Compute sparsity regularizer from the l1-norms of the input layer weights.
-        We need to account for masked rows in all input layers.
+        """ Compute sparsity regularizer from the L1-norms of the input layer weights.
+        Overrides base method.
+
+        All input layers are masked and masked rows need to be accounted for when computing
+        the sparsity loss.
 
         Args:
             input_layer_weights: (list of tensors): List with weight matrices of the input layers
@@ -228,8 +268,10 @@ class CASTLEOriginal(CASTLEBase):
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):
-        """Computes the MSE between inputs x values and the predicted reconstructions.
-        Here, `input_true` contains both y and x-values."""
+        """Computes the MSE between input x-values and the predicted reconstructions.
+        Overrides base method.
+
+        `input_true` contains both y and x-values."""
         return tf.metrics.mse(input_true[:, 1:], yx_pred[:, 1:])
 
     def get_config(self):
