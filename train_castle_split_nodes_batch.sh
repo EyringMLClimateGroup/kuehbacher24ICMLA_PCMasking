@@ -40,7 +40,8 @@ display_help() {
   echo ""
 }
 
-error_exit() {
+error_exit_help() {
+  echo "See option -h for help on how to run this script."
   echo -e "Exiting script.\n"
   exit 1
 }
@@ -71,7 +72,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       CONFIG=$OPTARG
     else
       echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
-      error_exit
+      error_exit_help
     fi
     ;;
   i)
@@ -80,7 +81,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       INPUTS=$OPTARG
     else
       echo -e "\nError: Invalid value for option -i (CASTLE inputs list). Must be .txt file."
-      error_exit
+      error_exit_help
     fi
     ;;
   o)
@@ -89,7 +90,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       OUTPUTS=$OPTARG
     else
       echo -e "\nError: Invalid value for option -i (CASTLE outputs list). Must be .txt file."
-      error_exit
+      error_exit_help
     fi
     ;;
   x)
@@ -105,7 +106,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       SEED="False"
     else
       echo -e "\nError: Invalid value for option -s (random seed). Must be an integer or NULL/False."
-      error_exit
+      error_exit_help
     fi
     ;;
   j)
@@ -121,7 +122,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       LOAD_CKPT="False"
     else
       echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f')."
-      error_exit
+      error_exit_help
     fi
     ;;
   t)
@@ -133,7 +134,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       CONTINUE_TRAINING="False"
     else
       echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
-      error_exit
+      error_exit_help
     fi
     ;;
   :)
@@ -149,16 +150,16 @@ shift "$(($OPTIND - 1))"
 
 if ((found_c == 0)); then
   echo -e "\nError: Failed to provide CASTLE YAML config file.\n"
-  error_exit
+  error_exit_help
 elif ((found_i == 0)); then
   echo -e "\nError: Failed to provide CASTLE inputs list .txt file.\n"
-  error_exit
+  error_exit_help
 elif ((found_o == 0)); then
   echo -e "\nError: Failed to provide CASTLE outputs list .txt file.\n"
-  error_exit
+  error_exit_help
 elif ((found_x == 0)); then
   echo -e "\nError: Failed to provide training indices.\n"
-  error_exit
+  error_exit_help
 fi
 
 if ((found_s == 0)); then
