@@ -13,23 +13,33 @@ display_help() {
   echo " -h    Print this help."
   echo ""
 }
+
+error_exit() {
+  echo "Invalid option. See option -h for help on how to run this script."
+  echo -e "Exiting script.\n"
+  exit 1
+}
+
 while getopts "h" opt; do
   case ${opt} in
   h)
     display_help
     exit 0
     ;;
+  \?)
+    error_exit
+    ;;
   esac
 done
 shift "$(($OPTIND - 1))"
 
 # Set tuning parameters
-lambda_prediction=(2 4 8 10)
+lambda_prediction=(1 2 4 8 10)
 lambda_sparsity=(0.1 0.5 1.0)
 
 # Set base directory for config files and inputs/outputs list files
-base_dir="output_castle/manual_tuning_tphystnd_691.39"
-tuning_model="castle_adapted_big_notears"
+base_dir="output_castle/manual_tuning_tphystnd_691.39_v4"
+tuning_model="castle_adapted_small_dagma"
 in="${base_dir}/inputs_list.txt"
 out="${base_dir}/outputs_list.txt"
 
@@ -39,7 +49,7 @@ idx="20-20"
 for p in "${lambda_prediction[@]}"; do
   for s in "${lambda_sparsity[@]}"; do
     dir="lambda_pred_${p}-lambda_sparsity_${s}"
-    job_name="manual_tuning_tphystnd_691_adapted_big_lambda_pred_${p}-lambda_sparsity_${s}"
+    job_name="manual_tuning_tphystnd_691_${tuning_model}_lambda_pred_${p}-lambda_sparsity_${s}"
 
     log_dir="${base_dir}/${tuning_model}/${dir}"
     cfg="${log_dir}/cfg_castle_adapted.yml"
