@@ -40,6 +40,8 @@ def test_create_castle_adapted(setup, strategy, seed, request):
                          eager_execution=True, strategy=strategy, seed=seed)
 
     assert (isinstance(model, CASTLEAdapted))
+    assert (isinstance(model.outputs, list))
+    assert (len(model.outputs[0].shape) == 2)
     _print_plot_model_summary(model)
 
 
@@ -53,6 +55,8 @@ def test_create_castle_original(setup, strategy, seed, request):
                          eager_execution=True, strategy=strategy, seed=seed)
 
     assert (isinstance(model, CASTLEOriginal))
+    assert (isinstance(model.outputs, list))
+    assert (len(model.outputs[0].shape) == 2)
     _print_plot_model_summary(model)
 
 
@@ -126,7 +130,7 @@ def test_predict_castle(setup_str, strategy, seed, request):
     num_batches = int(n_samples / batch_size)
 
     assert (prediction is not None)
-    assert (prediction.shape, (batch_size * num_batches, num_inputs + 1))
+    assert (prediction.shape == (batch_size * num_batches, num_inputs + 1))
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
@@ -149,12 +153,12 @@ def test_save_load_castle_adapted(setup_str, strategy, seed, request):
                                               custom_objects={"CASTLEAdapted": CASTLEAdapted,
                                                               "MaskedDenseLayer": MaskedDenseLayer})
 
-    assert (loaded_model.lambda_prediction, model.lambda_prediction)
-    assert (loaded_model.lambda_sparsity, model.lambda_sparsity)
-    assert (loaded_model.lambda_reconstruction, model.lambda_reconstruction)
-    assert (loaded_model.lambda_acyclicity, model.lambda_acyclicity)
-    assert (loaded_model.relu_alpha, model.relu_alpha)
-    assert (loaded_model.acyclicity_constraint, model.acyclicity_constraint)
+    assert (loaded_model.lambda_prediction == model.lambda_prediction)
+    assert (loaded_model.lambda_sparsity == model.lambda_sparsity)
+    assert (loaded_model.lambda_reconstruction == model.lambda_reconstruction)
+    assert (loaded_model.lambda_acyclicity == model.lambda_acyclicity)
+    assert (loaded_model.relu_alpha == model.relu_alpha)
+    assert (loaded_model.acyclicity_constraint == model.acyclicity_constraint)
 
     _assert_identical_attributes(loaded_model, model)
 
@@ -179,40 +183,40 @@ def test_save_load_castle_original(setup_str, strategy, seed, request):
                                               custom_objects={"CASTLEOriginal": CASTLEOriginal,
                                                               "MaskedDenseLayer": MaskedDenseLayer})
 
-    assert (loaded_model.beta, model.beta)
-    assert (loaded_model.lambda_weight, model.lambda_weight)
+    assert (loaded_model.beta == model.beta)
+    assert (loaded_model.lambda_weight == model.lambda_weight)
 
     _assert_identical_attributes(loaded_model, model)
 
 
 def _assert_identical_attributes(loaded_model, model):
-    assert (loaded_model.alpha, model.alpha)
-    assert (loaded_model.rho, model.rho)
-    assert (loaded_model.activation, model.activation)
+    assert (loaded_model.alpha == model.alpha)
+    assert (loaded_model.rho == model.rho)
+    assert (loaded_model.activation == model.activation)
 
-    assert (loaded_model.kernel_initializer_input_layers, model.kernel_initializer_input_layers)
-    assert (loaded_model.kernel_initializer_hidden_layers, model.kernel_initializer_hidden_layers)
-    assert (loaded_model.kernel_initializer_output_layers, model.kernel_initializer_output_layers)
+    assert (type(loaded_model.kernel_initializer_input_layers) == type(model.kernel_initializer_input_layers))
+    assert (type(loaded_model.kernel_initializer_hidden_layers) == type(model.kernel_initializer_hidden_layers))
+    assert (type(loaded_model.kernel_initializer_output_layers) == type(model.kernel_initializer_output_layers))
 
-    assert (loaded_model.bias_initializer_input_layers, model.bias_initializer_input_layers)
-    assert (loaded_model.bias_initializer_hidden_layers, model.bias_initializer_hidden_layers)
-    assert (loaded_model.bias_initializer_output_layers, model.bias_initializer_output_layers)
+    assert (type(loaded_model.bias_initializer_input_layers) == type(model.bias_initializer_input_layers))
+    assert (type(loaded_model.bias_initializer_hidden_layers) == type(model.bias_initializer_hidden_layers))
+    assert (type(loaded_model.bias_initializer_output_layers) == type(model.bias_initializer_output_layers))
 
-    assert (loaded_model.kernel_regularizer_input_layers, model.kernel_regularizer_input_layers)
-    assert (loaded_model.kernel_regularizer_hidden_layers, model.kernel_regularizer_hidden_layers)
-    assert (loaded_model.kernel_regularizer_output_layers, model.kernel_regularizer_output_layers)
+    assert (type(loaded_model.kernel_regularizer_input_layers) == type(model.kernel_regularizer_input_layers))
+    assert (type(loaded_model.kernel_regularizer_hidden_layers) == type(model.kernel_regularizer_hidden_layers))
+    assert (type(loaded_model.kernel_regularizer_output_layers) == type(model.kernel_regularizer_output_layers))
 
-    assert (loaded_model.bias_regularizer_input_layers, model.bias_regularizer_input_layers)
-    assert (loaded_model.bias_regularizer_hidden_layers, model.bias_regularizer_hidden_layers)
-    assert (loaded_model.bias_regularizer_output_layers, model.bias_regularizer_output_layers)
+    assert (type(loaded_model.bias_regularizer_input_layers) == type(model.bias_regularizer_input_layers))
+    assert (type(loaded_model.bias_regularizer_hidden_layers) == type(model.bias_regularizer_hidden_layers))
+    assert (type(loaded_model.bias_regularizer_output_layers) == type(model.bias_regularizer_output_layers))
 
-    assert (loaded_model.activity_regularizer_input_layers, model.activity_regularizer_input_layers)
-    assert (loaded_model.activity_regularizer_hidden_layers, model.activity_regularizer_hidden_layers)
-    assert (loaded_model.activity_regularizer_output_layers, model.activity_regularizer_output_layers)
+    assert (type(loaded_model.activity_regularizer_input_layers) == type(model.activity_regularizer_input_layers))
+    assert (type(loaded_model.activity_regularizer_hidden_layers) == type(model.activity_regularizer_hidden_layers))
+    assert (type(loaded_model.activity_regularizer_output_layers) == type(model.activity_regularizer_output_layers))
 
-    assert (loaded_model.relu_alpha, model.relu_alpha)
+    assert (loaded_model.relu_alpha == model.relu_alpha)
 
-    assert (loaded_model.seed, model.seed)
+    assert (loaded_model.seed == model.seed)
 
     assert (len(loaded_model.get_weights()) == len(model.get_weights()))
 
