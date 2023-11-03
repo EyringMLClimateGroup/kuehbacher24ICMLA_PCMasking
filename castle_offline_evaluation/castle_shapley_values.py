@@ -85,9 +85,9 @@ if __name__ == "__main__":
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    config_file = Path(project_root, "output_castle/eval_nando/single_nn/cfg_single_nn_diagnostics.yml")
-    plot_dir = Path(project_root, "output_castle/eval_nando/single_nn/plots_offline_evaluation/debug/shap/leaky_relu/")
-    outputs_map = Path("../output_castle/eval_nando/single_nn/outputs_map.txt")
+    config_file = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_notears/lambda_pred_2-lambda_sparsity_0.1/cfg_castle_adapted.yml")
+    plot_dir = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_notears/lambda_pred_2-lambda_sparsity_0.1/plots_offline_evaluation/debug/shap/leaky_relu/")
+    outputs_map = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39/outputs_map.txt")
 
     variable = "tphystnd-691.39"
     ##########################################
