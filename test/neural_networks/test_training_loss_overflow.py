@@ -22,7 +22,7 @@ from neural_networks.castle.castle_model_original import CASTLEOriginal
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
 try:
-    set_memory_growth_gpu
+    set_memory_growth_gpu()
 except RuntimeError:
     print("\n\n*** GPU growth could not be enabled. "
           "When running multiple tests, this may be due physical drivers having already been "

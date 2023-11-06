@@ -24,13 +24,15 @@ def delete_output_dirs(model_description, setup):
     if os.path.isdir(tb_dir):
         shutil.rmtree(tb_dir, ignore_errors=True)
 
+
 def set_strategy(setup, strategy):
     setup.distribute_strategy = strategy
-    if strategy == "mirrored" and not len(tf.config.list_physical_devices("GPU")):
+    if strategy == "mirrored" and len(tf.config.list_physical_devices("GPU")) == 0:
         print("\nTensorflow found no physical devices. Cannot test distributed strategy without GPUs. "
               "Exiting test.")
         exit(0)
     return setup
+
 
 def set_memory_growth_gpu():
     physical_devices = tf.config.list_physical_devices("GPU")

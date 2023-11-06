@@ -8,7 +8,7 @@ from test.testing_utils import set_memory_growth_gpu, train_model_if_not_exists,
     build_test_gen, set_strategy
 
 try:
-    set_memory_growth_gpu
+    set_memory_growth_gpu()
 except RuntimeError:
     print("\n\n*** GPU growth could not be enabled. "
           "When running multiple tests, this may be due physical drivers having already been "

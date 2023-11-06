@@ -9,7 +9,7 @@ from neural_networks.training import train_all_models
 from test.testing_utils import delete_output_dirs, set_memory_growth_gpu, train_model_if_not_exists, set_strategy
 
 try:
-    set_memory_growth_gpu
+    set_memory_growth_gpu()
 except RuntimeError:
     print("\n\n*** GPU growth could not be enabled. "
           "When running multiple tests, this may be due physical drivers having already been "
@@ -33,7 +33,7 @@ def test_create_castle_model_description(setup_str, strategy, request):
         num_models = 2
     elif "w3d" in setup_str:
         num_models = 31
-    assert (len(model_descriptions), num_models)
+    assert (len(model_descriptions) == num_models)
 
     for m in model_descriptions:
         assert (isinstance(m, ModelDescription))

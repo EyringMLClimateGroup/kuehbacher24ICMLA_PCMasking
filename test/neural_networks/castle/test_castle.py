@@ -22,7 +22,7 @@ if not os.path.isdir(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 try:
-    set_memory_growth_gpu
+    set_memory_growth_gpu()
 except RuntimeError:
     print("\n\n*** GPU growth could not be enabled. "
           "When running multiple tests, this may be due physical drivers having already been "
