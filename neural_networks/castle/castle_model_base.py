@@ -6,6 +6,7 @@ from abc import ABC
 
 import keras.saving.serialization_lib
 import tensorflow as tf
+from tensorflow import keras
 
 from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
@@ -112,18 +113,26 @@ class CASTLEBase(tf.keras.Model, ABC):
         self.output_sub_layers = None
 
         if kernel_initializer_input_layers is None:
-            kernel_initializer_input_layers = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=seed)
+            self.kernel_intializer_input_layers["initializers"] = "RandomNormal"
+            self.kernel_iniitializer_input_layers["mean"] = 0.0
+            self.kernel_initializer_input_layers["std"] = 0.01
+
         if kernel_initializer_hidden_layers is None:
-            kernel_initializer_hidden_layers = tf.keras.initializers.GlorotUniform(seed=seed)
+            self.kernel_initializer_hidden_layers["initializers"] = "RandomNormal"
+            self.kernel_initializer_hidden_layers["mean"] = 0.0
+            self.kernel_initializer_hidden_layers["std"] = 0.1
+
         if kernel_initializer_output_layers is None:
-            kernel_initializer_output_layers = tf.keras.initializers.HeUniform(seed=seed)
+            self.kernel_initializer_output_layers["initializers"] = "RandomNormal"
+            self.kernel_initializer_output_layers["mean"] = 0.0
+            self.kernel_initializer_output_layers["std"] = 0.01
 
         if bias_initializer_input_layers is None:
-            bias_initializer_input_layers = tf.keras.initializers.Zeros()
+            bias_initializer_input_layers = "zeros"
         if bias_initializer_hidden_layers is None:
-            bias_initializer_hidden_layers = tf.keras.initializers.Zeros()
+            bias_initializer_hidden_layers = "zeros"
         if bias_initializer_output_layers is None:
-            bias_initializer_output_layers = tf.keras.initializers.Zeros()
+            bias_initializer_output_layers = "zeros"
 
         self.kernel_initializer_input_layers = kernel_initializer_input_layers
         self.kernel_initializer_hidden_layers = kernel_initializer_hidden_layers
@@ -285,145 +294,38 @@ class CASTLEBase(tf.keras.Model, ABC):
                 "rho": self.rho,
                 "alpha": self.alpha,
 
-                "kernel_initializer_input_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_initializer_input_layers),
-                "kernel_initializer_hidden_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_initializer_hidden_layers),
-                "kernel_initializer_output_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_initializer_output_layers),
+                "kernel_initializer_input_layers": self.kernel_initializer_input_layers,
+                "kernel_initializer_hidden_layers": self.kernel_initializer_hidden_layers,
+                "kernel_initializer_output_layers": self.kernel_initializer_output_layers,
 
-                "bias_initializer_input_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_initializer_input_layers),
-                "bias_initializer_hidden_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_initializer_hidden_layers),
-                "bias_initializer_output_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_initializer_output_layers),
+                "bias_initializer_input_layers": self.bias_initializer_input_layers,
+                "bias_initializer_hidden_layers": self.bias_initializer_hidden_layers,
+                "bias_initializer_output_layers": self.bias_initializer_output_layers,
 
-                "kernel_regularizer_input_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_regularizer_input_layers),
-                "kernel_regularizer_hidden_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_regularizer_hidden_layers),
-                "kernel_regularizer_output_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.kernel_regularizer_output_layers),
+                "kernel_regularizer_input_layers": self.kernel_regularizer_input_layers,
+                "kernel_regularizer_hidden_layers": self.kernel_regularizer_hidden_layers,
+                "kernel_regularizer_output_layers": self.kernel_regularizer_output_layers,
 
-                "bias_regularizer_input_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_regularizer_input_layers),
-                "bias_regularizer_hidden_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_regularizer_hidden_layers),
-                "bias_regularizer_output_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.bias_regularizer_output_layers),
+                "bias_regularizer_input_layers": self.bias_regularizer_input_layers,
+                "bias_regularizer_hidden_layers": self.bias_regularizer_hidden_layers,
+                "bias_regularizer_output_layers": self.bias_regularizer_output_layers,
 
-                "activity_regularizer_input_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.activity_regularizer_input_layers),
-                "activity_regularizer_hidden_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.activity_regularizer_hidden_layers),
-                "activity_regularizer_output_layers": keras.saving.serialization_lib.serialize_keras_object(
-                    self.activity_regularizer_output_layers),
+                "activity_regularizer_input_layers": self.activity_regularizer_input_layers,
+                "activity_regularizer_hidden_layers": self.activity_regularizer_hidden_layers,
+                "activity_regularizer_output_layers": self.activity_regularizer_output_layers,
                 "seed": self.seed,
             }
         )
         return config
-
-    @classmethod
-    def from_config(cls, config):
-        """Creates a layer from its config.
-        Overrides base method.
-
-        This method is the reverse of `get_config`, capable of instantiating the
-        same layer from the config dictionary. It does not handle layer connectivity
-        (handled by Network), nor weights (handled by `set_weights`).
-
-        Args:
-            config: A Python dictionary, typically the output of get_config.
-
-        Returns:
-            A layer instance
-        """
-        kernel_initializer_input_layers_config = config.pop("kernel_initializer_input_layers")
-        kernel_initializer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_initializer_input_layers_config)
-
-        kernel_initializer_hidden_layers_config = config.pop("kernel_initializer_hidden_layers")
-        kernel_initializer_hidden_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_initializer_hidden_layers_config)
-
-        kernel_initializer_output_layers_config = config.pop("kernel_initializer_output_layers")
-        kernel_initializer_output_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_initializer_output_layers_config)
-
-        bias_initializer_input_layers_config = config.pop("bias_initializer_input_layers")
-        bias_initializer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_initializer_input_layers_config)
-
-        bias_initializer_hidden_layers_config = config.pop("bias_initializer_hidden_layers")
-        bias_initializer_hidden_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_initializer_hidden_layers_config)
-
-        bias_initializer_output_layers_config = config.pop("bias_initializer_output_layers")
-        bias_initializer_output_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_initializer_output_layers_config)
-
-        kernel_regularizer_input_layers_config = config.pop("kernel_regularizer_input_layers")
-        kernel_regularizer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_regularizer_input_layers_config)
-
-        kernel_regularizer_hidden_layers_config = config.pop("kernel_regularizer_hidden_layers")
-        kernel_regularizer_hidden_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_regularizer_hidden_layers_config)
-
-        kernel_regularizer_output_layers_config = config.pop("kernel_regularizer_output_layers")
-        kernel_regularizer_output_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            kernel_regularizer_output_layers_config)
-
-        bias_regularizer_input_layers_config = config.pop("bias_regularizer_input_layers")
-        bias_regularizer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_regularizer_input_layers_config)
-
-        bias_regularizer_hidden_layers_config = config.pop("bias_regularizer_hidden_layers")
-        bias_regularizer_hidden_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_regularizer_hidden_layers_config)
-
-        bias_regularizer_output_layers_config = config.pop("bias_regularizer_output_layers")
-        bias_regularizer_output_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            bias_regularizer_output_layers_config)
-
-        activity_regularizer_input_layers_config = config.pop("activity_regularizer_input_layers")
-        activity_regularizer_input_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            activity_regularizer_input_layers_config)
-
-        activity_regularizer_hidden_layers_config = config.pop("activity_regularizer_hidden_layers")
-        activity_regularizer_hidden_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            activity_regularizer_hidden_layers_config)
-
-        activity_regularizer_output_layers_config = config.pop("activity_regularizer_output_layers")
-        activity_regularizer_output_layers = keras.saving.serialization_lib.deserialize_keras_object(
-            activity_regularizer_output_layers_config)
-
-        return cls(**config,
-                   kernel_initializer_input_layers=kernel_initializer_input_layers,
-                   kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                   kernel_initializer_output_layers=kernel_initializer_output_layers,
-                   bias_initializer_input_layers=bias_initializer_input_layers,
-                   bias_initializer_hidden_layers=bias_initializer_hidden_layers,
-                   bias_initializer_output_layers=bias_initializer_output_layers,
-                   kernel_regularizer_input_layers=kernel_regularizer_input_layers,
-                   kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
-                   kernel_regularizer_output_layers=kernel_regularizer_output_layers,
-                   bias_regularizer_input_layers=bias_regularizer_input_layers,
-                   bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
-                   bias_regularizer_output_layers=bias_regularizer_output_layers,
-                   activity_regularizer_input_layers=activity_regularizer_input_layers,
-                   activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
-                   activity_regularizer_output_layers=activity_regularizer_output_layers)
 
 
 def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, activation,
                 kernel_initializer_input_layers,
                 kernel_initializer_hidden_layers,
                 kernel_initializer_output_layers,
-                bias_initializer_input_layers=None,
-                bias_initializer_hidden_layers=None,
-                bias_initializer_output_layers=None,
+                bias_initializer_input_layers="zeros",
+                bias_initializer_hidden_layers="zeros",
+                bias_initializer_output_layers="zeros",
                 kernel_regularizer_input_layers=None,
                 kernel_regularizer_hidden_layers=None,
                 kernel_regularizer_output_layers=None,
@@ -439,19 +341,12 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
     Returns:
         Lists containing network input layers, network hidden layers and network output layers.
     """
-    if kernel_initializer_input_layers is None:
-        kernel_initializer_input_layers = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=seed)
-    if kernel_initializer_hidden_layers is None:
-        kernel_initializer_hidden_layers = tf.keras.initializers.GlorotUniform(seed=seed)
-    if kernel_initializer_output_layers is None:
-        kernel_initializer_output_layers = tf.keras.initializers.HeUniform(seed=seed)
-
     if bias_initializer_input_layers is None:
-        bias_regularizer_input_layers = tf.keras.initializers.Zeros()
+        bias_initializer_input_layers = "zeros"
     if bias_initializer_hidden_layers is None:
-        bias_regularizer_hidden_layers = tf.keras.initializers.Zeros()
+        bias_initializer_hidden_layers = "zeros"
     if bias_initializer_output_layers is None:
-        bias_initializer_output_layers = tf.keras.initializers.Zeros()
+        bias_initializer_output_layers = "zeros"
 
     # Create layers
     # Get activation function
@@ -461,15 +356,19 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
     if with_y:
         input_sub_layers = _build_input_sub_layers_with_y(num_input_layers, num_x_inputs, hidden_layers[0], act_func,
                                                           kernel_initializer_input_layers=kernel_initializer_input_layers,
+                                                          bias_initializer_input_layers=bias_initializer_input_layers,
                                                           kernel_regularizer_input_layers=kernel_regularizer_input_layers,
                                                           bias_regularizer_input_layers=bias_regularizer_input_layers,
-                                                          activity_regularizer_input_layers=activity_regularizer_input_layers)
+                                                          activity_regularizer_input_layers=activity_regularizer_input_layers,
+                                                          seed=seed)
     else:
         input_sub_layers = _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, hidden_layers[0], act_func,
                                                              kernel_initializer_input_layers=kernel_initializer_input_layers,
+                                                             bias_initializer_input_layers=bias_initializer_input_layers,
                                                              kernel_regularizer_input_layers=kernel_regularizer_input_layers,
                                                              bias_regularizer_input_layers=bias_regularizer_input_layers,
-                                                             activity_regularizer_input_layers=activity_regularizer_input_layers)
+                                                             activity_regularizer_input_layers=activity_regularizer_input_layers,
+                                                             seed=seed)
 
     # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
     #   same (shared) hidden layers.
@@ -477,7 +376,7 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
     for i, n_hidden_layer_nodes in enumerate(hidden_layers):
         shared_hidden_layers.append(
             tf.keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}",
-                                  kernel_initializer=kernel_initializer_hidden_layers,
+                                  kernel_initializer=get_kernel_initializer(kernel_initializer_hidden_layers, seed),
                                   bias_initializer=bias_initializer_hidden_layers,
                                   kernel_regularizer=kernel_regularizer_hidden_layers,
                                   bias_regularizer=bias_regularizer_hidden_layers,
@@ -490,7 +389,7 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
         output_sub_layers.append(
             # No activation function, i.e. linear
             tf.keras.layers.Dense(num_outputs, activation="linear", name=f"output_sub_layer_{i}",
-                                  kernel_initializer=kernel_initializer_output_layers,
+                                  kernel_initializer=get_kernel_initializer(kernel_initializer_output_layers, seed),
                                   bias_initializer=bias_initializer_output_layers,
                                   kernel_regularizer=kernel_regularizer_output_layers,
                                   bias_regularizer=bias_regularizer_output_layers,
@@ -500,9 +399,11 @@ def build_graph(num_input_layers, num_x_inputs, num_outputs, hidden_layers, acti
 
 def _build_input_sub_layers_with_y(num_input_layers, num_x_inputs, units, act_func,
                                    kernel_initializer_input_layers,
+                                   bias_initializer_input_layers,
                                    kernel_regularizer_input_layers,
                                    bias_regularizer_input_layers,
-                                   activity_regularizer_input_layers):
+                                   activity_regularizer_input_layers,
+                                   seed):
     """
     Builds input sub-layers where y is part of the network input.
     There will be `num_input_layers == num_x_inputs + 1` input layers and all input
@@ -517,7 +418,9 @@ def _build_input_sub_layers_with_y(num_input_layers, num_x_inputs, units, act_fu
         mask = tf.transpose(tf.one_hot([i] * units, depth=num_x_inputs + 1, on_value=0.0, off_value=1.0, axis=-1))
         masked_dense_layer = MaskedDenseLayer(units, mask, activation=act_func,
                                               name=f"input_sub_layer_{i}",
-                                              kernel_initializer=kernel_initializer_input_layers,
+                                              kernel_initializer=get_kernel_initializer(
+                                                  kernel_initializer_input_layers, seed),
+                                              bias_initializer=bias_initializer_input_layers,
                                               kernel_regularizer=kernel_regularizer_input_layers,
                                               bias_regularizer=bias_regularizer_input_layers,
                                               activity_regularizer=activity_regularizer_input_layers)
@@ -527,9 +430,11 @@ def _build_input_sub_layers_with_y(num_input_layers, num_x_inputs, units, act_fu
 
 def _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, units, act_func,
                                       kernel_initializer_input_layers,
+                                      bias_initializer_input_layers,
                                       kernel_regularizer_input_layers,
                                       bias_regularizer_input_layers,
-                                      activity_regularizer_input_layers):
+                                      activity_regularizer_input_layers,
+                                      seed):
     """
     Builds input sub-layers where y is not part of the network input.
     There will be `num_input_layers == num_x_inputs` input layers. The first
@@ -542,14 +447,17 @@ def _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, units, act
     input_sub_layers = list()
     # First input layer is not masked
     dense_layer = tf.keras.layers.Dense(units, activation=act_func, name=f"input_sub_layer_0",
-                                        kernel_initializer=kernel_initializer_input_layers)
+                                        kernel_initializer=get_kernel_initializer(kernel_initializer_input_layers,
+                                                                                  seed))
     input_sub_layers.append(dense_layer)
 
     for i in range(num_input_layers - 1):
         mask = tf.transpose(tf.one_hot([i] * units, depth=num_x_inputs, on_value=0.0, off_value=1.0, axis=-1))
         masked_dense_layer = MaskedDenseLayer(units, mask, activation=act_func,
                                               name=f"input_sub_layer_{i + 1}",
-                                              kernel_initializer=kernel_initializer_input_layers,
+                                              kernel_initializer=get_kernel_initializer(
+                                                  kernel_initializer_input_layers, seed),
+                                              bias_initializer=bias_initializer_input_layers,
                                               kernel_regularizer=kernel_regularizer_input_layers,
                                               bias_regularizer=bias_regularizer_input_layers,
                                               activity_regularizer=activity_regularizer_input_layers)
@@ -630,3 +538,75 @@ def compute_h_log_det(matrix, s=1.0):
     m = s * id - matrix * matrix
     h = - tf.linalg.slogdet(m)[1] + d * tf.math.log(s)
     return h
+
+
+def get_kernel_initializer(kernel_initializer, seed):
+    """
+    Parses the kernel initializer from given string to tf.keras.initializers.Initializer instance.
+
+    Args:
+        kernel_initializer (str): String specifying kernel initializer type.
+        seed (int): Random seed for kernel initializer. Used to make the behavior of the initializer
+            deterministic. Note that a seeded initializer will not produce the same random values across
+            multiple calls, but multiple initializers will produce the same sequence when
+            constructed with the same seed value.
+
+    Returns:
+        tf.keras.initializers.Initializer: kernel initializer instance
+
+    Raises:
+        ValueError: If `kernel_initializer` is not in `['Constant', 'GlorotNormal', 'GlorotUniform',
+            'HeNormal', 'HeUniform', 'Identity', 'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal',
+            'RandomNormal', 'RandomUniform','TruncatedNormal', 'VarianceScaling', 'Zeros']`.
+    """
+    # Support legacy saved models where the initializer was saved as keras initializer
+    if isinstance(kernel_initializer, keras.initializers.Initializer):
+        return kernel_initializer
+
+    if kernel_initializer is None:
+        kernel_initializer = keras.initializers.RandomNormal(mean=0.0,
+                                                             stddev=0.01, seed=seed)
+    elif kernel_initializer["initializer"] == "Constant":
+        kernel_initializer = keras.initializers.Constant(value=kernel_initializer["value"])
+    elif kernel_initializer["initializer"] == "GlorotNormal":
+        kernel_initializer = keras.initializers.GlorotNormal(seed=seed)
+    elif kernel_initializer["initializer"] == "GlorotUniform":
+        kernel_initializer = keras.initializers.GlorotUniform(seed=seed)
+    elif kernel_initializer["initializer"] == "HeNormal":
+        kernel_initializer = keras.initializers.HeNormal(seed=seed)
+    elif kernel_initializer["initializer"] == "HeUniform":
+        kernel_initializer = keras.initializers.HeUniform(seed=seed)
+    elif kernel_initializer["initializer"] == "Identity":
+        kernel_initializer = keras.initializers.Identity(gain=kernel_initializer["gain"])
+    elif kernel_initializer["initializer"] == "LecunNormal":
+        kernel_initializer = keras.initializers.LecunNormal(seed=seed)
+    elif kernel_initializer["initializer"] == "LecunUniform":
+        kernel_initializer = keras.initializers.LecunUniform(seed=seed)
+    elif kernel_initializer["initializer"] == "Ones":
+        kernel_initializer = keras.initializers.Ones()
+    elif kernel_initializer["initializer"] == "Orthogonal":
+        kernel_initializer = keras.initializers.Orthogonal(gain=kernel_initializer["gain"], seed=seed)
+    elif kernel_initializer["initializer"] == "RandomNormal":
+        kernel_initializer = keras.initializers.RandomNormal(mean=kernel_initializer["mean"],
+                                                             stddev=kernel_initializer["std"], seed=seed)
+    elif kernel_initializer["initializer"] == "RandomUniform":
+        kernel_initializer = keras.initializers.RandomUniform(minval=kernel_initializer["min_val"],
+                                                              maxval=kernel_initializer["max_val"],
+                                                              seed=seed)
+    elif kernel_initializer["initializer"] == "TruncatedNormal":
+        kernel_initializer = keras.initializers.TruncatedNormal(mean=kernel_initializer["mean"],
+                                                                stddev=kernel_initializer["std"], seed=seed)
+    elif kernel_initializer["initializer"] == "VarianceScaling":
+        kernel_initializer = keras.initializers.VarianceScaling(scale=kernel_initializer["scale"],
+                                                                mode=kernel_initializer["mode"],
+                                                                distribution=kernel_initializer["distribution"],
+                                                                seed=seed)
+    elif kernel_initializer["initializer"] == "Zeros":
+        kernel_initializer = keras.initializers.Zeros()
+    else:
+        raise ValueError(f"Unknown value for kernel initializer: {kernel_initializer}. Possible values are "
+                         f"['Constant', 'GlorotNormal', 'GlorotUniform', 'HeNormal', 'HeUniform', 'Identity', "
+                         f"'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal', 'RandomNormal', 'RandomUniform', "
+                         f"'TruncatedNormal', 'VarianceScaling', 'Zeros'].")
+
+    return kernel_initializer

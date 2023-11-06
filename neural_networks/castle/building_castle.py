@@ -50,20 +50,20 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
         raise ValueError("Penalty parameter `rho` for Lagrangian optimization scheme for acyclicity constraint "
                          "must be greater than 0.")
 
-    kernel_initializer_input_layers = get_kernel_initializer(setup.kernel_initializer_input_layers, seed)
-    if kernel_initializer_input_layers is None:
-        kernel_initializer_input_layers = keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=seed)
+    if setup.kernel_initializer_input_layers is None:
+        setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
+                                                 "mean": 0.0,
+                                                 "std": 0.01}
 
-    kernel_initializer_hidden_layers = get_kernel_initializer(setup.kernel_initializer_hidden_layers,
-                                                              seed)
-    if kernel_initializer_hidden_layers is None:
-        kernel_initializer_hidden_layers = keras.initializers.GlorotUniform(seed=seed)
+    if setup.kernel_initializer_hidden_layers is None:
+        setup.kernel_initializer_hidden_layers = {"initializer": "RandomNormal",
+                                                  "mean": 0.0,
+                                                  "std": 0.1}
 
-    kernel_initializer_output_layers = get_kernel_initializer(setup.kernel_initializer_output_layers,
-                                                              seed)
-    if kernel_initializer_output_layers is None:
-        kernel_initializer_output_layers = keras.initializers.HeUniform(seed=seed)
-
+    if setup.kernel_initializer_output_layers is None:
+        setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
+                                                  "mean": 0.0,
+                                                  "std": 0.01}
     try:
         relu_alpha = setup.relu_alpha
     except AttributeError:
@@ -78,9 +78,9 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                     lambda_weight=setup.lambda_weight,
                                     relu_alpha=relu_alpha,
                                     seed=seed,
-                                    kernel_initializer_input_layers=kernel_initializer_input_layers,
-                                    kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                                    kernel_initializer_output_layers=kernel_initializer_output_layers)
+                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
+                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         elif setup.nn_type == "CASTLEAdapted":
             model_ = CASTLEAdapted(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho,
                                    alpha=setup.alpha,
@@ -90,9 +90,9 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                    lambda_reconstruction=setup.lambda_reconstruction,
                                    acyclicity_constraint=setup.acyclicity_constraint,
                                    relu_alpha=relu_alpha, seed=seed,
-                                   kernel_initializer_input_layers=kernel_initializer_input_layers,
-                                   kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                                   kernel_initializer_output_layers=kernel_initializer_output_layers)
+                                   kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
+                                   kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                   kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         else:
             raise ValueError(f"Unknown CASTLE type {setup.nn_type}. "
                              f"Must be one of ['CastleOriginal', 'CastleAdapted'].")
@@ -126,70 +126,3 @@ def _compile_castle(model, learning_rate, eager_execution):
     )
 
     return model
-
-
-def get_kernel_initializer(kernel_initializer, seed):
-    """
-    Parses the kernel initializer from given string to tf.keras.initializers.Initializer instance.
-
-    Args:
-        kernel_initializer (str): String specifying kernel initializer type.
-        seed (int): Random seed for kernel initializer. Used to make the behavior of the initializer
-            deterministic. Note that a seeded initializer will not produce the same random values across
-            multiple calls, but multiple initializers will produce the same sequence when
-            constructed with the same seed value.
-
-    Returns:
-        tf.keras.initializers.Initializer: kernel initializer instance
-
-    Raises:
-        ValueError: If `kernel_initializer` is not in `['Constant', 'GlorotNormal', 'GlorotUniform',
-            'HeNormal', 'HeUniform', 'Identity', 'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal',
-            'RandomNormal', 'RandomUniform','TruncatedNormal', 'VarianceScaling', 'Zeros']`.
-    """
-    if kernel_initializer is None:
-        kernel_initializer = None
-    elif kernel_initializer["initializer"] == "Constant":
-        kernel_initializer = keras.initializers.Constant(value=kernel_initializer["value"])
-    elif kernel_initializer["initializer"] == "GlorotNormal":
-        kernel_initializer = keras.initializers.GlorotNormal(seed=seed)
-    elif kernel_initializer["initializer"] == "GlorotUniform":
-        kernel_initializer = keras.initializers.GlorotUniform(seed=seed)
-    elif kernel_initializer["initializer"] == "HeNormal":
-        kernel_initializer = keras.initializers.HeNormal(seed=seed)
-    elif kernel_initializer["initializer"] == "HeUniform":
-        kernel_initializer = keras.initializers.HeUniform(seed=seed)
-    elif kernel_initializer["initializer"] == "Identity":
-        kernel_initializer = keras.initializers.Identity(gain=kernel_initializer["gain"])
-    elif kernel_initializer["initializer"] == "LecunNormal":
-        kernel_initializer = keras.initializers.LecunNormal(seed=seed)
-    elif kernel_initializer["initializer"] == "LecunUniform":
-        kernel_initializer = keras.initializers.LecunUniform(seed=seed)
-    elif kernel_initializer["initializer"] == "Ones":
-        kernel_initializer = keras.initializers.Ones()
-    elif kernel_initializer["initializer"] == "Orthogonal":
-        kernel_initializer = keras.initializers.Orthogonal(gain=kernel_initializer["gain"], seed=seed)
-    elif kernel_initializer["initializer"] == "RandomNormal":
-        kernel_initializer = keras.initializers.RandomNormal(mean=kernel_initializer["mean"],
-                                                             stddev=kernel_initializer["std"], seed=seed)
-    elif kernel_initializer["initializer"] == "RandomUniform":
-        kernel_initializer = keras.initializers.RandomUniform(minval=kernel_initializer["min_val"],
-                                                              maxval=kernel_initializer["max_val"],
-                                                              seed=seed)
-    elif kernel_initializer["initializer"] == "TruncatedNormal":
-        kernel_initializer = keras.initializers.TruncatedNormal(mean=kernel_initializer["mean"],
-                                                                stddev=kernel_initializer["std"], seed=seed)
-    elif kernel_initializer["initializer"] == "VarianceScaling":
-        kernel_initializer = keras.initializers.VarianceScaling(scale=kernel_initializer["scale"],
-                                                                mode=kernel_initializer["mode"],
-                                                                distribution=kernel_initializer["distribution"],
-                                                                seed=seed)
-    elif kernel_initializer["initializer"] == "Zeros":
-        kernel_initializer = keras.initializers.Zeros()
-    else:
-        raise ValueError(f"Unknown value for kernel initializer: {kernel_initializer}. Possible values are "
-                         f"['Constant', 'GlorotNormal', 'GlorotUniform', 'HeNormal', 'HeUniform', 'Identity', "
-                         f"'LecunNormal', 'LecunUniform', 'Ones', 'Orthogonal', 'RandomNormal', 'RandomUniform', "
-                         f"'TruncatedNormal', 'VarianceScaling', 'Zeros'].")
-
-    return kernel_initializer
