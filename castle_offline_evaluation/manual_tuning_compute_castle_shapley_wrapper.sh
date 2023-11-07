@@ -44,8 +44,7 @@ lambda_sparsity=(0.1 0.5 1.0)
 PROJECT_ROOT="$(dirname "${PWD}")"
 
 # Set base directory for config files and inputs/outputs list files
-base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v4"
-trial="trial_2"
+base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v3"
 tuning_models=("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
 in="${base_dir}/inputs_list.txt"
 out="${base_dir}/outputs_list.txt"
@@ -72,8 +71,8 @@ for tuning_model in "${tuning_models[@]}"; do
       dir="lambda_pred_${p}-lambda_sparsity_${s}"
       job_name="compute_shap_tphystnd_691_${tuning_model}_la_pred-${p}_la_sparsity-${s}"
 
-      log_dir="${base_dir}/${trial}/${tuning_model}/${dir}"
-      plot_dir="${base_dir}/${trial}/evaluation/${tuning_model}/${dir}/shap"
+      log_dir="${base_dir}/${tuning_model}/${dir}"
+      plot_dir="${base_dir}/evaluation/${tuning_model}/${dir}/shap"
 
       mkdir -p "$plot_dir"
       cfg="${log_dir}/cfg_castle_adapted.yml"

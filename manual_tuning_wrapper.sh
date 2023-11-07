@@ -39,7 +39,6 @@ lambda_sparsity=(0.1 0.5 1.0)
 
 # Set base directory for config files and inputs/outputs list files
 base_dir="output_castle/manual_tuning_tphystnd_691.39_v3"
-trial="trial_2"
 tuning_models=("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
 in="${base_dir}/inputs_list.txt"
 out="${base_dir}/outputs_list.txt"
@@ -54,7 +53,7 @@ for tuning_model in "${tuning_models[@]}"; do
       dir="lambda_pred_${p}-lambda_sparsity_${s}"
       job_name="manual_tuning_tphystnd_691_${tuning_model}_lambda_pred_${p}-lambda_sparsity_${s}"
 
-      log_dir="${base_dir}/${trial}/${tuning_model}/${dir}"
+      log_dir="${base_dir}/${tuning_model}/${dir}"
       cfg="${log_dir}/cfg_castle_adapted.yml"
 
       slurm_o="${log_dir}/%x_slurm_%j.out"
