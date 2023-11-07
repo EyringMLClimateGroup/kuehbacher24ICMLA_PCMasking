@@ -247,7 +247,7 @@ class CASTLEAdapted(CASTLEBase):
                                           tf.math.add(weighted_acyclicity_loss, weighted_sparsity_regularizer),
                                           name="regularization_loss")
 
-        loss = tf.math.add(weighted_acyclicity_loss, regularization_loss, name="overall_loss")
+        loss = tf.math.add(weighted_prediction_loss, regularization_loss, name="overall_loss")
 
         # Update metrics
         self.metric_dict["loss_tracker"].update_state(loss)
