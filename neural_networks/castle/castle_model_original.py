@@ -146,7 +146,7 @@ class CASTLEOriginal(CASTLEBase):
         # Stack outputs into one tensor
         # outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
         outputs = tf.stack(yx_outputs, axis=1, name="stack_outputs")
-        outputs = tf.reshape(outputs, shape=(tf.shape(outputs)[0], tf.shape(outputs)[1]), name="reshape_output_dims")
+        # outputs = tf.reshape(outputs, shape=(tf.shape(outputs)[0], tf.shape(outputs)[1]), name="reshape_output_dims")
 
         super(CASTLEOriginal, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
                                              activation=activation, rho=rho, alpha=alpha, seed=seed,
@@ -272,7 +272,7 @@ class CASTLEOriginal(CASTLEBase):
         Overrides base method.
 
         `input_true` contains both y and x-values."""
-        return tf.metrics.mse(input_true[:, 1:], yx_pred[:, 1:])
+        return tf.metrics.mse(tf.expand_dims(input_true[:, 1:], axis=-1), yx_pred[:, 1:])
 
     def get_config(self):
         """Returns the config of `CASTLEOriginal`.

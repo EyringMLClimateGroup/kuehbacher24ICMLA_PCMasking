@@ -99,6 +99,7 @@ class CASTLEAdapted(CASTLEBase):
                  lambda_reconstruction,
                  lambda_acyclicity,
                  acyclicity_constraint,
+                 dagma_s=1.0,
                  relu_alpha=0.3,
                  seed=None,
                  kernel_initializer_input_layers=None,
@@ -164,7 +165,7 @@ class CASTLEAdapted(CASTLEBase):
         # Stack outputs into one tensor
         # outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
         outputs = tf.stack(yx_outputs, axis=1, name="stack_outputs")
-        outputs = tf.reshape(outputs, shape=(tf.shape(outputs)[0], tf.shape(outputs)[1]), name="reshape_output_dims")
+        # outputs = tf.reshape(outputs, shape=(tf.shape(outputs)[0], tf.shape(outputs)[1]), name="reshape_output_dims")
 
         super(CASTLEAdapted, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
                                             activation=activation, rho=rho, alpha=alpha, seed=seed,
@@ -199,6 +200,7 @@ class CASTLEAdapted(CASTLEBase):
         self.output_sub_layers = output_sub_layers
 
         self.acyclicity_constraint = acyclicity_constraint
+        self.dagma_s = dagma_s
         if acyclicity_constraint.upper() == "NOTEARS":
             self.acyclicity_constraint_func = compute_h_matrix_exp
         elif acyclicity_constraint.upper() == "DAGMA":
@@ -229,7 +231,7 @@ class CASTLEAdapted(CASTLEBase):
             is the case when called by `Model.test_step`).
         """
         input_layer_weights = [self.input_sub_layers[0].trainable_variables[0]]
-        input_layer_weights.extend([layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers[1:0]])
+        input_layer_weights.extend([layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers[1:]])
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)
@@ -237,7 +239,8 @@ class CASTLEAdapted(CASTLEBase):
 
         reconstruction_loss = self.compute_reconstruction_loss_x(x, y_pred)
         weighted_reconstruction_loss = tf.math.multiply(self.lambda_reconstruction, reconstruction_loss)
-        acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights, self.acyclicity_constraint_func)
+        acyclicity_loss = self.compute_acyclicity_loss(input_layer_weights, self.acyclicity_constraint_func,
+                                                       s=self.dagma_s)
         weighted_acyclicity_loss = tf.math.multiply(self.lambda_acyclicity, acyclicity_loss)
         sparsity_regularizer = self.compute_sparsity_loss(input_layer_weights)
         weighted_sparsity_regularizer = tf.math.multiply(self.lambda_sparsity, sparsity_regularizer)
@@ -316,7 +319,7 @@ class CASTLEAdapted(CASTLEBase):
         Overrides base method.
 
         `input_true` contains only x-values."""
-        return tf.metrics.mse(input_true, yx_pred[:, 1:])
+        return tf.metrics.mse(tf.expand_dims(input_true, axis=-1), yx_pred[:, 1:])
 
     def get_config(self):
         """Returns the config of `CASTLEAdapted`.
@@ -343,6 +346,7 @@ class CASTLEAdapted(CASTLEBase):
                 "lambda_reconstruction": self.lambda_reconstruction,
                 "lambda_acyclicity": self.lambda_acyclicity,
                 "acyclicity_constraint": self.acyclicity_constraint,
+                "dagma_s": self.dagma_s,
                 "relu_alpha": self.relu_alpha,
             }
         )

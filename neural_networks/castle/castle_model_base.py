@@ -202,27 +202,29 @@ class CASTLEBase(tf.keras.Model, ABC):
     @staticmethod
     def compute_prediction_loss(y_true, yx_pred):
         """Computes CASTLE prediction loss."""
-        return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred[:, 0]), name="prediction_loss_reduce_mean")
+        return tf.reduce_mean(tf.keras.losses.mse(tf.expand_dims(y_true, axis=-1), yx_pred[:, 0]),
+                              name="prediction_loss_reduce_mean")
 
     @staticmethod
     def compute_reconstruction_loss_x(x_true, yx_pred):
         """Computes CASTLE reconstruction loss."""
         # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-        return tf.reduce_mean(tf.norm(tf.subtract(x_true, yx_pred[:, 1:]), ord='fro', axis=[-2, -1]),
-                              name="reconstruction_loss_reduce_mean")
+        return tf.reduce_mean(
+            tf.norm(tf.subtract(tf.expand_dims(x_true, axis=-1), yx_pred[:, 1:]), ord='fro', axis=[-2, -1]),
+            name="reconstruction_loss_reduce_mean")
 
     @staticmethod
     def compute_reconstruction_loss_yx(yx_true, yx_pred):
         """Computes CASTLE reconstruction loss."""
         # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
-        return tf.reduce_mean(tf.norm(tf.subtract(yx_true, yx_pred), ord='fro', axis=[-2, -1]),
+        return tf.reduce_mean(tf.norm(tf.subtract(tf.expand_dims(yx_true, axis=-1), yx_pred), ord='fro', axis=[-2, -1]),
                               name="reconstruction_loss_reduce_mean")
 
-    def compute_acyclicity_loss(self, input_layer_weights, acyclicity_loss_func):
+    def compute_acyclicity_loss(self, input_layer_weights, acyclicity_constraint_func, **kwargs):
         """Computes the Lagrangian optimization equation with the acyclicity constraint."""
         l2_norm_matrix = self.compute_l2_norm_matrix(input_layer_weights)
 
-        h = acyclicity_loss_func(l2_norm_matrix)
+        h = compute_acyclicity_constraint(acyclicity_constraint_func, l2_norm_matrix, **kwargs)
         # tf.print(f"h function = {h}")
 
         # Acyclicity loss is computed using the Lagrangian scheme with penalty parameter rho and
@@ -463,6 +465,37 @@ def _build_input_sub_layers_without_y(num_input_layers, num_x_inputs, units, act
                                               activity_regularizer=activity_regularizer_input_layers)
         input_sub_layers.append(masked_dense_layer)
     return input_sub_layers
+
+
+def compute_acyclicity_constraint(acyclicity_constraint_func, matrix, **kwargs):
+    """
+    Computes the acyclicity constraint for the given matrix with the
+    function `acyclicity_constraint_func`.
+    Keyword arguments for the `acyclicity_constraint_func` can be passed in `**kwargs`.
+
+    Args:
+        acyclicity_constraint_func (callable): Acyclicity constraint function.
+        matrix (2d np.array or tf.Tensor): Matrix to compute the acyclicity constraint for.
+        **kwargs: Keyword arguments for the acyclicity constraint function.
+
+    Returns:
+        Float value for acyclicity constraint.
+    """
+    if acyclicity_constraint_func is compute_h_matrix_exp:
+        try:
+            approximate = kwargs["approximate"]
+            h = compute_h_matrix_exp(matrix, approximate=approximate)
+        except KeyError:
+            h = compute_h_matrix_exp(matrix)
+    elif acyclicity_constraint_func is compute_h_log_det:
+        try:
+            s = kwargs["s"]
+            h = compute_h_log_det(matrix, s=s)
+        except KeyError:
+            h = compute_h_log_det(matrix)
+    else:
+        raise ValueError(f"Unknown acyclicity constraint function: {acyclicity_constraint_func}.")
+    return h
 
 
 def compute_h_matrix_exp(matrix, approximate=True):
