@@ -223,6 +223,14 @@ class SetupNeuralNetworks(Setup):
             self.acyclicity_constraint = yml_cfg["acyclicity_constraint"]
             self._set_common_castle_attributes(yml_cfg)
 
+        elif self.nn_type == "castleNN":
+            # Legacy version of CASTLE. Keep this for backwards compatibility
+            self.rho = float(yml_cfg["rho"])
+            self.alpha = float(yml_cfg["alpha"])
+            self.beta = float(yml_cfg["beta"])
+            self.lambda_weight = float(yml_cfg["lambda_weight"])
+            self._set_additional_val_datasets(yml_cfg)
+
         elif self.nn_type == "all":
             self.do_single_nn = True
             self.do_causal_single_nn = True
@@ -240,13 +248,7 @@ class SetupNeuralNetworks(Setup):
             except KeyError:
                 self.relu_alpha = 0.3
 
-        self.additional_val_datasets = yml_cfg.get("additional_val_datasets")
-        for name_and_data in self.additional_val_datasets:
-            data = self._evaluate_data_path(name_and_data['data'])
-            if not os.path.exists(data):
-                raise ValueError(f"Data path for additional dataset {name_and_data['data']} does not exist: "
-                                 f"{name_and_data['name']}")
-            name_and_data['data'] = data
+        self._set_additional_val_datasets(yml_cfg)
 
         kernel_initializer_input_layers = yml_cfg.get("kernel_initializer_input_layers")
         self.kernel_initializer_input_layers = _set_initializer_params(kernel_initializer_input_layers,
@@ -259,6 +261,15 @@ class SetupNeuralNetworks(Setup):
         kernel_initializer_output_layers = yml_cfg.get("kernel_initializer_output_layers")
         self.kernel_initializer_output_layers = _set_initializer_params(
             kernel_initializer_output_layers, "output_", yml_cfg)
+
+    def _set_additional_val_datasets(self, yml_cfg):
+        self.additional_val_datasets = yml_cfg.get("additional_val_datasets")
+        for name_and_data in self.additional_val_datasets:
+            data = self._evaluate_data_path(name_and_data['data'])
+            if not os.path.exists(data):
+                raise ValueError(f"Data path for additional dataset {name_and_data['data']} does not exist: "
+                                 f"{name_and_data['name']}")
+            name_and_data['data'] = data
 
     def _setup_results_aggregation(self, yml_cfg):
         self.thresholds = yml_cfg["thresholds"]

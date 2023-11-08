@@ -6,6 +6,7 @@ import tensorflow as tf
 from utils.variable import Variable_Lev_Metadata
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
 from neural_networks.castle.castle_model_original import CASTLEOriginal
+from neural_networks.castle.legacy.castle_model import CASTLE
 from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 
@@ -58,6 +59,17 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
                                           lambda_reconstruction=setup.lambda_reconstruction,
                                           lambda_acyclicity=setup.lambda_acyclicity,
                                           acyclicity_constraint=setup.acyclicity_constraint))
+    elif model_type == "castleNN":
+        # Legacy version of CASTLE for backwards compatibility
+        if setup.distribute_strategy == "mirrored":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
+        elif setup.distribute_strategy == "multi_worker_mirrored":
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
+        else:
+            cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
+        path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta,
+                                          lambda_weight=setup.lambda_weight))
+
 
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")
@@ -134,6 +146,14 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
 
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEAdapted': CASTLEAdapted,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
+    elif setup.nn_type == "castleNN":
+        # Legacy version of CASTLE for backwards compatibility
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
+
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE,
+                                                                      'MaskedDenseLayers': MaskedDenseLayer})
+
     else:
         modelname = Path(folder, filename + '_model.h5')
         print(f"\nLoad model: {modelname}")
@@ -166,7 +186,7 @@ def get_var_list(setup, target_vars):
 
 def load_single_model(setup, var_name):
     if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or \
-            setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+            setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN":
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
 

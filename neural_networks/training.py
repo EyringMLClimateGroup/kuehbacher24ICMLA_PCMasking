@@ -88,7 +88,8 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    if (setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted") and setup.additional_val_datasets:
+    if (setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN") \
+            and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
                                                                    options=options)
@@ -257,7 +258,7 @@ def normalize(data, generator):
     input and output variables in `data`.
 
     Args:
-        data: h5py.File object containing input and output variables in data["vars"]
+        data: HDF5 File object containing input and output variables in data["vars"]
         generator (neural_networks.cbrain.data_generator.DataGenerator): DataGenerator instance
     """
     data_x = data["vars"][:, generator.input_idxs]

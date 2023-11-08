@@ -110,7 +110,11 @@ class ModelDiagnostics():
                 # For both CASTLE models, we just want the prediction for Y
                 if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
                     # Need to expand dims to make reshape work later on
-                    pred = np.expand_dims(pred[:, 0], axis=-1) # shape (batch_size)
+                    # pred = np.expand_dims(pred[:, 0], axis=-1) # shape (batch_size)
+                    pred = pred[:, 0]
+                elif self.setup.nn_type == "castleNN":
+                    # Legacy version of CASTLE for backwards compatibility
+                    pred = pred[:, 0]
 
                 # Inverse transform
                 truth = valid_gen.output_transform.inverse_transform(truth)
@@ -137,7 +141,11 @@ class ModelDiagnostics():
 
                     # For CASTLE, we just want the prediction for Y
                     if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
-                        p_tmp = np.expand_dims(p_tmp[:, 0], axis=-1)
+                        # p_tmp = np.expand_dims(p_tmp[:, 0], axis=-1)
+                        p_tmp = p_tmp[:, 0]
+                    elif self.setup.nn_type == "castleNN":
+                        # Legacy version of CASTLE for backwards compatibility
+                        p_tmp = p_tmp[:, 0]
 
                     # Inverse transform
                     truth[iTime, :] = valid_gen.output_transform.inverse_transform(t_tmp)
@@ -280,6 +288,8 @@ class ModelDiagnostics():
             return shap_values_abs_mean_sign, inputs, self.input_vars_dict
         elif metric == 'all':
             return shap_values_mean, shap_values_abs_mean, shap_values_abs_mean_sign, inputs, self.input_vars_dict
+        elif metric == 'none':
+            return e.expected_value, test, shap_values, inputs, self.input_vars_dict
         else:
             print(f"metric not available, only: mean, abs_mean, abs_mean_sign and all; stop")
             exit()
@@ -1100,5 +1110,3 @@ def plot_profiles(
         print(f"\nSaved profile plot {save_path.name}")
 
     plt.show()
-
-

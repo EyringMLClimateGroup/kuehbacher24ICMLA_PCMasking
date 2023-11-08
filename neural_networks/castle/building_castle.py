@@ -7,6 +7,7 @@ from tensorflow import keras
 
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
+from neural_networks.castle.legacy.castle_model import CASTLE
 
 
 # Todo:
@@ -93,6 +94,10 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+        elif setup.nn_type == "CastleNN":
+            # Backwards compatibility for older CASTLE version
+            model_ = CASTLE(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho, alpha=setup.alpha,
+                            lambda_weight=setup.lambda_weight, relu_alpha=0.3, seed=seed)
         else:
             raise ValueError(f"Unknown CASTLE type {setup.nn_type}. "
                              f"Must be one of ['CastleOriginal', 'CastleAdapted'].")

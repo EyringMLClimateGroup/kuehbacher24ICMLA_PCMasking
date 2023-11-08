@@ -91,7 +91,7 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        if setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+        if setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN":
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
                 self.strategy = tf.distribute.MirroredStrategy()
@@ -239,6 +239,16 @@ class ModelDescription:
                                               lambda_reconstruction=self.setup.lambda_reconstruction,
                                               lambda_acyclicity=self.setup.lambda_acyclicity,
                                               acyclicity_constraint=self.setup.acyclicity_constraint))
+        elif self.model_type == "castleNN":
+            # Legacy version of CASTLE for backwards compatibility
+            if self.setup.distribute_strategy == "mirrored":
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-mirrored/"
+            elif self.setup.distribute_strategy == "multi_worker_mirrored":
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}-multi_worker_mirrored/"
+            else:
+                cfg_str = "r{rho}-a{alpha}-b{beta}-l{lambda_weight}/"
+            path = path / Path(cfg_str.format(rho=self.setup.rho, alpha=self.setup.alpha, beta=self.setup.beta,
+                                              lambda_weight=self.setup.lambda_weight))
 
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
@@ -271,7 +281,8 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
+        if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted" or \
+                self.setup.nn_type == "castleNN":
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
         else:
@@ -331,7 +342,8 @@ def generate_all_single_nn(setup, continue_training=False, seed=None):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
-    castleNN: Generate all NN with one output and all inputs specified in the setup
+    CASTLEAdapted, CASTLEOriginal (legacy: castleNN): Generate all NN with one output
+        and all inputs specified in the setup
     """
     model_descriptions = list()
 
@@ -458,7 +470,8 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    if setup.do_single_nn or setup.do_pca_nn or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+    if setup.do_single_nn or setup.do_pca_nn or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" \
+            or setup.nn_type == "castleNN":
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 
     if setup.do_random_single_nn:
