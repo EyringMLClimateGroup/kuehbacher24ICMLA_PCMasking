@@ -31,7 +31,8 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d"])
+@pytest.mark.parametrize("setup", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                   "setup_castle_adapted_w3d"])
 def test_create_castle_adapted(setup, strategy, seed, request):
     setup = request.getfixturevalue(setup)
     num_inputs = len(setup.input_order_list)
@@ -41,12 +42,13 @@ def test_create_castle_adapted(setup, strategy, seed, request):
 
     assert (isinstance(model, CASTLEAdapted))
     assert (isinstance(model.outputs, list))
-    assert (len(model.outputs[0].shape) == 2)
+    assert (len(model.outputs[0].shape) == 3)
     _print_plot_model_summary(model)
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup", ["setup_castle_original_2d", "setup_castle_original_w3d"])
+@pytest.mark.parametrize("setup", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                   "setup_castle_original_w3d"])
 def test_create_castle_original(setup, strategy, seed, request):
     setup = request.getfixturevalue(setup)
     num_inputs = len(setup.input_order_list)
@@ -56,7 +58,7 @@ def test_create_castle_original(setup, strategy, seed, request):
 
     assert (isinstance(model, CASTLEOriginal))
     assert (isinstance(model.outputs, list))
-    assert (len(model.outputs[0].shape) == 2)
+    assert (len(model.outputs[0].shape) == 3)
     _print_plot_model_summary(model)
 
 
@@ -81,7 +83,8 @@ def _print_plot_model_summary(model):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d",
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d"])
 def test_train_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
@@ -108,7 +111,8 @@ def test_train_castle(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d",
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d"])
 def test_predict_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
@@ -130,11 +134,12 @@ def test_predict_castle(setup_str, strategy, seed, request):
     num_batches = int(n_samples / batch_size)
 
     assert (prediction is not None)
-    assert (prediction.shape == (batch_size * num_batches, num_inputs + 1))
+    assert (prediction.shape == (batch_size * num_batches, num_inputs + 1, 1))
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_adapted_w3d"])
 def test_save_load_castle_adapted(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -164,7 +169,8 @@ def test_save_load_castle_adapted(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_original_2d", "setup_castle_original_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_original_w3d"])
 def test_save_load_castle_original(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -222,7 +228,6 @@ def _assert_identical_attributes(loaded_model, model):
 
 
 def train_castle(model, num_inputs, epochs=2, n_samples=160, batch_size=16, strategy=None):
-
     train_ds = create_dataset(num_inputs, n_samples=n_samples, batch_size=batch_size, strategy=strategy)
     val_ds = create_dataset(num_inputs, n_samples=n_samples, batch_size=batch_size, strategy=strategy)
 

@@ -139,7 +139,7 @@ lambda_prediction: 1.0
 lambda_sparsity: 1.0
 lambda_acyclicity: 1.0
 lambda_reconstruction: 1.0
-acyclicity_constraint: "DAGMA" # DAGMA, NOTEARS
+acyclicity_constraint: "NOTEARS" # DAGMA, NOTEARS
 relu_alpha: 0.3
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
 additional_val_datasets:

@@ -18,7 +18,8 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d",
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d"])
 def test_create_castle_model_description(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
@@ -39,7 +40,8 @@ def test_create_castle_model_description(setup_str, strategy, request):
         assert (isinstance(m, ModelDescription))
 
 
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_adapted_w3d",
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d"])
 @patch("neural_networks.models.tf.config.get_visible_devices")
 def test_create_castle_model_description_distributed_value_error(mocked_visible_devices, setup_str, request):
@@ -55,7 +57,8 @@ def test_create_castle_model_description_distributed_value_error(mocked_visible_
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_original_2d"])
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_original_2d"])
 def test_train_and_save_castle_model_description(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
@@ -75,7 +78,8 @@ def test_train_and_save_castle_model_description(setup_str, strategy, request):
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d", "setup_castle_original_2d"])
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+                                       "setup_castle_original_2d"])
 def test_load_castle_model_description(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
 

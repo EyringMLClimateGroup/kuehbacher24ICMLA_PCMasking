@@ -6,10 +6,10 @@ import pytest
 import tensorflow as tf
 
 from neural_networks.castle.building_castle import build_castle
+from neural_networks.castle.castle_model_original import CASTLEOriginal
 from test.neural_networks.castle.test_castle import train_castle
 from test.testing_utils import set_memory_growth_gpu
 from utils.setup import SetupNeuralNetworks
-from neural_networks.castle.castle_model_original import CASTLEOriginal
 
 # The purpose of these tests is to see whether the training loss is still a number,
 # when we have a full network with 94 inputs and 1 outputs. They are separate from normal training tests
@@ -31,8 +31,8 @@ except RuntimeError:
 
 
 @pytest.fixture(scope="module",
-                params=["cfg_castle_adapted_all_inputs_outputs_random_normal.yml",
-                        "cfg_castle_adapted_all_inputs_outputs_random_uniform.yml",
+                params=["cfg_castle_adapted_all_inputs_outputs_random_normal_notears.yml",
+                        "cfg_castle_adapted_all_inputs_outputs_random_uniform_dagma.yml",
                         "cfg_castle_original_all_inputs_outputs_lecun_uniform.yml",
                         "cfg_castle_original_all_inputs_outputs_var_scaling.yml"])
 def setup_castle_all_inputs_outputs(request):
@@ -43,7 +43,7 @@ def setup_castle_all_inputs_outputs(request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-def test_train_castle_overflow(setup_castle_all_inputs_outputs, strategy, seed, request):
+def test_train_castle_overflow(setup_castle_all_inputs_outputs, strategy, seed):
     num_inputs = len(setup_castle_all_inputs_outputs.input_order_list)
 
     model = build_castle(setup_castle_all_inputs_outputs, num_inputs, setup_castle_all_inputs_outputs.init_lr,

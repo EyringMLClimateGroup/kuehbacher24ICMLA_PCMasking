@@ -29,7 +29,8 @@ def test_create_setup_castle_original(config_name):
     _assert_identical_attributes(castle_setup, yml_cfg)
 
 
-@pytest.mark.parametrize("config_name", ["cfg_castle_adapted_2d.yml", "cfg_castle_adapted_w3d.yml"])
+@pytest.mark.parametrize("config_name", ["cfg_castle_adapted_2d_dagma.yml", "cfg_castle_adapted_2d_notears.yml",
+                                         "cfg_castle_adapted_w3d.yml"])
 def test_create_setup_castle_adapted(config_name):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
     argv = ["-c", config_file]

@@ -7,8 +7,16 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
 
 @pytest.fixture()
-def setup_castle_adapted_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_adapted_2d.yml")
+def setup_castle_adapted_2d_dagma():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_adapted_2d_dagma.yml")
+    argv = ["-c", config_file]
+
+    return SetupNeuralNetworks(argv)
+
+
+@pytest.fixture()
+def setup_castle_adapted_2d_notears():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_adapted_2d_notears.yml")
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)
