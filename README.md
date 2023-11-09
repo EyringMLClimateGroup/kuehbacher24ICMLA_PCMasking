@@ -146,11 +146,23 @@ Two lines in the SHAP (version 0.42.1) package are changed:
 ```diff
    112  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
 -  113  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
-+  113  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(
-+  114        self.model_output.shape) == 3), "The model output must be a vector or a single value!"
++  113  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(self.model_output.shape) == 3), "The model output must be a vector or a single value!"
 ```
 
 ```diff
    744  op_handlers["Relu"] = nonlinearity_1d(0)
 +  745  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
+```
+
+
+If you are using SHAP package version 0.43.0, the following lines need to be changed:   
+```diff
+   106  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
+-  107  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
++  107  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(self.model_output.shape) == 3), "The model output must be a vector or a single value!"
+```
+
+```diff
+   727  op_handlers["Relu"] = nonlinearity_1d(0)
++  728  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
 ```
