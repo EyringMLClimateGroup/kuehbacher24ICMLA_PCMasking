@@ -11,14 +11,19 @@
 #SBATCH --time=5:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/%x_slurm_%j.out
-#SBATCH --error=../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/%x_error_slurm_%j.out
+
+
+# Job name is passed with option -J and as command line argument $6
+# If you don't use option -J, set #SBATCH --job-name=castle_training
+
+# Output streams are passed with option -e and -o
+# If you don't use these options, set #SBATCH --output=output_dir/%x_slurm_%j.out and #SBATCH --error=output_dir/%x_error_slurm_%j.out
 
 display_help() {
   echo ""
   echo "SLURM batch script for computing CASTLE shapley values."
   echo ""
-  echo "Usage: sbatch -J job_name compute_castle_shapley.sh -c config.yml -o outputs_file.txt -x var_index -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric [-j job_name]"
+  echo "Usage: sbatch -J job_name compute_castle_shapley.sh -c config.yml -o outputs_file.txt -x var_index -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric -l log_dir [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -29,6 +34,7 @@ display_help() {
   echo " -t    Number of time samples to select from the data."
   echo " -s    Number of samples to be used for shapley computation."
   echo " -e    Metric to be used on shapley values. Can be one of ['mean', 'abs_mean', 'abs_mean_sign', 'all']."
+  echo " -l    Output directory for Python logs."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
   echo ""
@@ -51,10 +57,11 @@ found_p=0
 found_t=0
 found_s=0
 found_e=0
+found_l=0
 found_j=0
 
 # Parse options
-while getopts "c:o:x:m:p:t:s:e:j:h" opt; do
+while getopts "c:o:x:m:p:t:s:e:l:j:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -130,6 +137,10 @@ while getopts "c:o:x:m:p:t:s:e:j:h" opt; do
     found_e=1
     METRIC=$OPTARG
     ;;
+  l)
+    found_l=1
+    PYTHON_DIR=$OPTARG
+    ;;
   j)
     found_j=1
     JOB_NAME=$OPTARG
@@ -169,7 +180,11 @@ elif ((found_s == 0)); then
 elif ((found_e == 0)); then
   echo -e "\nError: Failed to provide value for metric.\n"
   error_exit
+elif ((found_l == 0)); then
+  echo -e "\nError: Failed to provide output directory for Python logs.\n"
+  error_exit
 fi
+
 
 if ((found_j == 0)); then
   JOB_NAME="compute_castle_shap"
@@ -183,4 +198,4 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"../output_castle/eval_nando/causal_single_nn/plots_offline_evaluation/shap/slurm_logs/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
