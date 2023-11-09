@@ -47,8 +47,7 @@ def test_create_castle_adapted(setup, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                   "setup_castle_original_w3d"])
+@pytest.mark.parametrize("setup", ["setup_castle_original_2d", "setup_castle_original_w3d"])
 def test_create_castle_original(setup, strategy, seed, request):
     setup = request.getfixturevalue(setup)
     num_inputs = len(setup.input_order_list)
@@ -169,8 +168,7 @@ def test_save_load_castle_adapted(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                       "setup_castle_original_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_castle_original_2d", "setup_castle_original_w3d"])
 def test_save_load_castle_original(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
