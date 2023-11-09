@@ -51,11 +51,11 @@ def get_save_str(idx_time, num_time=False, num_samples=False, shap_metric=False)
 
 
 def save_shapley_dict(out_path, var, shap_dict, map_dict):
-    out_file = "shap_values_" + map_dict[str(var)] + ".p"
+    out_file = "shap_metrics_" + map_dict[str(var)] + ".p"
 
     with open(os.path.join(out_path, out_file), 'wb') as f:
         pickle.dump(shap_dict, f)
-    print(f"\nSaving Shapley dictionary {out_file}.")
+    print(f"\nSaving SHAP dictionary {out_file}.")
     return
 
 
@@ -76,18 +76,45 @@ def fill_shapley_dict(result, metric):
     return shap_dict
 
 
+def save_shapley_values_inputs(result, out_path, var, map_dict):
+    expected_value, test, shap_values, inputs, _ = result
+
+    var_idx_str = map_dict[str(var)]
+
+    shap_out_file = "shap_" + var_idx_str + ".p"
+    inputs_out_file = "inputs_" + var_idx_str + ".p"
+    test_out_file = "test_"+ var_idx_str + ".p"
+    expected_value_out_file = "expected_value_"+ var_idx_str + ".p"
+
+    save_pickle(shap_values, os.path.join(out_path, shap_out_file))
+    print(f"\nSaved SHAP values {shap_out_file}.")
+
+    save_pickle(inputs, os.path.join(out_path, inputs_out_file))
+    print(f"\nSaved inputs {inputs_out_file}.")
+
+    save_pickle(test, os.path.join(out_path, test_out_file))
+    print(f"\nSaved test data {test_out_file}.")
+
+    save_pickle(expected_value, os.path.join(out_path, expected_value_out_file))
+    print(f"\nSaved expected values {expected_value_out_file}.")
+
+def save_pickle(data, f_out):
+    with open(f_out, 'wb') as f:
+        pickle.dump(data, f)
+
 if __name__ == "__main__":
     ##########################################
     # Parameters
     i_time = "range"
-    metric = "abs_mean"  # 'mean', 'abs_mean', 'abs_mean_sign'
+    metric = "none"  # 'mean', 'abs_mean', 'abs_mean_sign'
     n_time = 5  # 1440 # about month
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    config_file = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39_v1/trial_1/castle_adapted_small_notears/lambda_pred_2-lambda_sparsity_0.1/cfg_castle_adapted.yml")
-    plot_dir = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39_v1/trial_1/evaluation/castle_adapted_small_notears/lambda_pred_2-lambda_sparsity_0.1/debug/shap/leaky_relu/")
-    outputs_map = Path(project_root, "output_castle/manual_tuning_tphystnd_691.39v_1/outputs_map.txt")
+    training_dir = Path("output_castle/manual_tuning_tphystnd_691.39_v3/castle_adapted_small_dagma/lambda_pred_1-lambda_sparsity_1.0")
+    config_file = os.path.join(project_root, training_dir, "cfg_castle_adapted.yml")
+    plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/shap/")
+    outputs_map = os.path.join(project_root, "output_castle/manual_tuning_tphystnd_691.39_v3/outputs_map.txt")
 
     variable = "tphystnd-691.39"
     ##########################################
@@ -100,8 +127,11 @@ if __name__ == "__main__":
     t_init = time.time()
 
     results = shap_single_variable(variable, config_file, n_time, n_samples, metric)
-    shap_dict = fill_shapley_dict(results, metric)
-    save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(variable), shap_dict, map_dict)
+    if metric == "none":
+        save_shapley_values_inputs(results, save_dir, Variable_Lev_Metadata.parse_var_name(variable), map_dict)
+    else:
+        shap_dict = fill_shapley_dict(results, metric)
+        save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(variable), shap_dict, map_dict)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

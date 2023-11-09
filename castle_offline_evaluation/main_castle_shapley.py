@@ -8,14 +8,18 @@ import tensorflow as tf
 from castle_offline_evaluation.castle_evaluation_utils import set_memory_growth_gpu, parse_txt_to_list, \
     parse_txt_to_dict, parse_str_to_bool_or_int
 from castle_offline_evaluation.castle_shapley_values import shap_single_variable, get_save_str, save_shapley_dict, \
-    fill_shapley_dict
+    fill_shapley_dict, save_shapley_values_inputs
 from utils.variable import Variable_Lev_Metadata
 
 
 def compute_shapley(var, config_file, var2index, n_time, n_samples, metric, save_dir):
     results = shap_single_variable(var, config_file, n_time, n_samples, metric)
-    shap_dict = fill_shapley_dict(results, metric)
-    save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(var), shap_dict, var2index)
+
+    if metric == "none":
+        save_shapley_values_inputs(results, save_dir, Variable_Lev_Metadata.parse_var_name(variable), var2index)
+    else:
+        shap_dict = fill_shapley_dict(results, metric)
+        save_shapley_dict(save_dir, Variable_Lev_Metadata.parse_var_name(var), shap_dict, var2index)
 
     return
 
