@@ -185,9 +185,25 @@ class ModelDiagnostics():
 
         # Train data as background
         model, inputs = self.models[var]
+
         if self.setup.nn_type == "CASTLEOriginal":
             inputs = [i + 1 for i in inputs]
             inputs.insert(0, 0)
+
+            # Just in case SHAP computation doesn't see the mask, we multiply the weights
+            # by the mask, which is also done by the forward pass through the network
+            for layer in model.input_sub_layers:
+                weights_bias = layer.get_weights()
+                weights_bias[0] = weights_bias[0] * layer.mask
+                layer.set_weights(weights_bias)
+
+        if self.setup.nn_type == "CASTLEAdapted" or self.setup.nn_type == "castleNN":
+            # Just in case SHAP computation doesn't see the mask, we multiply the weights
+            # by the mask, which is also done by the forward pass through the network
+            for layer in model.input_sub_layers[1:]:
+                weights_bias = layer.get_weights()
+                weights_bias[0]= weights_bias[0] * layer.mask
+                layer.set_weights(weights_bias)
 
         self.train_gen = build_train_generator(
             self.input_vars_dict,
@@ -289,7 +305,7 @@ class ModelDiagnostics():
         elif metric == 'all':
             return shap_values_mean, shap_values_abs_mean, shap_values_abs_mean_sign, inputs, self.input_vars_dict
         elif metric == 'none':
-            return e.expected_value, test, shap_values, inputs, self.input_vars_dict
+            return e.expected_value.numpy(), test, shap_values, inputs, self.input_vars_dict
         else:
             print(f"metric not available, only: mean, abs_mean, abs_mean_sign and all; stop")
             exit()
