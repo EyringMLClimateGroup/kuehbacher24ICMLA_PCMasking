@@ -176,8 +176,7 @@ class CASTLE(keras.Model):
         """Computes CASTLE reconstruction losss."""
         # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
         return tf.reduce_mean(tf.norm(tf.subtract(tf.expand_dims(x_true, axis=-1), yx_pred[:, 1:]),
-                                      ord='fro', axis=[-2, -1]),
-                              name="reconstruction_loss_reduce_mean")
+                                      ord='fro', axis=[-2, -1]), name="reconstruction_loss_reduce_mean")
 
     def compute_acyclicity_loss(self, input_layer_weights):
         """Computes the values of the NOTEARS acyclicity constraint."""

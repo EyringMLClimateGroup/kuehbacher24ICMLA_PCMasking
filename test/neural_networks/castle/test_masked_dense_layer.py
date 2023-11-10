@@ -13,15 +13,37 @@ except RuntimeError:
 
 
 def test_create_masked_dense_layer():
-    units = 10
-    shape = (32, units)
+    input_shape = 10
+    units = 16
+    shape = (input_shape, units)
 
-    mask = np.ones(shape)
-    masked_column = 2
-    mask[masked_column, :] = 0
+    mask = np.ones(shape, dtype=np.float32)
+    masked_row = 2
+    mask[:, masked_row] = 0
 
     mdl = MaskedDenseLayer(units, mask)
+    mdl.build(input_shape=(None, input_shape))
 
     assert (isinstance(mdl, MaskedDenseLayer))
     assert (units == mdl.units)
     assert (np.alltrue(mdl.mask == mask))
+
+
+def test_masked_dense_layer_masking():
+    input_shape = 10
+    units = 16
+    shape = (input_shape, units)
+
+    mask = np.ones(shape, dtype=np.float32)
+    masked_row = 2
+    mask[:, masked_row] = 0
+
+    mdl = MaskedDenseLayer(units, mask, kernel_initializer="ones")
+
+    input = np.ones((32, input_shape), dtype=np.float32)
+    output = mdl(input)
+
+    print(output)
+
+    assert (all(output[:, masked_row] == 0))
+

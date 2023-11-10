@@ -56,6 +56,7 @@ class MaskedDenseLayer(keras.layers.Layer):
             dtype=self.dtype,
             trainable=True,
         )
+
         if self.use_bias:
             self.bias = self.add_weight(
                 "bias",
@@ -71,6 +72,11 @@ class MaskedDenseLayer(keras.layers.Layer):
         else:
             self.bias = None
         self.built = True
+
+        # Mask kernel
+        weight_bias = self.get_weights()
+        weight_bias[0] = weight_bias[0] * self.mask
+        self.set_weights(weight_bias)
 
     def call(self, inputs):
         if inputs.dtype.base_dtype != self._compute_dtype_object.base_dtype:

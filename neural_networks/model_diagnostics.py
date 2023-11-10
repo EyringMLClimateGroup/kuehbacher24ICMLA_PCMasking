@@ -102,18 +102,16 @@ class ModelDiagnostics():
                     # Replace truth in X with zeros to get accurate evaluation results
                     X[:, 0] = np.zeros_like(truth)
                     # Need to expand dims to make reshape work later on
-                    truth = np.expand_dims(truth, axis=-1)
+                    # truth = np.expand_dims(truth, axis=-1)
                 else:
                     X, truth = valid_gen[itime]
                 pred = model.predict_on_batch(X[:, inputs])
 
                 # For both CASTLE models, we just want the prediction for Y
-                if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
+                if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted" or \
+                        self.setup.nn_type == "castleNN":
                     # Need to expand dims to make reshape work later on
                     # pred = np.expand_dims(pred[:, 0], axis=-1) # shape (batch_size)
-                    pred = pred[:, 0]
-                elif self.setup.nn_type == "castleNN":
-                    # Legacy version of CASTLE for backwards compatibility
                     pred = pred[:, 0]
 
                 # Inverse transform
@@ -134,17 +132,15 @@ class ModelDiagnostics():
                         # Replace t_tmp in X_tmp with zeros to get accurate evaluation results
                         X_tmp[:, 0] = np.zeros_like(t_tmp)
                         # Need to expand dims to make reshape work later on
-                        t_tmp = np.expand_dims(t_tmp, axis=-1)
+                        # t_tmp = np.expand_dims(t_tmp, axis=-1)
                     else:
                         X_tmp, t_tmp = valid_gen[iTime]
                     p_tmp = model.predict_on_batch(X_tmp[:, inputs])
 
                     # For CASTLE, we just want the prediction for Y
-                    if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted":
+                    if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted" or \
+                            self.setup.nn_type == "castleNN":
                         # p_tmp = np.expand_dims(p_tmp[:, 0], axis=-1)
-                        p_tmp = p_tmp[:, 0]
-                    elif self.setup.nn_type == "castleNN":
-                        # Legacy version of CASTLE for backwards compatibility
                         p_tmp = p_tmp[:, 0]
 
                     # Inverse transform
@@ -202,7 +198,7 @@ class ModelDiagnostics():
             # by the mask, which is also done by the forward pass through the network
             for layer in model.input_sub_layers[1:]:
                 weights_bias = layer.get_weights()
-                weights_bias[0]= weights_bias[0] * layer.mask
+                weights_bias[0] = weights_bias[0] * layer.mask
                 layer.set_weights(weights_bias)
 
         self.train_gen = build_train_generator(

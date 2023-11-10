@@ -195,7 +195,9 @@ class CASTLEOriginal(CASTLEBase):
         # In this case, x contains the true y and x: [y, x]
         y = x[:, 0]
 
-        input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
+        # Todo: What is correct?
+        # input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
+        input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)

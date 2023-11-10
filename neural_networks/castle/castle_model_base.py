@@ -113,19 +113,13 @@ class CASTLEBase(tf.keras.Model, ABC):
         self.output_sub_layers = None
 
         if kernel_initializer_input_layers is None:
-            self.kernel_intializer_input_layers["initializers"] = "RandomNormal"
-            self.kernel_iniitializer_input_layers["mean"] = 0.0
-            self.kernel_initializer_input_layers["std"] = 0.01
+            self.kernel_initializer_input_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
 
         if kernel_initializer_hidden_layers is None:
-            self.kernel_initializer_hidden_layers["initializers"] = "RandomNormal"
-            self.kernel_initializer_hidden_layers["mean"] = 0.0
-            self.kernel_initializer_hidden_layers["std"] = 0.1
+            self.kernel_initializer_hidden_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.1}
 
         if kernel_initializer_output_layers is None:
-            self.kernel_initializer_output_layers["initializers"] = "RandomNormal"
-            self.kernel_initializer_output_layers["mean"] = 0.0
-            self.kernel_initializer_output_layers["std"] = 0.01
+            self.kernel_initializer_output_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
 
         if bias_initializer_input_layers is None:
             bias_initializer_input_layers = "zeros"
@@ -202,7 +196,7 @@ class CASTLEBase(tf.keras.Model, ABC):
     @staticmethod
     def compute_prediction_loss(y_true, yx_pred):
         """Computes CASTLE prediction loss."""
-        return tf.reduce_mean(tf.keras.losses.mse(tf.expand_dims(y_true, axis=-1), yx_pred[:, 0]),
+        return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred[:, 0]),
                               name="prediction_loss_reduce_mean")
 
     @staticmethod

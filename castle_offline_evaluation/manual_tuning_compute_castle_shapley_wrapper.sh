@@ -1,5 +1,39 @@
 #!/bin/bash
 
+##############################
+# Set parameters from tuning #
+##############################
+
+# Set tuned parameters
+lambda_prediction=(1 2 4 8 10)
+lambda_sparsity=(0.1 0.5 1.0)
+
+PROJECT_ROOT="$(dirname "${PWD}")"
+
+# Set base directory for config files and inputs/outputs list files
+base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v3"
+tuning_models=("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
+in="${base_dir}/inputs_list.txt"
+out="${base_dir}/outputs_list.txt"
+map="${base_dir}/outputs_map.txt"
+
+# Index for network to be tuned: variable tphystnd-691.39
+idx="20"
+
+
+#######################################
+# Set parameters for SHAP computation #
+#######################################
+
+n_time="False"
+n_samples=1000
+metric="all"
+
+
+################
+# Help Display #
+################
+
 display_help() {
   echo ""
   echo "Wrapper to compute SHAP values for CASTLE manual tuning results."
@@ -33,33 +67,6 @@ while getopts "h" opt; do
 done
 shift "$(($OPTIND - 1))"
 
-##############################
-# Set parameters from tuning #
-##############################
-
-# Set tuned parameters
-lambda_prediction=(1 2 4 8 10)
-lambda_sparsity=(0.1 0.5 1.0)
-
-PROJECT_ROOT="$(dirname "${PWD}")"
-
-# Set base directory for config files and inputs/outputs list files
-base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v3"
-tuning_models=("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
-in="${base_dir}/inputs_list.txt"
-out="${base_dir}/outputs_list.txt"
-map="${base_dir}/outputs_map.txt"
-
-# Index for network to be tuned: variable tphystnd-691.39
-idx="20"
-
-#######################################
-# Set parameters for SHAP computation #
-#######################################
-
-n_time="False"
-n_samples=1000
-metric="all"
 
 ##############
 # Start jobs #
