@@ -263,13 +263,18 @@ class SetupNeuralNetworks(Setup):
             kernel_initializer_output_layers, "output_", yml_cfg)
 
     def _set_additional_val_datasets(self, yml_cfg):
-        self.additional_val_datasets = yml_cfg.get("additional_val_datasets")
-        for name_and_data in self.additional_val_datasets:
-            data = self._evaluate_data_path(name_and_data['data'])
-            if not os.path.exists(data):
-                raise ValueError(f"Data path for additional dataset {name_and_data['data']} does not exist: "
-                                 f"{name_and_data['name']}")
-            name_and_data['data'] = data
+        try:
+            self.additional_val_datasets = yml_cfg["additional_val_datasets"]
+
+            for name_and_data in self.additional_val_datasets:
+                data = self._evaluate_data_path(name_and_data['data'])
+                if not os.path.exists(data):
+                    raise ValueError(f"Data path for additional dataset {name_and_data['data']} does not exist: "
+                                     f"{name_and_data['name']}")
+                name_and_data['data'] = data
+        except KeyError:
+            # No additional validation datasets were given
+            pass
 
     def _setup_results_aggregation(self, yml_cfg):
         self.thresholds = yml_cfg["thresholds"]
