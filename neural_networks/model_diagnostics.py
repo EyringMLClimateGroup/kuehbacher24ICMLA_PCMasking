@@ -102,7 +102,7 @@ class ModelDiagnostics():
                     # Replace truth in X with zeros to get accurate evaluation results
                     X[:, 0] = np.zeros_like(truth)
                     # Need to expand dims to make reshape work later on
-                    # truth = np.expand_dims(truth, axis=-1)
+                    truth = np.expand_dims(truth, axis=-1)
                 else:
                     X, truth = valid_gen[itime]
                 pred = model.predict_on_batch(X[:, inputs])
@@ -132,7 +132,7 @@ class ModelDiagnostics():
                         # Replace t_tmp in X_tmp with zeros to get accurate evaluation results
                         X_tmp[:, 0] = np.zeros_like(t_tmp)
                         # Need to expand dims to make reshape work later on
-                        # t_tmp = np.expand_dims(t_tmp, axis=-1)
+                        t_tmp = np.expand_dims(t_tmp, axis=-1)
                     else:
                         X_tmp, t_tmp = valid_gen[iTime]
                     p_tmp = model.predict_on_batch(X_tmp[:, inputs])
@@ -263,6 +263,7 @@ class ModelDiagnostics():
                             # Replace truth_tmp in truth_X with zeros to get accurate evaluation results
                             t_X[:, 0] = np.zeros_like(t_tmp)
                             X_test[sIdx:eIdx, :] = t_X
+
                         else:
                             X_test[sIdx:eIdx, :] = valid_gen[i][0]
                         sIdx += self.ngeo
