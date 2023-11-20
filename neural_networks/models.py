@@ -91,7 +91,8 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        if setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN":
+        training_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN"
+        if training_castle:
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
                 self.strategy = tf.distribute.MirroredStrategy()

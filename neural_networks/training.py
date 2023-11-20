@@ -65,9 +65,9 @@ def train_save_model(
                                   input_pca_vars_dict=setup.input_pca_vars_dict,
                                   num_replicas_distributed=num_replicas_in_sync) as valid_gen:
         train_dataset = convert_generator_to_dataset(train_gen, name="train_dataset",
-                                                     input_y=True if setup.nn_type == "CASTLEOriginal" else False)
+                                                     input_y=(setup.nn_type == "CASTLEOriginal"))
         val_dataset = convert_generator_to_dataset(valid_gen, name="val_dataset",
-                                                   input_y=True if setup.nn_type == "CASTLEOriginal" else False)
+                                                   input_y=(setup.nn_type == "CASTLEOriginal"))
 
         train_gen_input_transform = train_gen.input_transform
         train_gen_output_transform = train_gen.output_transform
@@ -88,11 +88,13 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    if (setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN") \
-            and setup.additional_val_datasets:
+    training_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN"
+    if training_castle and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
                                                                    options=options)
+    else:
+        additional_validation_datasets = None
 
     callbacks, lrs = get_callbacks(init_lr, model_description, setup, save_dir, timestamp,
                                    additional_validation_datasets)
