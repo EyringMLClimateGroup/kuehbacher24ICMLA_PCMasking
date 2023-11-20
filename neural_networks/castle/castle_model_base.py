@@ -113,13 +113,13 @@ class CASTLEBase(tf.keras.Model, ABC):
         self.output_sub_layers = None
 
         if kernel_initializer_input_layers is None:
-            self.kernel_initializer_input_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
+            kernel_initializer_input_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
 
         if kernel_initializer_hidden_layers is None:
-            self.kernel_initializer_hidden_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.1}
+            kernel_initializer_hidden_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.1}
 
         if kernel_initializer_output_layers is None:
-            self.kernel_initializer_output_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
+            kernel_initializer_output_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
 
         if bias_initializer_input_layers is None:
             bias_initializer_input_layers = "zeros"
@@ -194,17 +194,17 @@ class CASTLEBase(tf.keras.Model, ABC):
         return list(self.metric_dict.values())
 
     @staticmethod
-    def compute_prediction_loss(y_true, yx_pred):
+    def compute_prediction_loss(y_true, yx_pred):  # y_true [batch,] yx_pred [batch, d+1, 1]
         """Computes CASTLE prediction loss."""
         return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred[:, 0]),
                               name="prediction_loss_reduce_mean")
 
     @staticmethod
-    def compute_reconstruction_loss_x(x_true, yx_pred):
+    def compute_reconstruction_loss_x(x_true, yx_pred):  # x_true [batch, d, 1] yx_pred [batch, d+1, 1]
         """Computes CASTLE reconstruction loss."""
         # Frobenius norm between all inputs and outputs averaged over the number of samples in the batch
         return tf.reduce_mean(
-            tf.norm(tf.subtract(tf.expand_dims(x_true, axis=-1), yx_pred[:, 1:]), ord='fro', axis=[-2, -1]),
+            tf.square(tf.norm(tf.subtract(tf.expand_dims(x_true, axis=-1), yx_pred[:, 1:]), ord='fro', axis=[-2, -1])),
             name="reconstruction_loss_reduce_mean")
 
     @staticmethod
@@ -235,21 +235,21 @@ class CASTLEBase(tf.keras.Model, ABC):
             "Unimplemented `neural_networks.castle.castle_model_base.CASTLEBase.compute_l2_norm_matrix()`: "
             "You must subclass `CASTLEBase` with an overridden `compute_l2_norm_matrix()` method.")
 
-    def compute_sparsity_loss(self, input_layer_weights):
+    @staticmethod
+    def compute_sparsity_loss(input_layer_weights):
         """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
         # Compute the matrix L1-norm (maximum absolute column sum norm) for the weight matrices in the input_sublayer
-        sparsity_regularizer = self.compute_sparsity_regularizer(input_layer_weights)
+        # todo: l1 norm matrix should be correct, but slicing is then wrong
+        #  but slicing should be unnecessary in any case (entry-wise or matrix norm)
+        # todo: does stochastic gradient descent update zero weights - no
+        sparsity_regularizer = 0.0
+        for weight in input_layer_weights:
+            sparsity_regularizer += tf.norm(weight, ord=1, axis=[-2, -1], name="l1_norm_input_layers")
 
-        # Scale with number of input layers
+            # Scale with number of input layers
+        # todo: also scale by matrix size
         sparsity_regularizer = sparsity_regularizer / len(input_layer_weights)
         return sparsity_regularizer
-
-    def compute_sparsity_regularizer(self, input_layer_weights):
-        """ Compute sparsity regularizer from the L1-norms of the input layer weights.
-        This method must be overridden in subclassed models."""
-        raise NotImplementedError(
-            "Unimplemented `neural_networks.castle.castle_model_base.CASTLEBase.compute_sparsity_regularizer().`: "
-            "You must subclass `CASTLEBase` with an overridden `compute_sparsity_regularizer()` method.")
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):

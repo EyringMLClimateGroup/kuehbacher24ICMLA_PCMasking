@@ -150,17 +150,18 @@ class CASTLEAdapted(CASTLEBase):
         # Create network graph
         inputs_hidden = [in_sub_layer(inputs) for in_sub_layer in input_sub_layers]
 
-        hidden_outputs = list()
+        # If there are no hidden layers, we go straight from input layers to output layers
+        hidden_outputs = inputs_hidden
         for hidden_layer in shared_hidden_layers:
+            hidden_outputs = list()
             # Pass all inputs through same hidden layers
             for x in inputs_hidden:
                 hidden_outputs.append(hidden_layer(x))
 
             # Outputs become new inputs for next hidden layers
-            inputs_hidden = hidden_outputs[-num_input_layers:]
+            inputs_hidden = hidden_outputs
 
-        yx_outputs = [out_layer(x) for x, out_layer in
-                      zip(hidden_outputs[-num_input_layers:], output_sub_layers)]
+        yx_outputs = [out_layer(x) for x, out_layer in zip(hidden_outputs, output_sub_layers)]
 
         # Stack outputs into one tensor
         # outputs = tf.squeeze(tf.stack(yx_outputs, axis=1))
@@ -231,9 +232,9 @@ class CASTLEAdapted(CASTLEBase):
             is the case when called by `Model.test_step`).
         """
         # Todo: What is correct?
-        # input_layer_weights = [self.input_sub_layers[0].trainable_variables[0]]
-        # input_layer_weights.extend([layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers[1:]])
-        input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
+        input_layer_weights = [self.input_sub_layers[0].trainable_variables[0]]
+        input_layer_weights.extend([layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers[1:]])
+        # input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)
@@ -283,37 +284,15 @@ class CASTLEAdapted(CASTLEBase):
         Returns:
             Tensor of shape (d+1)x(d+1), L2-norm matrix of input layer weights
         """
+        # todo: norms should be in columns and first row should be zero
+        #  keep in mind that tf.tensors and np.arrays are transposed when compared to matrix convention
+        #  i.e. row = column
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
                                              tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
-        return tf.stack(l2_norm_matrix, axis=1)
+        return tf.stack(l2_norm_matrix, axis=0)
 
-    def compute_sparsity_regularizer(self, input_layer_weights):
-        """ Compute sparsity regularizer from the L1-norms of the input layer weights.
-        Overrides base method.
-
-        The first input layer is not masked and therefore the whole weight matrix can
-        be counted towards the sparsity regularizer. For the other input layers,
-        we need to account for masked rows.
-
-        Args:
-            input_layer_weights: (list of tensors): List with weight matrices of the input layers
-
-        Returns:
-            Tensor, sparsity regularizer value
-        """
-        sparsity_regularizer = 0.0
-        sparsity_regularizer += tf.reduce_sum(
-            tf.norm(input_layer_weights[0], ord=1, axis=[-2, -1], name="l1_norm_input_layers"))
-        for i, weight in enumerate(input_layer_weights[1:]):
-            # Ignore the masked row
-            w_1 = tf.slice(weight, [0, 0], [i, -1])
-            w_2 = tf.slice(weight, [i + 1, 0], [-1, -1])
-
-            sparsity_regularizer += tf.norm(w_1, ord=1, axis=[-2, -1], name="l1_norm_input_layers") \
-                                    + tf.norm(w_2, ord=1, axis=[-2, -1], name="l1_norm_input_layers")
-        return sparsity_regularizer
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):

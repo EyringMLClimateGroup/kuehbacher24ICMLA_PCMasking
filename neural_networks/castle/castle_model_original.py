@@ -196,8 +196,8 @@ class CASTLEOriginal(CASTLEBase):
         y = x[:, 0]
 
         # Todo: What is correct?
-        # input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
-        input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
+        input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
+        # input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)
@@ -243,30 +243,7 @@ class CASTLEOriginal(CASTLEBase):
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers"))
-        return tf.stack(l2_norm_matrix, axis=1)
-
-    def compute_sparsity_regularizer(self, input_layer_weights):
-        """ Compute sparsity regularizer from the L1-norms of the input layer weights.
-        Overrides base method.
-
-        All input layers are masked and masked rows need to be accounted for when computing
-        the sparsity loss.
-
-        Args:
-            input_layer_weights: (list of tensors): List with weight matrices of the input layers
-
-        Returns:
-            Tensor, sparsity regularizer value
-        """
-        sparsity_regularizer = 0.0
-        for i, weight in enumerate(input_layer_weights):
-            # Ignore the masked row
-            w_1 = tf.slice(weight, [0, 0], [i, -1])
-            w_2 = tf.slice(weight, [i + 1, 0], [-1, -1])
-
-            sparsity_regularizer += tf.norm(w_1, ord=1, axis=[-2, -1], name="l1_norm_input_layers") \
-                                    + tf.norm(w_2, ord=1, axis=[-2, -1], name="l1_norm_input_layers")
-        return sparsity_regularizer
+        return tf.stack(l2_norm_matrix, axis=0)
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):
