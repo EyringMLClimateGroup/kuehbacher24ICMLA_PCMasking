@@ -96,7 +96,13 @@ def test_create_setup_castle_lr_schedule_kernel_initializer(config_name):
         assert (castle_setup.kernel_initializer_input_layers["initializer"] == "Orthogonal")
         assert (castle_setup.kernel_initializer_input_layers["gain"] == yml_cfg["input_init_orthogonal_gain"])
         assert (castle_setup.kernel_initializer_hidden_layers["initializer"] == "RandomNormal")
+        assert (castle_setup.kernel_initializer_hidden_layers["mean"] == yml_cfg["hidden_init_random_normal_mean"])
+        assert (castle_setup.kernel_initializer_hidden_layers["std"] == yml_cfg["hidden_init_random_normal_std"])
         assert (castle_setup.kernel_initializer_output_layers["initializer"] == "RandomUniform")
+        assert (castle_setup.kernel_initializer_output_layers["min_val"] == yml_cfg[
+            "output_init_random_uniform_min_val"])
+        assert (castle_setup.kernel_initializer_output_layers["max_val"] == yml_cfg[
+            "output_init_random_uniform_max_val"])
 
     if "init_he_normal_he_uniform_identity" in config_name:
         assert (castle_setup.kernel_initializer_input_layers["initializer"] == "HeNormal")
