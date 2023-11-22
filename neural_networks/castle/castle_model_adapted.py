@@ -285,13 +285,11 @@ class CASTLEAdapted(CASTLEBase):
             Tensor of shape (d+1)x(d+1), L2-norm matrix of input layer weights
         """
         # todo: norms should be in columns and first row should be zero
-        #  keep in mind that tf.tensors and np.arrays are transposed when compared to matrix convention
-        #  i.e. row = column
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
                                              tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
-        return tf.stack(l2_norm_matrix, axis=0)
+        return tf.stack(l2_norm_matrix, axis=1)
 
 
     @staticmethod

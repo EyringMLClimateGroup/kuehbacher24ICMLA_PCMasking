@@ -243,7 +243,7 @@ class CASTLEOriginal(CASTLEBase):
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
             l2_norm_matrix.append(tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers"))
-        return tf.stack(l2_norm_matrix, axis=0)
+        return tf.stack(l2_norm_matrix, axis=1)
 
     @staticmethod
     def compute_mse_x(input_true, yx_pred):
