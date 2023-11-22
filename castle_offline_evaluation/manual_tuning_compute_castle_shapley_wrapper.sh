@@ -5,21 +5,21 @@
 ##############################
 
 # Set tuned parameters
-lambda_prediction=(1 2 4 8 10)
-lambda_sparsity=(0.1 0.5 1.0)
+lambda_prediction=(1 10 100 1000 10000) #(1 2 4 8 10)
+lambda_sparsity=(1)                     #(0.1 0.5 1.0)
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
 # Set base directory for config files and inputs/outputs list files
-base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v3"
-tuning_models=("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
+base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v3-test2" # manual_tuning_tphystnd_820.86_v3, manual_tuning_tphystnd_691.39_v3
+tuning_models=("castle_adapted_big_notears")                                    #("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
 in="${base_dir}/inputs_list.txt"
 out="${base_dir}/outputs_list.txt"
 map="${base_dir}/outputs_map.txt"
+var="tphystnd_691.39"
 
 # Index for network to be tuned: variable tphystnd-691.39
-idx="20"
-
+idx="20" # tphystnd_691.39 20, tphystnd_820.86 22
 
 #######################################
 # Set parameters for SHAP computation #
@@ -28,7 +28,6 @@ idx="20"
 n_time="False"
 n_samples=1000
 metric="all"
-
 
 ################
 # Help Display #
@@ -67,7 +66,6 @@ while getopts "h" opt; do
 done
 shift "$(($OPTIND - 1))"
 
-
 ##############
 # Start jobs #
 ##############
@@ -76,7 +74,7 @@ for tuning_model in "${tuning_models[@]}"; do
   for p in "${lambda_prediction[@]}"; do
     for s in "${lambda_sparsity[@]}"; do
       dir="lambda_pred_${p}-lambda_sparsity_${s}"
-      job_name="compute_shap_tphystnd_691_${tuning_model}_la_pred-${p}_la_sparsity-${s}"
+      job_name="compute_shap_${var}_${tuning_model}_la_pred-${p}_la_sparsity-${s}"
 
       log_dir="${base_dir}/${tuning_model}/${dir}"
       plot_dir="${base_dir}/evaluation/${tuning_model}/${dir}/shap"
