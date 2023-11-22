@@ -6,7 +6,7 @@
 
 # Set tuned parameters
 lambda_prediction=(1 10 100 1000 10000) #(1 2 4 8 10)
-lambda_sparsity=(1)                     #(0.1 0.5 1.0)
+lambda_sparsity=(1.0)                     #(0.1 0.5 1.0)
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
