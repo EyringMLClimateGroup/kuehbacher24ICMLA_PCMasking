@@ -284,11 +284,13 @@ class CASTLEAdapted(CASTLEBase):
         Returns:
             Tensor of shape (d+1)x(d+1), L2-norm matrix of input layer weights
         """
-        # todo: norms should be in columns and first row should be zero
+        # Norms should be in columns and first row should be zero
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
-            l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32),
-                                             tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")], axis=0))
+            l2_norm = tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")
+            # Scale by units of hidden layer (which is the number of columns in the matrix (transposed case))
+            l2_norm = tf.math.divide(l2_norm, w.shape[1], name="l2_norm_input_layers_scaled")
+            l2_norm_matrix.append(tf.concat([tf.zeros((1,), dtype=tf.float32), l2_norm], axis=0))
         return tf.stack(l2_norm_matrix, axis=1)
 
 

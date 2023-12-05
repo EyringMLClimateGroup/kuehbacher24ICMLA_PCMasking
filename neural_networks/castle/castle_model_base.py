@@ -239,15 +239,31 @@ class CASTLEBase(tf.keras.Model, ABC):
     def compute_sparsity_loss(input_layer_weights):
         """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
         # Compute the matrix L1-norm (maximum absolute column sum norm) for the weight matrices in the input_sublayer
-        # todo: l1 norm matrix should be correct, but slicing is then wrong
+        # todo: L1-norm matrix should be correct, but slicing is then wrong
         #  but slicing should be unnecessary in any case (entry-wise or matrix norm)
+        #  But: we need to transpose the matrix to get the matrix L1-norm (absolute column sum),
+        #  because as the weights are actually multiplied with the inputs as matmul(X, w),
+        #  they are transposed in the layers.
+        #  When we use entry-wise norm (absolute value sum), it doesn't matter that the matrices are transposed.
         # todo: does stochastic gradient descent update zero weights - no
+        # todo: choose which norm
         sparsity_regularizer = 0.0
-        for weight in input_layer_weights:
-            sparsity_regularizer += tf.norm(weight, ord=1, axis=[-2, -1], name="l1_norm_input_layers")
 
-            # Scale with number of input layers
-        # todo: also scale by matrix size
+        # Matrix L1-norm (max absolute value column sum)
+        # for weight in input_layer_weights:
+        #     max_abs_column_sum = tf.norm(tf.transpose(weight), ord=1, axis=[-2, -1], name="l1_norm_input_layers")
+        #     # Scale by units of hidden layer (which is the number of rows in the matrix (transposed case))
+        #     max_abs_column_sum = tf.math.divide(max_abs_column_sum, weight.shape[1], name="l1_norm_input_layers_scaled")
+        #     sparsity_regularizer += max_abs_column_sum
+
+        # Entry-wise L1-norm (absolute sum of entries)
+        for weight in input_layer_weights:
+            entry_wise_norm = tf.norm(weight, ord=1, name='l1_norm_input_layers')
+            # Scale by units of hidden layer (which is the number of columns in the matrix (transposed case))
+            entry_wise_norm = tf.math.divide(entry_wise_norm, weight.shape[1], name="l1_norm_input_layers_scaled")
+            sparsity_regularizer += entry_wise_norm
+
+        # Scale with number of input layers
         sparsity_regularizer = sparsity_regularizer / len(input_layer_weights)
         return sparsity_regularizer
 

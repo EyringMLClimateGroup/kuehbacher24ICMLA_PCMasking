@@ -242,7 +242,10 @@ class CASTLEOriginal(CASTLEBase):
         """
         l2_norm_matrix = list()
         for j, w in enumerate(input_layer_weights):
-            l2_norm_matrix.append(tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers"))
+            l2_norm = tf.norm(w, axis=1, ord=2, name="l2_norm_input_layers")
+            # Scale by units of hidden layer (which is the number of columns in the matrix (transposed case))
+            l2_norm = tf.math.divide(l2_norm, w.shape[1], name="l2_norm_input_layers_scaled")
+            l2_norm_matrix.append(l2_norm)
         return tf.stack(l2_norm_matrix, axis=1)
 
     @staticmethod
