@@ -92,7 +92,7 @@ def train_save_model(
     if training_castle and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
-                                                                   options=options)
+                                                                   num_replicas_in_sync, options=options)
     else:
         additional_validation_datasets = None
 
@@ -203,12 +203,13 @@ def get_callbacks(init_lr, model_description, setup, save_dir, timestamp, additi
     return callbacks, lrs
 
 
-def _load_additional_datasets(input_vars_dict, output_vars_dict, setup, options=None):
+def _load_additional_datasets(input_vars_dict, output_vars_dict, setup, num_replicas_in_sync, options=None):
     additional_validation_datasets = {}
     for name_and_data in setup.additional_val_datasets:
         print(f"\nLoading additional dataset {name_and_data['name']}\n")
         data_path = name_and_data['data']
-        with build_additional_valid_generator(input_vars_dict, output_vars_dict, data_path, setup) as data_gen:
+        with build_additional_valid_generator(input_vars_dict, output_vars_dict, data_path, setup,
+                                              num_replicas_distributed=num_replicas_in_sync) as data_gen:
             dataset = convert_generator_to_dataset(data_gen, name=name_and_data["name"] + "_dataset", \
                                                    input_y=True if setup.nn_type == "CASTLEOriginal" else False, )
         del data_gen
