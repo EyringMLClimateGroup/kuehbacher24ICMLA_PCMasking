@@ -175,14 +175,9 @@ def build_additional_valid_generator(
 def compute_train_batch_size(setup, num_replicas_distributed):
     if setup.distribute_strategy == "mirrored":
         if num_replicas_distributed == 0:
-            num_replicas_distributed = 1
-            print("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+            raise ValueError("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
         batch_size_per_gpu = setup.batch_size
         global_batch_size = batch_size_per_gpu * num_replicas_distributed
-    elif setup.distribute_strategy == "multi_worker_mirrored":
-        n_workers = int(os.environ['SLURM_NTASKS'])
-        batch_size_per_gpu = setup.batch_size
-        global_batch_size = batch_size_per_gpu * n_workers
     else:
         global_batch_size = setup.batch_size
     return global_batch_size
@@ -196,12 +191,8 @@ def compute_val_batch_size(setup, ngeo, num_replicas_distributed):
     else:
         if setup.distribute_strategy == "mirrored":
             if num_replicas_distributed == 0:
-                num_replicas_distributed = 1
-                print("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+                raise ValueError("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
             global_batch_size = ngeo * num_replicas_distributed
-        elif setup.distribute_strategy == "multi_worker_mirrored":
-            n_workers = int(os.environ['SLURM_NTASKS'])
-            global_batch_size = ngeo * n_workers
         else:
             global_batch_size = ngeo
         return global_batch_size
