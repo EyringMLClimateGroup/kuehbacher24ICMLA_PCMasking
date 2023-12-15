@@ -28,4 +28,6 @@ dependencies:
   - tensorflow
 # Cbrain
   - xarray
-
+# Test
+  - pytest
+  - mock
