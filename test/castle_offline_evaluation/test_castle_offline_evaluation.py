@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pytest
 
 from test.testing_utils import set_memory_growth_gpu
@@ -39,3 +40,4 @@ def test_plot_plot_double_xy(i_time, diff, n_time, model_diagnostic, request):
     for var in md.models.keys():
         md.plot_double_xy(i_time, var, diff=diff, nTime=n_time, cmap='RdBu_r',
                                         save=OUTPUT_DIR)
+        plt.close()
