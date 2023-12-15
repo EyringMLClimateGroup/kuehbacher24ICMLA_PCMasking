@@ -11,9 +11,9 @@ lambda_sparsity=(1.0)                     #(0.1 0.5 1.0)
 PROJECT_ROOT="$(dirname "${PWD}")"
 
 # Set base directory for config files and inputs/outputs list files
-base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_691.39_v5-transposed_l1_entry_scaled_init_he" # manual_tuning_tphystnd_820.86_v3, manual_tuning_tphystnd_691.39_v3
-var="tphystnd_691.39" # tphystnd_691.39, tphystnd_820.86
-job_prefix="transposed_l1_entry_scaled_init_he"
+base_dir="${PROJECT_ROOT}/output_castle/manual_tuning_tphystnd_820.86_v4-transposed_l1_entry_scaled" # manual_tuning_tphystnd_820.86_v3, manual_tuning_tphystnd_691.39_v3
+var="tphystnd_820.86" # tphystnd_691.39, tphystnd_820.86
+job_prefix="v4-transposed_l1_entry_scaled"
 
 tuning_models=("castle_adapted_big_notears")                                    #("castle_adapted_small_dagma" "castle_adapted_big_dagma" "castle_adapted_small_notears" "castle_adapted_big_notears")
 in="${base_dir}/inputs_list.txt"

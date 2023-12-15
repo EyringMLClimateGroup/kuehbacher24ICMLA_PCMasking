@@ -38,8 +38,8 @@ lambda_prediction=(1 5 10 100 1000) #(1 2 4 8 10)
 lambda_sparsity=(1.0)               # (0.1 0.5 1.0)
 
 # Set base directory for config files and inputs/outputs list files
-base_dir="output_castle/manual_tuning_tphystnd_691.39_v4-transposed_l1_entry_scaled" # manual_tuning_tphystnd_691.39_v3-test2
-var="tphystnd_691.39"                                                                # tphystnd_691.39, tphystnd_820.86
+base_dir="output_castle/manual_tuning_tphystnd_820.86_v4-transposed_l1_entry_scaled"
+var="tphystnd_820.86"                                                                # tphystnd_691.39, tphystnd_820.86
 job_prefix="v4-transposed_l1_entry_scaled"
 
 tuning_models=("castle_adapted_big_notears")
@@ -73,7 +73,7 @@ for tuning_model in "${tuning_models[@]}"; do
 
       echo -e "\nSubmitting job ${job_name}"
       echo "Index: ${idx}"
-#      sbatch --job-name "$job_name" --output "$slurm_o" --error "$slurm_e" manual_tuning_castle_batch.sh -c "$cfg" -i "$in" -o "$out" -x "$idx" -p "$log_dir" -j "$job_name"
+      sbatch --job-name "$job_name" --output "$slurm_o" --error "$slurm_e" manual_tuning_castle_batch.sh -c "$cfg" -i "$in" -o "$out" -x "$idx" -p "$log_dir" -j "$job_name"
     done
   done
   echo ""
