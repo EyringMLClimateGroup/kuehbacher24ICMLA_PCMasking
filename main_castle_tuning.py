@@ -2,12 +2,12 @@ import argparse
 import datetime
 import time
 from pathlib import Path
-import yaml
 
-import tensorflow as tf
+import yaml
 from nni.experiment import Experiment
 
-from main_train_castle_split_nodes import parse_str_to_bool_or_int, set_memory_growth_gpu
+from main_train_castle_split_nodes import parse_str_to_bool_or_int
+from utils.tf_gpu_management import set_memory_growth_gpu
 
 
 # After experiment is done, run nni.experiment.Experiment.view(experiment_id, port=32325) to restart web portal
@@ -106,9 +106,7 @@ def parse_arguments():
 
 if __name__ == "__main__":
     # Allow memory growth for GPUs (this seems to be very important, because errors occur otherwise)
-    if len(tf.config.list_physical_devices("GPU")):
-        print(f"\nAllow memory growth on GPUs.", flush=True)
-        set_memory_growth_gpu()
+    set_memory_growth_gpu()
 
     cfg_file, inputs_file, outputs_file, var_idx, random_seed, tuner, metric, tuning_search_space, \
         exp_working_dir, experiment_port = parse_arguments()

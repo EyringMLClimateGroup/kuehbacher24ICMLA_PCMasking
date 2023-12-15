@@ -1,3 +1,6 @@
+# noinspection PyUnresolvedReferences
+from utils.tf_gpu_management import set_memory_growth_gpu, limit_single_gpu
+
 import argparse
 import datetime
 import time
@@ -34,13 +37,6 @@ def _read_txt_to_list(txt_file):
     return line_list
 
 
-def set_memory_growth_gpu():
-    physical_devices = tf.config.list_physical_devices("GPU")
-    print(f"\nNumber of GPUs: {len(physical_devices)}", flush=True)
-    for device in physical_devices:
-        tf.config.experimental.set_memory_growth(device, True)
-
-
 def parse_str_to_bool(v):
     if isinstance(v, bool):
         return v
@@ -68,9 +64,9 @@ def parse_str_to_bool_or_int(v):
 
 if __name__ == "__main__":
     # Allow memory growth for GPUs (this seems to be very important, because errors occur otherwise)
-    if len(tf.config.list_physical_devices("GPU")):
-        print(f"\nAllow memory growth on GPUs.", flush=True)
-        set_memory_growth_gpu()
+    # todo: choose function according to whether MirroredStrategy is used or not
+    set_memory_growth_gpu()
+    # limit_single_gpu()
 
     parser = argparse.ArgumentParser(description="Generates .txt files for neural network input and output "
                                                  "variables for specific setup configuration.")
