@@ -20,8 +20,10 @@ class CASTLEOriginal(CASTLEBase):
     As in the original paper, the model receives inputs of the shape `[y, x_1, ..., x_d]`,
     where `y` is the label to be predicted and x_i are the regressors. There is one input sub-layer for
     all elements in the input vector (i.e. there are `num_x_inputs` + 1 input sub-layers).
-    The computation of the sparsity loss is slightly adapted from the paper, as in that the matrix
-    L1-norm is used for its computation and the sparsity loss is averaged over the number of input layers.
+    The computation of the sparsity loss is slightly adapted from the paper, as the L1-norm is scaled
+    both by the number of units in the first hidden layer and the number of input layers.
+    The L2-norms used to create the weight matrix for computing the acyclicity constraint
+    are also scaled by the number of units in the first hidden layer.
 
     Args:
         num_x_inputs (int): The number of regressors, i.e. the x-variables.

@@ -21,8 +21,10 @@ class CASTLEAdapted(CASTLEBase):
     In contrast to the original paper, this adapted model only the receives the regressors `x` as input and not
     the label `y`. There is one input sub-layer for all elements in the input vector
     (i.e. there are `num_x_inputs` input sub-layers). The computation of the sparsity loss is also slightly
-    adapted from the paper, as in that the matrix L1-norm is used for its computation and the
-    sparsity loss is averaged over the number of input layers.
+    adapted from the paper, as the L1-norm is scaled both by the number of units in the first hidden layer
+    and the number of input layers.
+    The L2-norms used to create the weight matrix for computing the acyclicity constraint
+    are also scaled by the number of units in the first hidden layer.
 
     Args:
         num_x_inputs (int): The number of regressors, i.e. the x-variables.
