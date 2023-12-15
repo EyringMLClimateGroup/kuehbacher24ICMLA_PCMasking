@@ -25,7 +25,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
