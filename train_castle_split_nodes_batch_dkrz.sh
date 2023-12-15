@@ -11,11 +11,12 @@
 #SBATCH --time=12:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
-#SBATCH --output=output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/%x_slurm_%j.out
-#SBATCH --error=output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/%x_error_slurm_%j.out
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
+
+# Output streams are passed with option -e and -o
+# If you don't use these options, set #SBATCH --output=output_dir/%x_slurm_%j.out and #SBATCH --error=output_dir/%x_error_slurm_%j.out
 
 # For starting one job after another has finished, add
 # #SBATCH --dependency=afterok:$JOBID1
@@ -24,7 +25,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name train_castle_split_nodes_batch.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -35,13 +36,13 @@ display_help() {
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
+  echo " -p    Output directory for Python logs."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
   echo ""
 }
 
-error_exit_help() {
-  echo "See option -h for help on how to run this script."
+error_exit() {
   echo -e "Exiting script.\n"
   exit 1
 }
@@ -58,9 +59,10 @@ found_s=0
 found_j=0
 found_l=0
 found_t=0
+found_p=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:l:t:h" opt; do
+while getopts "c:i:o:x:s:j:l:t:p:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -72,7 +74,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       CONFIG=$OPTARG
     else
       echo -e "\nError: Invalid value for option -c (YAML config). Must be YAML file."
-      error_exit_help
+      error_exit
     fi
     ;;
   i)
@@ -81,7 +83,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       INPUTS=$OPTARG
     else
       echo -e "\nError: Invalid value for option -i (CASTLE inputs list). Must be .txt file."
-      error_exit_help
+      error_exit
     fi
     ;;
   o)
@@ -90,7 +92,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       OUTPUTS=$OPTARG
     else
       echo -e "\nError: Invalid value for option -i (CASTLE outputs list). Must be .txt file."
-      error_exit_help
+      error_exit
     fi
     ;;
   x)
@@ -106,7 +108,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       SEED="False"
     else
       echo -e "\nError: Invalid value for option -s (random seed). Must be an integer or NULL/False."
-      error_exit_help
+      error_exit
     fi
     ;;
   j)
@@ -122,7 +124,7 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       LOAD_CKPT="False"
     else
       echo -e "\nError: Invalid value for option -l (load from checkpoint). Must be a boolean ('True', 't', 'False', 'f')."
-      error_exit_help
+      error_exit
     fi
     ;;
   t)
@@ -134,15 +136,21 @@ while getopts "c:i:o:x:s:j:l:t:h" opt; do
       CONTINUE_TRAINING="False"
     else
       echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
-      error_exit_help
+      error_exit
     fi
+    ;;
+  p)
+    found_p=1
+    PYTHON_DIR=$OPTARG
     ;;
   :)
     echo -e "\nOption $opt requires an argument."
-    error_exit_help
+    echo -e "Use option -h for help."
+    error_exit
     ;;
   \?)
-    error_exit_help
+    echo -e "\nInvalid option. Use option -h for help."
+    error_exit
     ;;
   esac
 done
@@ -150,16 +158,19 @@ shift "$(($OPTIND - 1))"
 
 if ((found_c == 0)); then
   echo -e "\nError: Failed to provide CASTLE YAML config file.\n"
-  error_exit_help
+  error_exit
 elif ((found_i == 0)); then
   echo -e "\nError: Failed to provide CASTLE inputs list .txt file.\n"
-  error_exit_help
+  error_exit
 elif ((found_o == 0)); then
   echo -e "\nError: Failed to provide CASTLE outputs list .txt file.\n"
-  error_exit_help
+  error_exit
 elif ((found_x == 0)); then
   echo -e "\nError: Failed to provide training indices.\n"
-  error_exit_help
+  error_exit
+elif ((found_p == 0)); then
+  echo -e "\nError: Failed to provide output directory for Python logs.\n"
+  error_exit
 fi
 
 if ((found_s == 0)); then
@@ -181,4 +192,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"output_castle/manual_tuning_tphystnd_691.39/castle_adapted_small_dagma/lambda_pred_10-lambda_sparsity_1.0/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

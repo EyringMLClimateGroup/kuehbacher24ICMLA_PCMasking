@@ -3,16 +3,24 @@
 ###########################
 # Default argument values #
 ###########################
-NN_INPUTS="output_castle/training_1/inputs_list.txt"
-NN_OUTPUTS="output_castle/training_1/outputs_list.txt"
-OUTPUTS_MAP="output_castle/training_1/outputs_map.txt"
-NUM_NODES=20
-NN_CONFIG="nn_config/castle/test_cfg_castle_NN_Creation.yml"
-SEED="NULL"
+# todo: extract base dir from config?
+base_dir="output_castle/training_29_castle_adapted"
+HPC="dkrz" # jsc, dkrz
+
+NN_INPUTS="${base_dir}/inputs_list.txt"
+NN_OUTPUTS="${base_dir}/outputs_list.txt"
+OUTPUTS_MAP="${base_dir}/outputs_map.txt"
+NN_CONFIG="${base_dir}/cfg_castle_adapted.yml"
+
+NUM_NODES=65
+SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
 
 MAX_RUNNING_JOBS=20
+
+log_dir="${base_dir}/slurm_logs"
+mkdir -p "$log_dir"
 
 #############
 # Functions #
@@ -21,28 +29,43 @@ MAX_RUNNING_JOBS=20
 display_help() {
   echo ""
   echo "Bash script wrapper for CASTLE training that splits training of model description list across multiple SLURM nodes."
-  echo "Default options for arguments can be specified in this bash script."
+  echo "Training configuration parameters can either be specified in the script directly or via command line arguments."
   echo ""
-  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-s seed]"
+  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-p HPC] [-s seed]"
   echo ""
   echo " Options:"
   echo " -i    txt file with input list for CASTLE networks."
-  echo "       Current default: $NN_INPUTS"
+  echo "       Current value: $NN_INPUTS"
+  echo ""
   echo " -o    txt file with output list for CASTLE networks."
-  echo "       Current default: $NN_OUTPUTS"
+  echo "       Current value: $NN_OUTPUTS"
+  echo ""
   echo " -m    txt file with mapping for output variable identifiers for CASTLE networks."
-  echo "       Current default: $OUTPUTS_MAP"
-  echo " -n    Number of SLURM nodes to be used for training. Maximum number of running jobs per user is $MAX_RUNNING_JOBS."
-  echo "       Current default: $NUM_NODES"
+  echo "       Current value: $OUTPUTS_MAP"
+  echo ""
+  echo " -n    Number of SLURM nodes to be used for training. For each node a SLURM job will be started."
+  echo "       Current value: $NUM_NODES"
+  echo "       Info: On DKRZ the maximum number of concurrently running jobs per user is 20."
+  echo "             The jobs exceeding the job limit will be scheduled and will start once running jobs have finished."
+  echo "             On JSC there is also a limit regarding the maximum number of running jobs per user."
+  echo "             The precise values are adjusted to optimize system utilization."
+  echo ""
   echo " -c    YAML configuration file for CASTLE networks."
-  echo "       Current default: $NN_CONFIG"
+  echo "       Current value: $NN_CONFIG"
+  echo ""
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
-  echo "       Default: $LOAD_CKPT"
+  echo "       Current value: $LOAD_CKPT"
+  echo ""
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
-  echo "       Default: $CONTINUE_TRAINING"
+  echo "       Current value: $CONTINUE_TRAINING"
+  echo ""
+  echo " -p    Which HPC one is working on ('dkrz' or 'jsc')."
+  echo "       Current value: $HPC"
+  echo ""
   echo " -s    Random seed. Leave out this option to not set a random seed."
-  echo "       Default: $SEED"
+  echo "       Current value: $SEED"
+  echo ""
   echo " -h    Print this help."
   echo ""
   exit 0
@@ -115,30 +138,6 @@ case_counter() {
     error_exit
     ;;
   esac
-}
-
-more_nodes_than_jobs() {
-  if (($1 > 20)); then
-    echo -e "\nInfo: Cannot run $1 nodes/jobs simultaneously because it exceeds the maximum number of running jobs per user ($MAX_RUNNING_JOBS)."
-    echo "      The jobs exceeding the job limit will be scheduled and will start once running jobs have finished."
-    counter=0
-    while [ $counter -lt 3 ]; do
-      read -r -e -p "Do you wish to continue? [y]/n: " input
-
-      if [[ $input == "y" || $input == "" ]]; then
-        NUM_NODES=$1
-        break
-      elif [[ $input == "n" ]]; then
-        graceful_exit
-      else
-        case_counter $counter
-      fi
-      counter=$(($counter + 1))
-    done
-  else
-    NUM_NODES=$1
-  fi
-
 }
 
 want_to_continue() {
@@ -296,9 +295,10 @@ else
   found_s=0
   found_l=0
   found_t=0
+  found_p=0
 
   # Parse options
-  while getopts "i:o:m:n:c:l:t:s:h" opt; do
+  while getopts "i:o:m:n:c:l:t:p:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -334,7 +334,7 @@ else
     n)
       found_n=1
       if (($OPTARG > 0)); then
-        more_nodes_than_jobs $OPTARG
+        NUM_NODES=$OPTARG
       else
         echo -e "\nError: Invalid value for option -n (number of SLURM nodes). Must be greater than 0."
         error_exit
@@ -370,6 +370,18 @@ else
         CONTINUE_TRAINING="False"
       else
         echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
+        error_exit
+      fi
+      ;;
+    p)
+      found_p=1
+      lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+      if [[ $lower_input == "jsc" ]]; then
+        HPC="jsc"
+      elif [[ $lower_input == "dkrz" ]]; then
+        HPC="dkrz"
+      else
+        echo -e "\nError: Invalid value for option -p (which HPC). Must either 'jsc' or 'dkrz'."
         error_exit
       fi
       ;;
@@ -563,7 +575,7 @@ else
             graceful_exit
           else
             if (($input > 0)); then
-              more_nodes_than_jobs $input
+              NUM_NODES=$input
               break 2
             else
               case $inner_counter in
@@ -742,6 +754,58 @@ else
     done
   fi
 
+  # which HPC
+  if [[ $found_p == 0 ]]; then
+    echo -e "\nHPC not specified. Do you wish to use default value HPC=$HPC?."
+
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please specify HPC ('jsc' or 'dkrz') or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            lower_input=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+            if [[ $lower_input == "jsc" ]]; then
+              HPC="jsc"
+              break 2
+            elif [[ $lower_input == "dkrz" ]]; then
+              HPC="dkrz"
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for option -p (which HPC). Must either 'jsc' or 'dkrz'. Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for option -p (which HPC). Must either 'jsc' or 'dkrz'. Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for option -p (which HPC). Must either 'jsc' or 'dkrz'.\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
   # random seed
   if [[ $found_s == 0 ]]; then
     echo -e "\nRandom seed not given. Do you wish to use default value SEED=$SEED? If SEED is NULL, no random seed will be set."
@@ -829,6 +893,18 @@ if [[ $SEED == "NULL" ]]; then
   SEED="False"
 fi
 
+################
+# Batch script #
+################
+if [[ $HPC == "jsc" ]]; then
+  BATCH_SCRIPT="train_castle_split_nodes_batch_jsc.sh"
+elif [[ $HPC == "dkrz" ]]; then
+  BATCH_SCRIPT="train_castle_split_nodes_batch_dkrz.sh"
+else
+  echo -e "\nUnknown HPC ${HPC}."
+  error_exit
+fi
+
 echo -e "\n\n$(timestamp) --- Starting SLURM jobs.\n"
 
 #####################
@@ -848,10 +924,13 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
     JOB_NAME="training_castle"
   fi
 
+  slurm_o="${log_dir}/%x_slurm_%j.out"
+  slurm_e="${log_dir}/%x_error_slurm_%j.out"
+
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" train_castle_split_nodes_batch.sh -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME"
+  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"
