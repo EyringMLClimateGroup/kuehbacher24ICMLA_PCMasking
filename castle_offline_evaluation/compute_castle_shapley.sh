@@ -198,4 +198,4 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --cwd "$PROJECT_ROOT" --no-capture-output -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
