@@ -39,8 +39,8 @@ def train_save_model(
         timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
     """ Train a model and save all information necessary for CAM """
     if setup.distribute_strategy == "mirrored":
-        print(f"\n\nDistributed training of model {model_description}\n", flush=True)
         num_replicas_in_sync = model_description.strategy.num_replicas_in_sync
+        print(f"\n\nDistributed training of model {model_description} across {num_replicas_in_sync} GPUs\n", flush=True)
     else:
         print(f"\n\nTraining model {model_description}\n", flush=True)
         num_replicas_in_sync = 0
