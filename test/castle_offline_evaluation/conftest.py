@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 
 @pytest.fixture()
 def diagnostic_setup_castle_adapted_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_adapted_2d_eval.yml")
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_adapted_2d_eval_train.yml")
     argv = ["-c", config_file]
 
     return SetupDiagnostics(argv)
@@ -20,7 +20,7 @@ def diagnostic_setup_castle_adapted_2d():
 
 @pytest.fixture()
 def diagnostic_setup_castle_original_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_original_2d_eval.yml")
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_original_2d_eval_train.yml")
     argv = ["-c", config_file]
 
     return SetupDiagnostics(argv)
@@ -41,6 +41,7 @@ def castle_model_adapted(diagnostic_setup_castle_adapted_2d):
 @pytest.fixture()
 def castle_model_description_original(diagnostic_setup_castle_original_2d, castle_model_original):
     diagnostic_setup_castle_original_2d.model_type = diagnostic_setup_castle_original_2d.nn_type
+    diagnostic_setup_castle_original_2d.use_val_batch_size = False
     return ModelDiagnostics(setup=diagnostic_setup_castle_original_2d,
                             models=castle_model_original[diagnostic_setup_castle_original_2d.nn_type])
 
@@ -48,5 +49,6 @@ def castle_model_description_original(diagnostic_setup_castle_original_2d, castl
 @pytest.fixture()
 def castle_model_description_adapted(diagnostic_setup_castle_adapted_2d, castle_model_adapted):
     diagnostic_setup_castle_adapted_2d.model_type = diagnostic_setup_castle_adapted_2d.nn_type
+    diagnostic_setup_castle_adapted_2d.use_val_batch_size = False
     return ModelDiagnostics(setup=diagnostic_setup_castle_adapted_2d,
                             models=castle_model_adapted[diagnostic_setup_castle_adapted_2d.nn_type])

@@ -101,6 +101,8 @@ input_div: maxrs
 out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
 batch_size: 256  #1024
+val_batch_size: 256
+
 
 # Learning Rate Scheduler
 init_lr: 0.001 # From train.py (default)
