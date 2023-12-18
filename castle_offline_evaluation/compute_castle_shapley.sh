@@ -23,7 +23,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for computing CASTLE shapley values."
   echo ""
-  echo "Usage: sbatch -J job_name compute_castle_shapley.sh -c config.yml -o outputs_file.txt -x var_index -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric -l log_dir [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs compute_castle_shapley.sh -c config.yml -o outputs_file.txt -x var_index -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric -l log_dir [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
