@@ -6,10 +6,10 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/eval_nando/single_nn"
-JOB_NAME="compute_shap_single_nn"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_29_castle_adapted"
+JOB_NAME="shap_castle_adapted"
 
-CONFIG="${TRAINING_DIR}/cfg_single_nn_diagnostics.yml"
+CONFIG="${TRAINING_DIR}/cfg_castle_adapted.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
@@ -21,7 +21,7 @@ mkdir -p "$SLURM_LOG_DIR"
 
 N_TIME="False"
 N_SAMPLES=1000
-METRIC="none"
+METRIC="all"
 
 
 ################
