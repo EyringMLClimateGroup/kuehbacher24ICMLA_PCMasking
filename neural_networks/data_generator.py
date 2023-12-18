@@ -176,6 +176,7 @@ def compute_train_batch_size(setup, num_replicas_distributed):
     if setup.distribute_strategy == "mirrored":
         if num_replicas_distributed == 0:
             raise ValueError("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+
         batch_size_per_gpu = setup.batch_size
         global_batch_size = batch_size_per_gpu * num_replicas_distributed
     else:
@@ -192,6 +193,7 @@ def compute_val_batch_size(setup, ngeo, num_replicas_distributed):
         if setup.distribute_strategy == "mirrored":
             if num_replicas_distributed == 0:
                 raise ValueError("\nWARNING: Cannot run MirroredStrategy with 0 GPUs. Using 'num_replicas_distributed=1'.")
+
             global_batch_size = ngeo * num_replicas_distributed
         else:
             global_batch_size = ngeo
