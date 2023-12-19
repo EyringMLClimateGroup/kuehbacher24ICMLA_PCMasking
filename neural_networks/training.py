@@ -88,7 +88,7 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    training_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN"
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
     if training_castle and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,

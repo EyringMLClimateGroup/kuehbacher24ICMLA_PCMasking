@@ -12,7 +12,7 @@ import pytest
 
 from test.testing_utils import set_memory_growth_gpu
 
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 print(PROJECT_ROOT)
 
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "test", "output", "test_offline_evaluation")
@@ -33,7 +33,8 @@ except RuntimeError:
 @pytest.mark.parametrize("i_time", [1, "mean"])
 @pytest.mark.parametrize("diff", [True, False])
 @pytest.mark.parametrize("n_time", [5, False])
-@pytest.mark.parametrize("model_diagnostic", ["castle_model_description_adapted", "castle_model_description_original"])
+@pytest.mark.parametrize("model_diagnostic", ["castle_model_description_adapted", "castle_model_description_original",
+                                              "castle_model_description_simplified"])
 def test_plot_plot_double_xy(i_time, diff, n_time, model_diagnostic, request):
     md = request.getfixturevalue(model_diagnostic)
 

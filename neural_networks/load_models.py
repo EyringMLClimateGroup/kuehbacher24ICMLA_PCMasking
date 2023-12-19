@@ -6,6 +6,7 @@ import tensorflow as tf
 from utils.variable import Variable_Lev_Metadata
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
 from neural_networks.castle.castle_model_original import CASTLEOriginal
+from neural_networks.castle.castle_model_simplified import CASTLESimplified
 from neural_networks.castle.legacy.castle_model import CASTLE
 from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
@@ -59,6 +60,13 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
                                           lambda_reconstruction=setup.lambda_reconstruction,
                                           lambda_acyclicity=setup.lambda_acyclicity,
                                           acyclicity_constraint=setup.acyclicity_constraint))
+    elif model_type == "CASTLESimplified":
+        cfg_str = "lspar{lambda_sparsity}"
+        if setup.distribute_strategy == "mirrored":
+            cfg_str += "-mirrored"
+
+        path = path / Path(cfg_str.format(lambda_sparsity=setup.lambda_sparsity))
+
     elif model_type == "castleNN":
         # Legacy version of CASTLE for backwards compatibility
         if setup.distribute_strategy == "mirrored":
@@ -70,12 +78,14 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
         path = path / Path(cfg_str.format(rho=setup.rho, alpha=setup.alpha, beta=setup.beta,
                                           lambda_weight=setup.lambda_weight))
 
-
     str_hl = str(setup.hidden_layers).replace(", ", "_")
     str_hl = str_hl.replace("[", "").replace("]", "")
     str_act = str(setup.activation)
-    if str_act.lower() == "leakyrelu" and (model_type == "CASTLEOriginal" or model_type == "CASTLEAdapted"):
+
+    training_castle = model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified"]
+    if str_act.lower() == "leakyrelu" and training_castle:
         str_act += f"_{setup.relu_alpha}"
+
     path = path / Path(
         "hl_{hidden_layers}-act_{activation}-e_{epochs}/".format(
             hidden_layers=str_hl,
@@ -146,6 +156,12 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
 
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEAdapted': CASTLEAdapted,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
+    elif setup.nn_type == "CASTLESimplified":
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
+
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified})
+
     elif setup.nn_type == "castleNN":
         # Legacy version of CASTLE for backwards compatibility
         modelname = Path(folder, filename + '_model.keras')
@@ -212,8 +228,8 @@ def load_models(setup, skip_causal_phq=False):
     models = collections.defaultdict(dict)
 
     output_list = get_var_list(setup, setup.spcam_outputs)
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn \
-            or setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted":
+    model_is_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or model_is_castle:
         nn_type = setup.nn_type  # if setup.do_random_single_nn else 'SingleNN'
         for output in output_list:
             output = Variable_Lev_Metadata.parse_var_name(output)

@@ -4,11 +4,13 @@
 # https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 
-from neural_networks.castle.castle_model_base import CASTLEBase, build_graph, compute_h_matrix_exp
+from neural_networks.castle.castle_model_base import CASTLEBaseWReconstruction, compute_h_matrix_exp, \
+    get_kernel_initializer
+from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
 
 
 @tf.keras.utils.register_keras_serializable()
-class CASTLEOriginal(CASTLEBase):
+class CASTLEOriginal(CASTLEBaseWReconstruction):
     """A neural network model with CASTLE (Causal Structure Learning) regularization adapted
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
@@ -105,29 +107,51 @@ class CASTLEOriginal(CASTLEBase):
         num_outputs = 1
 
         # Initialize the model as a functional (custom) model
-        # Original CASTLE also passes Y as an input to the network. Use `with_y=True`
-        input_sub_layers, shared_hidden_layers, output_sub_layers = build_graph(num_input_layers=num_input_layers,
-                                                                                num_x_inputs=num_x_inputs,
-                                                                                num_outputs=num_outputs,
-                                                                                hidden_layers=hidden_layers,
-                                                                                activation=activation.lower(),
-                                                                                kernel_initializer_input_layers=kernel_initializer_input_layers,
-                                                                                kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                                                                                kernel_initializer_output_layers=kernel_initializer_output_layers,
-                                                                                bias_initializer_input_layers=bias_initializer_input_layers,
-                                                                                bias_initializer_hidden_layers=bias_initializer_hidden_layers,
-                                                                                bias_initializer_output_layers=bias_initializer_output_layers,
-                                                                                kernel_regularizer_input_layers=kernel_regularizer_input_layers,
-                                                                                kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
-                                                                                kernel_regularizer_output_layers=kernel_regularizer_output_layers,
-                                                                                bias_regularizer_input_layers=bias_regularizer_input_layers,
-                                                                                bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
-                                                                                bias_regularizer_output_layers=bias_regularizer_output_layers,
-                                                                                activity_regularizer_input_layers=activity_regularizer_input_layers,
-                                                                                activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
-                                                                                activity_regularizer_output_layers=activity_regularizer_output_layers,
-                                                                                relu_alpha=relu_alpha,
-                                                                                seed=seed, with_y=True)
+
+        # Create layers
+        # Get activation function
+        act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation == "leakyrelu" \
+            else tf.keras.layers.Activation(activation)
+
+        # Original CASTLE also passes Y as an input to the network.
+        input_sub_layers = list()
+        for i in range(num_input_layers):
+            mask = tf.transpose(
+                tf.one_hot([i] * hidden_layers[0], depth=num_x_inputs + 1, on_value=0.0, off_value=1.0, axis=-1))
+            masked_dense_layer = MaskedDenseLayer(hidden_layers[0], mask, activation=act_func,
+                                                  name=f"input_sub_layer_{i}",
+                                                  kernel_initializer=get_kernel_initializer(
+                                                      kernel_initializer_input_layers, seed),
+                                                  bias_initializer=bias_initializer_input_layers,
+                                                  kernel_regularizer=kernel_regularizer_input_layers,
+                                                  bias_regularizer=bias_regularizer_input_layers,
+                                                  activity_regularizer=activity_regularizer_input_layers)
+            input_sub_layers.append(masked_dense_layer)
+
+        # Shared hidden layers: len(hidden_layers) number of hidden layers. All input sub-layers feed into the
+        #   same (shared) hidden layers.
+        shared_hidden_layers = list()
+        for i, n_hidden_layer_nodes in enumerate(hidden_layers):
+            shared_hidden_layers.append(
+                tf.keras.layers.Dense(n_hidden_layer_nodes, activation=act_func, name=f"shared_hidden_layer_{i}",
+                                      kernel_initializer=get_kernel_initializer(kernel_initializer_hidden_layers, seed),
+                                      bias_initializer=bias_initializer_hidden_layers,
+                                      kernel_regularizer=kernel_regularizer_hidden_layers,
+                                      bias_regularizer=bias_regularizer_hidden_layers,
+                                      activity_regularizer=activity_regularizer_hidden_layers))
+
+        # Output sub-layers: One sub-layer for each input. Each output layer outputs one value, i.e.
+        #   reconstructs one input.
+        output_sub_layers = list()
+        for i in range(num_input_layers):
+            output_sub_layers.append(
+                # No activation function, i.e. linear
+                tf.keras.layers.Dense(num_outputs, activation="linear", name=f"output_sub_layer_{i}",
+                                      kernel_initializer=get_kernel_initializer(kernel_initializer_output_layers, seed),
+                                      bias_initializer=bias_initializer_output_layers,
+                                      kernel_regularizer=kernel_regularizer_output_layers,
+                                      bias_regularizer=bias_regularizer_output_layers,
+                                      activity_regularizer=activity_regularizer_output_layers))
 
         inputs = tf.keras.Input(shape=(num_x_inputs + 1,))
         # Create network graph
@@ -197,9 +221,7 @@ class CASTLEOriginal(CASTLEBase):
         # In this case, x contains the true y and x: [y, x]
         y = x[:, 0]
 
-        # Todo: What is correct?
         input_layer_weights = [layer.trainable_variables[0] * layer.mask for layer in self.input_sub_layers]
-        # input_layer_weights = [layer.trainable_variables[0] for layer in self.input_sub_layers]
 
         # In CASTLE, y_pred is (y_pred, x_pred)
         prediction_loss = self.compute_prediction_loss(y, y_pred)

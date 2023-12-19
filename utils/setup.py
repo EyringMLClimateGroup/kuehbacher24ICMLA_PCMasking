@@ -213,6 +213,10 @@ class SetupNeuralNetworks(Setup):
         elif self.nn_type == "CASTLEOriginal":
             self.beta = float(yml_cfg["beta"])
             self.lambda_weight = float(yml_cfg["lambda_weight"])
+
+            self.rho = float(yml_cfg["rho"])
+            self.alpha = float(yml_cfg["alpha"])
+
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "CASTLEAdapted":
@@ -221,6 +225,14 @@ class SetupNeuralNetworks(Setup):
             self.lambda_acyclicity = float(yml_cfg["lambda_acyclicity"])
             self.lambda_reconstruction = float(yml_cfg["lambda_reconstruction"])
             self.acyclicity_constraint = yml_cfg["acyclicity_constraint"]
+
+            self.rho = float(yml_cfg["rho"])
+            self.alpha = float(yml_cfg["alpha"])
+
+            self._set_common_castle_attributes(yml_cfg)
+
+        elif self.nn_type == "CASTLESimplified":
+            self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "castleNN":
@@ -239,9 +251,6 @@ class SetupNeuralNetworks(Setup):
             raise ValueError(f"Unknown Network type: {self.nn_type}")
 
     def _set_common_castle_attributes(self, yml_cfg):
-        self.rho = float(yml_cfg["rho"])
-        self.alpha = float(yml_cfg["alpha"])
-
         if yml_cfg["activation"].lower() == "leakyrelu":
             try:
                 self.relu_alpha = float(yml_cfg["relu_alpha"])

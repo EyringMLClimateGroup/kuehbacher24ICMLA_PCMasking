@@ -7,6 +7,7 @@ from tensorflow import keras
 
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
+from neural_networks.castle.castle_model_simplified import CASTLESimplified
 from neural_networks.castle.legacy.castle_model import CASTLE
 
 
@@ -38,18 +39,14 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
         tf.keras.Model: A tf.keras model designed with CASTLE regularization.
 
     Raises:
-        ValueError: If `rho` is not greater than 0.
-        ValueError: If the `setup.nn_type` is not one of `['CastleOriginal', 'CastleAdapted']`.
+        ValueError: If the `setup.nn_type` is not one
+                    `['CastleOriginal', 'CastleAdapted', 'CASTLESimplified', 'castleNN]`.
     """
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)
     # Force eager execution of tf.data functions as well
     if eager_execution:
         tf.data.experimental.enable_debug_mode()
-
-    if setup.rho <= 0:
-        raise ValueError("Penalty parameter `rho` for Lagrangian optimization scheme for acyclicity constraint "
-                         "must be greater than 0.")
 
     if setup.kernel_initializer_input_layers is None:
         setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
@@ -94,6 +91,13 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+        elif setup.nn_type == "CASTLESimplified":
+            model_ = CASTLESimplified(num_x_inputs, setup.hidden_layers, setup.activation,
+                                      lambda_sparsity=setup.lambda_sparsity,
+                                      relu_alpha=relu_alpha, seed=seed,
+                                      kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
+                                      kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                      kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         elif setup.nn_type == "CastleNN":
             # Backwards compatibility for older CASTLE version
             model_ = CASTLE(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho, alpha=setup.alpha,

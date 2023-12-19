@@ -45,6 +45,21 @@ def setup_castle_original_w3d():
 
     return SetupNeuralNetworks(argv)
 
+@pytest.fixture()
+def setup_castle_simplified_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_2d.yml")
+    argv = ["-c", config_file]
+
+    return SetupNeuralNetworks(argv)
+
+
+@pytest.fixture()
+def setup_castle_simplified_w3d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_w3d.yml")
+    argv = ["-c", config_file]
+
+    return SetupNeuralNetworks(argv)
+
 
 @pytest.fixture(params=["cfg_castle_adapted_2d_lr_cosine_init_orthogonal_random_normal_random_uniform.yml",
                         "cfg_castle_adapted_2d_lr_exp_init_he_normal_he_uniform_identity.yml",

@@ -26,6 +26,9 @@ def test_create_setup_castle_original(config_name):
     assert (castle_setup.beta == yml_cfg["beta"])
     assert (castle_setup.lambda_weight == yml_cfg["lambda_weight"])
 
+    assert (castle_setup.rho == yml_cfg["rho"])
+    assert (castle_setup.alpha == yml_cfg["alpha"])
+
     _assert_identical_attributes(castle_setup, yml_cfg)
 
 
@@ -48,7 +51,27 @@ def test_create_setup_castle_adapted(config_name):
     assert (castle_setup.lambda_acyclicity == yml_cfg["lambda_acyclicity"])
     assert (castle_setup.lambda_reconstruction == yml_cfg["lambda_reconstruction"])
 
+    assert (castle_setup.rho == yml_cfg["rho"])
+    assert (castle_setup.alpha == yml_cfg["alpha"])
+
     assert (castle_setup.acyclicity_constraint == yml_cfg["acyclicity_constraint"])
+
+    _assert_identical_attributes(castle_setup, yml_cfg)
+
+
+@pytest.mark.parametrize("config_name", ["cfg_castle_simplified_2d.yml", "cfg_castle_simplified_w3d.yml"])
+def test_create_setup_castle_simplified(config_name):
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
+    argv = ["-c", config_file]
+
+    castle_setup = SetupNeuralNetworks(argv)
+
+    # Assert
+    with open(config_file, "r") as f:
+        yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+    assert (castle_setup.nn_type == "CASTLESimplified")
+    assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
 
     _assert_identical_attributes(castle_setup, yml_cfg)
 
@@ -139,9 +162,6 @@ def test_create_setup_castle_lr_schedule_kernel_initializer(config_name):
 
 
 def _assert_identical_attributes(castle_setup, yml_cfg):
-    assert (castle_setup.rho == yml_cfg["rho"])
-    assert (castle_setup.alpha == yml_cfg["alpha"])
-
     if yml_cfg["activation"].lower() == "leakyrelu":
         try:
             assert (castle_setup.relu_alpha == yml_cfg["relu_alpha"])
