@@ -19,14 +19,16 @@ def test_create_gumbel_softmax_masking_layer():
 
     masking_layer = StraightThroughGumbelSoftmaxMaskingLayer(num_vars, temp=temp,
                                                              temp_decay=temp_decay, do_decay_temp=do_temp_decay)
+    assert (masking_layer.masking_vector is None)
+
     masking_layer.build(input_shape=(None, num_vars))
 
     assert (isinstance(masking_layer, StraightThroughGumbelSoftmaxMaskingLayer))
     assert (num_vars == masking_layer.num_vars)
     assert (len(masking_layer.trainable_variables) == 1)
     assert (masking_layer.trainable_variables[0].shape[-1] == num_vars)
-    assert (masking_layer.masking_vector is None)
-
+    assert (masking_layer.masking_vector is not None)
+    assert (masking_layer.masking_vector.shape == masking_layer.params_vector.shape)
 
 def test_gumbel_softmax_layer_masking():
     num_classes = 8
