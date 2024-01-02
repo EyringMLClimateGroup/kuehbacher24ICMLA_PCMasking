@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from neural_networks.castle.castle_model_base import CASTLEBase, get_kernel_initializer
+from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 
 
 @tf.keras.utils.register_keras_serializable()
@@ -97,37 +98,38 @@ class CASTLESimplified(CASTLEBase):
                  lambda_sparsity,
                  relu_alpha=0.3,
                  seed=None,
+                 temperature=1.0,
+                 temperature_decay=0.99,
+                 do_decay_temperature=True,
                  kernel_initializer_input_layers=None,
                  kernel_initializer_hidden_layers=None,
                  kernel_initializer_output_layers=None,
-                 bias_initializer_input_layers="zeros",
                  bias_initializer_hidden_layers="zeros",
                  bias_initializer_output_layers="zeros",
                  kernel_regularizer_input_layers=None,
                  kernel_regularizer_hidden_layers=None,
                  kernel_regularizer_output_layers=None,
-                 bias_regularizer_input_layers=None,
                  bias_regularizer_hidden_layers=None,
                  bias_regularizer_output_layers=None,
-                 activity_regularizer_input_layers=None,
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
-                 name="castle_adapted", **kwargs):
+                 name="castle_simplified", **kwargs):
 
         num_outputs = 1
 
         # Create layers
         # Get activation function
-        act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation == "leakyrelu" \
-            else tf.keras.layers.Activation(activation)
+        act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation.lower() == "leakyrelu" \
+            else tf.keras.layers.Activation(activation.lower())
 
-        input_layer = tf.keras.layers.Dense(hidden_layers[0], activation=act_func, name=f"input_sub_layer",
-                                            kernel_initializer=get_kernel_initializer(kernel_initializer_input_layers,
-                                                                                      seed),
-                                            bias_initializer=bias_initializer_input_layers,
-                                            kernel_regularizer=kernel_regularizer_input_layers,
-                                            bias_regularizer=bias_regularizer_input_layers,
-                                            activity_regularizer=activity_regularizer_input_layers)
+        input_layer = StraightThroughGumbelSoftmaxMaskingLayer(num_x_inputs,
+                                                               temp=temperature,
+                                                               temp_decay=temperature_decay,
+                                                               do_decay_temp=do_decay_temperature,
+                                                               params_initializer=kernel_initializer_input_layers,
+                                                               params_regularizer=kernel_regularizer_input_layers,
+                                                               seed=seed,
+                                                               name="input_masking_layer")
 
         # Hidden layers: len(hidden_layers) number of hidden layers
         shared_hidden_layers = list()
@@ -169,22 +171,23 @@ class CASTLESimplified(CASTLEBase):
                                                kernel_initializer_input_layers=kernel_initializer_input_layers,
                                                kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
                                                kernel_initializer_output_layers=kernel_initializer_output_layers,
-                                               bias_initializer_input_layers=bias_initializer_input_layers,
                                                bias_initializer_hidden_layers=bias_initializer_hidden_layers,
                                                bias_initializer_output_layers=bias_initializer_output_layers,
                                                kernel_regularizer_input_layers=kernel_regularizer_input_layers,
                                                kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
                                                kernel_regularizer_output_layers=kernel_regularizer_output_layers,
-                                               bias_regularizer_input_layers=bias_regularizer_input_layers,
                                                bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
                                                bias_regularizer_output_layers=bias_regularizer_output_layers,
-                                               activity_regularizer_input_layers=activity_regularizer_input_layers,
                                                activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
                                                activity_regularizer_output_layers=activity_regularizer_output_layers,
                                                name=name, inputs=inputs, outputs=outputs, **kwargs)
 
         self.lambda_sparsity = lambda_sparsity
         self.relu_alpha = relu_alpha
+
+        self.temperature = temperature
+        self.temperature_decay = temperature_decay
+        self.do_decay_temperature = do_decay_temperature
 
         self.input_layer = input_layer
         self.shared_hidden_layers = shared_hidden_layers
@@ -211,7 +214,7 @@ class CASTLESimplified(CASTLEBase):
         """
         prediction_loss = self.compute_prediction_loss(y, y_pred)
 
-        sparsity_regularizer = self.compute_sparsity_loss(self.input_layer.trainable_variables[0])
+        sparsity_regularizer = self.compute_sparsity_loss(self.input_layer.masking_vector)
         weighted_sparsity_regularizer = tf.math.multiply(self.lambda_sparsity, sparsity_regularizer)
 
         loss = tf.math.add(prediction_loss, weighted_sparsity_regularizer, name="overall_loss")
@@ -230,12 +233,13 @@ class CASTLESimplified(CASTLEBase):
         return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred), name="prediction_loss_reduce_mean")
 
     @staticmethod
-    def compute_sparsity_loss(weight):
+    def compute_sparsity_loss(masking_vector):
         """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
-        entry_wise_norm = tf.norm(weight, ord=1, name='l1_norm_input_layer')
-        # Scale by number of inputs and units of first hidden layer
-        sparsity_regularizer = tf.math.divide(entry_wise_norm, weight.shape[0], name="l1_norm_input_layer_scaled")
-        sparsity_regularizer = tf.math.divide(sparsity_regularizer, weight.shape[1], name="l1_norm_input_layer_scaled")
+        entry_wise_norm = tf.norm(masking_vector, ord=1, name='l1_norm_input_layer')
+
+        # Scale norm by number of inputs
+        sparsity_regularizer = tf.math.divide(entry_wise_norm, masking_vector.shape[0],
+                                              name="l1_norm_input_layer_scaled")
 
         return sparsity_regularizer
 
@@ -261,6 +265,10 @@ class CASTLESimplified(CASTLEBase):
             {
                 "lambda_sparsity": self.lambda_sparsity,
                 "relu_alpha": self.relu_alpha,
+                "temperature": self.temperature,
+                "temperature_decay": self.temperature_decay,
+                "do_decay_temperature": self.do_decay_temperature,
             }
         )
+
         return config

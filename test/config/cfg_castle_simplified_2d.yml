@@ -136,6 +136,9 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 # CASTLESimplified
 # ----------------------
 lambda_sparsity: 1.0
+temperature: 1.0
+temperature_decay: 0.99
+do_decay_temperature: True
 relu_alpha: 0.3
 distribute_strategy: "mirrored" # mirrored or nothing for normal training
 additional_val_datasets:

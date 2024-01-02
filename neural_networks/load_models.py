@@ -8,7 +8,8 @@ from neural_networks.castle.castle_model_adapted import CASTLEAdapted
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_simplified import CASTLESimplified
 from neural_networks.castle.legacy.castle_model import CASTLE
-from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
+from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
+from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 
 
 def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
@@ -160,7 +161,8 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified})
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified,
+                                                                      'StraightThroughGumbelSoftmaxMaskingLayer': StraightThroughGumbelSoftmaxMaskingLayer})
 
     elif setup.nn_type == "castleNN":
         # Legacy version of CASTLE for backwards compatibility

@@ -9,7 +9,9 @@ from tensorflow import keras
 from neural_networks.castle.building_castle import build_castle
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
-from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
+from neural_networks.castle.castle_model_simplified import CASTLESimplified
+from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
+from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 from test.testing_utils import set_memory_growth_gpu
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
@@ -31,10 +33,10 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
+@pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
                                    "setup_castle_adapted_w3d"])
-def test_create_castle_adapted(setup, strategy, seed, request):
-    setup = request.getfixturevalue(setup)
+def test_create_castle_adapted(setup_str, strategy, seed, request):
+    setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
     model = build_castle(setup, num_inputs, setup.init_lr,
@@ -43,13 +45,13 @@ def test_create_castle_adapted(setup, strategy, seed, request):
     assert (isinstance(model, CASTLEAdapted))
     assert (isinstance(model.outputs, list))
     assert (len(model.outputs[0].shape) == 3)
-    _print_plot_model_summary(model)
+    _print_plot_model_summary(model, setup_str + ".png")
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup", ["setup_castle_original_2d", "setup_castle_original_w3d"])
-def test_create_castle_original(setup, strategy, seed, request):
-    setup = request.getfixturevalue(setup)
+@pytest.mark.parametrize("setup_str", ["setup_castle_original_2d", "setup_castle_original_w3d"])
+def test_create_castle_original(setup_str, strategy, seed, request):
+    setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
     model = build_castle(setup, num_inputs, setup.init_lr,
@@ -58,7 +60,23 @@ def test_create_castle_original(setup, strategy, seed, request):
     assert (isinstance(model, CASTLEOriginal))
     assert (isinstance(model.outputs, list))
     assert (len(model.outputs[0].shape) == 3)
-    _print_plot_model_summary(model)
+    _print_plot_model_summary(model, setup_str + ".png")
+
+
+@pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
+@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
+def test_create_castle_simplified(setup_str, strategy, seed, request):
+    setup = request.getfixturevalue(setup_str)
+    num_inputs = len(setup.input_order_list)
+
+    model = build_castle(setup, num_inputs, setup.init_lr,
+                         eager_execution=True, strategy=strategy, seed=seed)
+
+    assert (isinstance(model, CASTLESimplified))
+    assert (isinstance(model.outputs, list))
+    assert (len(model.outputs[0].shape) == 2)
+    assert (model.outputs[0].shape[-1] == 1)
+    _print_plot_model_summary(model, setup_str + ".png")
 
 
 def test_create_castle_adapted_multiple_lr_kernel_init(setup_castle_adapted_multiple_lr_kernel_init, seed):
@@ -71,10 +89,10 @@ def test_create_castle_adapted_multiple_lr_kernel_init(setup_castle_adapted_mult
     assert (isinstance(model, CASTLEAdapted))
 
 
-def _print_plot_model_summary(model):
+def _print_plot_model_summary(model, plot_name):
     print(model.summary())
     try:
-        keras.utils.plot_model(model, to_file=os.path.join(OUTPUT_DIR, "castle_adapted_vars_2d.png"), show_shapes=True,
+        keras.utils.plot_model(model, to_file=os.path.join(OUTPUT_DIR, plot_name), show_shapes=True,
                                show_layer_activations=True)
     except ImportError:
         print("WARNING: Cannot plot model because either pydot or graphviz are not installed. "
@@ -84,7 +102,8 @@ def _print_plot_model_summary(model):
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
                                        "setup_castle_adapted_w3d",
-                                       "setup_castle_original_2d", "setup_castle_original_w3d"])
+                                       "setup_castle_original_2d", "setup_castle_original_w3d",
+                                       "setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
 def test_train_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -112,7 +131,8 @@ def test_train_castle(setup_str, strategy, seed, request):
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
                                        "setup_castle_adapted_w3d",
-                                       "setup_castle_original_2d", "setup_castle_original_w3d"])
+                                       "setup_castle_original_2d", "setup_castle_original_w3d",
+                                       "setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
 def test_predict_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -133,7 +153,10 @@ def test_predict_castle(setup_str, strategy, seed, request):
     num_batches = int(n_samples / batch_size)
 
     assert (prediction is not None)
-    assert (prediction.shape == (batch_size * num_batches, num_inputs + 1, 1))
+    if "simplified" in setup_str:
+        assert (prediction.shape == (batch_size * num_batches, 1))
+    else:
+        assert (prediction.shape == (batch_size * num_batches, num_inputs + 1, 1))
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
@@ -164,6 +187,9 @@ def test_save_load_castle_adapted(setup_str, strategy, seed, request):
     assert (loaded_model.relu_alpha == model.relu_alpha)
     assert (loaded_model.acyclicity_constraint == model.acyclicity_constraint)
 
+    assert (loaded_model.alpha == model.alpha)
+    assert (loaded_model.rho == model.rho)
+
     _assert_identical_attributes(loaded_model, model)
 
 
@@ -190,12 +216,42 @@ def test_save_load_castle_original(setup_str, strategy, seed, request):
     assert (loaded_model.beta == model.beta)
     assert (loaded_model.lambda_weight == model.lambda_weight)
 
+    assert (loaded_model.alpha == model.alpha)
+    assert (loaded_model.rho == model.rho)
+
+    _assert_identical_attributes(loaded_model, model)
+
+
+@pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
+@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
+def test_save_load_castle_simplified(setup_str, strategy, seed, request):
+    setup = request.getfixturevalue(setup_str)
+    num_inputs = len(setup.input_order_list)
+
+    model = build_castle(setup, num_inputs, setup.init_lr,
+                         eager_execution=True, strategy=strategy, seed=seed)
+
+    _ = train_castle(model, num_inputs, epochs=1, strategy=strategy)
+
+    model_save_name = "model_" + setup_str + ".keras"
+    weights_save_name = "model_" + setup_str + "_weights.h5"
+    model.save(os.path.join(OUTPUT_DIR, model_save_name), save_format="keras_v3")
+    model.save_weights(os.path.join(OUTPUT_DIR, weights_save_name))
+
+    loaded_model = tf.keras.models.load_model(os.path.join(OUTPUT_DIR, model_save_name),
+                                              custom_objects={"CASTLESimplified": CASTLESimplified,
+                                                              "StraightThroughGumbelSoftmaxMaskingLayer": StraightThroughGumbelSoftmaxMaskingLayer})
+
+    assert (loaded_model.lambda_sparsity == model.lambda_sparsity)
+    assert (loaded_model.relu_alpha == model.relu_alpha)
+    assert (loaded_model.temperature == model.temperature)
+    assert (loaded_model.temperature_decay == model.temperature_decay)
+    assert (loaded_model.do_decay_temperature == model.do_decay_temperature)
+
     _assert_identical_attributes(loaded_model, model)
 
 
 def _assert_identical_attributes(loaded_model, model):
-    assert (loaded_model.alpha == model.alpha)
-    assert (loaded_model.rho == model.rho)
     assert (loaded_model.activation == model.activation)
 
     assert (type(loaded_model.kernel_initializer_input_layers) == type(model.kernel_initializer_input_layers))

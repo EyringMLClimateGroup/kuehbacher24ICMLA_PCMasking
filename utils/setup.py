@@ -233,6 +233,11 @@ class SetupNeuralNetworks(Setup):
 
         elif self.nn_type == "CASTLESimplified":
             self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
+
+            self.temperature = float(yml_cfg["lambda_sparsity"])
+            self.temperature_decay = float(yml_cfg["temperature_decay"])
+            self.do_decay_temperature = yml_cfg["do_decay_temperature"]
+
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "castleNN":

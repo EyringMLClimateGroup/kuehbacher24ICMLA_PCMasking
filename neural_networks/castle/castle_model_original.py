@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from neural_networks.castle.castle_model_base import CASTLEBaseWReconstruction, compute_h_matrix_exp, \
     get_kernel_initializer
-from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
+from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
 
 
 @tf.keras.utils.register_keras_serializable()

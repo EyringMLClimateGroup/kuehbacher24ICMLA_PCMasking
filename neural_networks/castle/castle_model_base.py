@@ -8,8 +8,6 @@ import keras.saving.serialization_lib
 import tensorflow as tf
 from tensorflow import keras
 
-from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
-
 
 @tf.keras.utils.register_keras_serializable()
 class CASTLEBase(tf.keras.Model, ABC):
@@ -576,6 +574,8 @@ def get_kernel_initializer(kernel_initializer, seed):
     if kernel_initializer is None:
         kernel_initializer = keras.initializers.RandomNormal(mean=0.0,
                                                              stddev=0.01, seed=seed)
+    elif isinstance(kernel_initializer, str):
+        kernel_initializer = keras.initializers.get(kernel_initializer)
     elif kernel_initializer["initializer"] == "Constant":
         kernel_initializer = keras.initializers.Constant(value=kernel_initializer["value"])
     elif kernel_initializer["initializer"] == "GlorotNormal":

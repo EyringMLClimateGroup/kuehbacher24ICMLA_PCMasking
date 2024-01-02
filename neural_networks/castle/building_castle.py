@@ -95,9 +95,13 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
             model_ = CASTLESimplified(num_x_inputs, setup.hidden_layers, setup.activation,
                                       lambda_sparsity=setup.lambda_sparsity,
                                       relu_alpha=relu_alpha, seed=seed,
+                                      temperature=setup.temperature,
+                                      temperature_decay=setup.temperature_decay,
+                                      do_decay_temperature=setup.do_decay_temperature,
                                       kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
                                       kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                       kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+
         elif setup.nn_type == "CastleNN":
             # Backwards compatibility for older CASTLE version
             model_ = CASTLE(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho, alpha=setup.alpha,

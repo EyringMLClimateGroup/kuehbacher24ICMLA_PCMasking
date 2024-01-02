@@ -135,6 +135,9 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 # ----------------------
 lambda_sparsity: 1.0
 relu_alpha: 0.3
+temperature: 1.0
+temperature_decay: 0.99
+do_decay_temperature: True
 distribute_strategy: "mirrored" # mirrored or nothing for normal training
 additional_val_datasets:
   - { name: "test_1", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
