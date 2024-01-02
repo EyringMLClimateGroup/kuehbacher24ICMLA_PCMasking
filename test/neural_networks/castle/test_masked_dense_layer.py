@@ -1,5 +1,4 @@
-from neural_networks.castle.masked_dense_layer import MaskedDenseLayer
-import pytest
+from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
 import numpy as np
 from test.testing_utils import set_memory_growth_gpu
 

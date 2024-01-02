@@ -72,6 +72,9 @@ def test_create_setup_castle_simplified(config_name):
 
     assert (castle_setup.nn_type == "CASTLESimplified")
     assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
+    assert (castle_setup.temperature == yml_cfg["temperature"])
+    assert (castle_setup.temperature_decay == yml_cfg["temperature_decay"])
+    assert (castle_setup.do_decay_temperature == yml_cfg["do_decay_temperature"])
 
     _assert_identical_attributes(castle_setup, yml_cfg)
 
