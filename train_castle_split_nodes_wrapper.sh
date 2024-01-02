@@ -4,13 +4,13 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_29_castle_adapted"
-HPC="dkrz" # jsc, dkrz
+base_dir="output_castle/training_31_castle_simplified"
+HPC="jsc" # jsc, dkrz
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
-NN_CONFIG="${base_dir}/cfg_castle_adapted.yml"
+NN_CONFIG="${base_dir}/cfg_castle_simplified.yml"
 
 NUM_NODES=65
 SEED=42
