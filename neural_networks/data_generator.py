@@ -58,7 +58,7 @@ def build_train_generator(
         output_transform=out_scale_dict,
         batch_size=batch_size,
         shuffle=True,  # This feature doesn't seem to work
-        input_y=True if setup.nn_type == "CASTLEOriginal" else False,
+        input_y=(setup.nn_type == "CASTLEOriginal"),
     )
     return train_gen
 
@@ -123,7 +123,7 @@ def build_valid_generator(
         output_transform=out_scale_dict,
         batch_size=batch_size,
         shuffle=False,
-        input_y=True if setup.nn_type == "CASTLEOriginal" else False,
+        input_y=(setup.nn_type == "CASTLEOriginal"),
         # xarray=True,
     )
     return valid_gen
@@ -166,7 +166,7 @@ def build_additional_valid_generator(
         output_transform=out_scale_dict,
         batch_size=batch_size,
         shuffle=False,
-        input_y=True if setup.nn_type == "CASTLEOriginal" else False,
+        input_y=(setup.nn_type == "CASTLEOriginal"),
     # xarray=True,
     )
     return valid_gen
