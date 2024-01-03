@@ -1,16 +1,12 @@
-# noinspection PyUnresolvedReferences
-from utils.tf_gpu_management import set_memory_growth_gpu, limit_single_gpu
-
 import argparse
 import datetime
 import time
 from pathlib import Path
 
-import tensorflow as tf
-
 from neural_networks.models_split_over_nodes import generate_models
 from neural_networks.training import train_all_models
 from utils.setup import SetupNeuralNetworks
+from utils.tf_gpu_management import manage_gpu, set_tf_random_seed
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
@@ -63,11 +59,6 @@ def parse_str_to_bool_or_int(v):
 
 
 if __name__ == "__main__":
-    # Allow memory growth for GPUs (this seems to be very important, because errors occur otherwise)
-    # todo: choose function according to whether MirroredStrategy is used or not
-    set_memory_growth_gpu()
-    # limit_single_gpu()
-
     parser = argparse.ArgumentParser(description="Generates .txt files for neural network input and output "
                                                  "variables for specific setup configuration.")
     parser.add_argument("-s", "--seed", help="Integer value for random seed. "
@@ -109,11 +100,16 @@ if __name__ == "__main__":
     if not outputs_file.suffix == ".txt":
         parser.error(f"File with neural network outputs must be .txt file. Got {outputs_file}")
 
+    # GPU management: Allow memory growth if training is done on multiple GPUs, otherwise limit GPUs to single GPU
+    manage_gpu(yaml_config_file)
+
+    # Parse indices of outputs selected for training
     start, end = train_idx.split("-")
     train_idx = list(range(int(start), int(end) + 1))
     if not train_idx:
         raise ValueError("Given train indices were incorrect. Start indices must be smaller than end index. ")
 
+    # Set random seed
     if random_seed_parsed is False:
         random_seed = None
     else:
@@ -121,8 +117,7 @@ if __name__ == "__main__":
             random_seed = 42
         else:
             random_seed = random_seed_parsed
-        print(f"\n\nSet Tensorflow random seed for reproducibility: seed={random_seed}", flush=True)
-        tf.random.set_seed(random_seed)
+        set_tf_random_seed(random_seed)
 
     print(f"\nYAML config file:      {yaml_config_file}")
     print(f"Input list .txt file:  {inputs_file}")

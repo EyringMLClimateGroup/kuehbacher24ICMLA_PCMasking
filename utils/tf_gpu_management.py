@@ -1,4 +1,23 @@
 import tensorflow as tf
+import yaml
+
+
+def set_tf_random_seed(seed):
+    print(f"\n\nSet Tensorflow random seed for reproducibility: seed={seed}", flush=True)
+    tf.random.set_seed(seed)
+
+
+def manage_gpu(yaml_config):
+    with open(yaml_config, "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    distribute_strategy = config["distribute_strategy"]
+
+    if distribute_strategy == "mirrored":
+        set_memory_growth_gpu()
+    elif distribute_strategy == "":
+        limit_single_gpu()
+    else:
+        raise ValueError(f"Unknown distribute strategy: {distribute_strategy}")
 
 
 def set_memory_growth_gpu():
