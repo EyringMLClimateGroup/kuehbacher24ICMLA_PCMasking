@@ -8,6 +8,7 @@ import numpy.ma as ma
 import pandas as pd
 from ipykernel.kernelapp import IPKernelApp
 from math import pi
+from copy import deepcopy
 
 from neural_networks.cbrain.cam_constants import *
 from neural_networks.data_generator import build_train_generator, build_valid_generator
@@ -98,9 +99,12 @@ class ModelDiagnostics():
                 if self.setup.nn_type == "CASTLEOriginal":
                     # Here, X is actually [truth, X]
                     X = valid_gen[itime]
-                    truth = X[:, 0]
-                    # Replace truth in X with zeros to get accurate evaluation results
+                    truth = deepcopy(X[:, 0])
+
+                    # Replace truth in X with zeros/ones to get accurate evaluation results
                     X[:, 0] = np.zeros_like(truth)
+                    # X[:, 0] = np.ones_like(truth)
+
                     # Need to expand dims to make reshape work later on
                     truth = np.expand_dims(truth, axis=-1)
                 else:
@@ -110,8 +114,6 @@ class ModelDiagnostics():
                 # For both CASTLE models, we just want the prediction for Y
                 if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted" or \
                         self.setup.nn_type == "castleNN":
-                    # Need to expand dims to make reshape work later on
-                    # pred = np.expand_dims(pred[:, 0], axis=-1) # shape (batch_size)
                     pred = pred[:, 0]
 
                 # Inverse transform
@@ -128,9 +130,12 @@ class ModelDiagnostics():
                     if self.setup.nn_type == "CASTLEOriginal":
                         # Here, X_tmp is actually [t_tmp, X_tmp]
                         X_tmp = valid_gen[iTime]
-                        t_tmp = X_tmp[:, 0]
-                        # Replace t_tmp in X_tmp with zeros to get accurate evaluation results
+                        t_tmp = deepcopy(X_tmp[:, 0])
+
+                        # Replace t_tmp in X_tmp with zeros/ones to get accurate evaluation results
                         X_tmp[:, 0] = np.zeros_like(t_tmp)
+                        # X_tmp[:, 0] = np.ones_like(t_tmp)
+
                         # Need to expand dims to make reshape work later on
                         t_tmp = np.expand_dims(t_tmp, axis=-1)
                     else:
@@ -140,7 +145,6 @@ class ModelDiagnostics():
                     # For CASTLE, we just want the prediction for Y
                     if self.setup.nn_type == "CASTLEOriginal" or self.setup.nn_type == "CASTLEAdapted" or \
                             self.setup.nn_type == "castleNN":
-                        # p_tmp = np.expand_dims(p_tmp[:, 0], axis=-1)
                         p_tmp = p_tmp[:, 0]
 
                     # Inverse transform
@@ -226,9 +230,11 @@ class ModelDiagnostics():
                         if self.setup.nn_type == "CASTLEOriginal":
                             # Here, X is actually [truth, X]
                             t_X = train_gen[i]
-                            t_tmp = t_X[:, 0]
-                            # Replace truth_tmp in truth_X with zeros to get accurate evaluation results
+                            t_tmp = deepcopy(t_X[:, 0])
+
+                            # Replace truth_tmp in truth_X with zeros/ones to get accurate evaluation results
                             t_X[:, 0] = np.zeros_like(t_tmp)
+                            # t_X[:, 0] = np.ones_like(t_tmp)
                             X_train[sIdx:eIdx, :] = t_X
                         else:
                             X_train[sIdx:eIdx, :] = train_gen[i][0]
@@ -259,9 +265,11 @@ class ModelDiagnostics():
                         if self.setup.nn_type == "CASTLEOriginal":
                             # Here, X is actually [truth, X]
                             t_X = valid_gen[i]
-                            t_tmp = t_X[:, 0]
-                            # Replace truth_tmp in truth_X with zeros to get accurate evaluation results
+                            t_tmp = deepcopy(t_X[:, 0])
+                            
+                            # Replace truth_tmp in truth_X with zeros/ones to get accurate evaluation results
                             t_X[:, 0] = np.zeros_like(t_tmp)
+                            # t_X[:, 0] = np.ones_like(t_tmp)
                             X_test[sIdx:eIdx, :] = t_X
 
                         else:
@@ -316,6 +324,8 @@ class ModelDiagnostics():
         if self.setup.nn_type == "CASTLEOriginal":
             # In this case, Y is also expected as an input, so we pass some dummy data
             y = np.zeros_like(data["vars"][:, generator.output_idxs])
+            # y = np.ones_like(data["vars"][:, generator.output_idxs])
+            y = data["vars"][:, generator.output_idxs]
             data_x = np.concatenate((y, data_x), axis=1)
 
         # Delete data to save memory
