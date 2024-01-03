@@ -9,6 +9,7 @@
 #SBATCH --exclusive
 #SBATCH --time=24:00:00
 #SBATCH --account=icon-a-ml
+#SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END
 
 # Job name is passed with option -J and as command line argument $6
