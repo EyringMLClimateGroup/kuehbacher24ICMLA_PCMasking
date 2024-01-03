@@ -12,7 +12,6 @@
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
 
-
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
 
@@ -86,7 +85,7 @@ while getopts "c:o:x:m:p:t:s:e:l:j:h" opt; do
     fi
     ;;
   x)
-   found_x=1
+    found_x=1
     re='^[+-]?[0-9]+$'
     if [[ $OPTARG =~ $re ]]; then
       VAR_INDEX=$OPTARG
@@ -184,7 +183,6 @@ elif ((found_l == 0)); then
   echo -e "\nError: Failed to provide output directory for Python logs.\n"
   error_exit
 fi
-
 
 if ((found_j == 0)); then
   JOB_NAME="compute_castle_shap"

@@ -6,10 +6,11 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_29_castle_adapted"
-JOB_NAME="shap_castle_adapted"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_31_castle_simplified"
+JOB_NAME="shap_castle_simplified"
+HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_castle_adapted.yml"
+CONFIG="${TRAINING_DIR}/cfg_castle_simplified.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
@@ -74,6 +75,18 @@ while getopts "h" opt; do
 done
 shift "$(($OPTIND - 1))"
 
+################
+# Batch script #
+################
+if [[ $HPC == "jsc" ]]; then
+  BATCH_SCRIPT="compute_castle_shapley_jsc.sh"
+elif [[ $HPC == "dkrz" ]]; then
+  BATCH_SCRIPT="compute_castle_shapley_dkrz.sh"
+else
+  echo -e "\nUnknown HPC ${HPC}."
+  error_exit
+fi
+
 ####################
 # Start SLURM jobs #
 ####################
@@ -99,7 +112,7 @@ for ((i = 1; i < NUM_OUTPUTS + 1; i += 1)); do
   slurm_e="${SLURM_LOG_DIR}/%x_error_slurm_%j.out"
 
   echo -e "\nStarting job ${job_name} for variable ${var_line}"
-  sbatch -J "$job_name" --output "$slurm_o" --error "$slurm_e" compute_castle_shapley.sh -c "$CONFIG" -o "$OUTPUTS" -x $var_index -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" -l "$SLURM_LOG_DIR" -j "$job_name"
+  sbatch -J "$job_name" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$CONFIG" -o "$OUTPUTS" -x $var_index -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" -l "$SLURM_LOG_DIR" -j "$job_name"
 
 done
 echo -e "\n--- Finished.\n "
