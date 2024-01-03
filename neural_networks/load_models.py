@@ -203,8 +203,9 @@ def get_var_list(setup, target_vars):
 
 
 def load_single_model(setup, var_name):
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or \
-            setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or setup.nn_type == "castleNN":
+    loading_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or \
+                     setup.nn_type == "CASTLESimplified" or setup.nn_type == "castleNN"
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or loading_castle:
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
 
