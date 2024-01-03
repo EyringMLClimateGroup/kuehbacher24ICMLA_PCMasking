@@ -57,9 +57,9 @@ def plot_multiple_variables(var_names, config, i_time, n_time, diff, stats, vmin
 if __name__ == "__main__":
     # Parameters
     i_time = 1  # 'mean', 'range' --> range doesn't work
-    n_time = 1440  # about a month
+    n_time = 5 # 1440  # about a month
     diff = False
-    stats = ["r2", "mse"]  # mean, r2
+    stats = False # ["r2", "mse"]  # mean, r2
 
     # Additional params for setting plot color map range
     vmin = False  # False, -3e-7
@@ -67,9 +67,10 @@ if __name__ == "__main__":
 
     project_root = Path(__file__).parent.parent.resolve()
 
-    config_file = Path(project_root, "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root,
-                    "output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/plots_lat_lon/")
+    base_dir = os.path.join(project_root, "output_castle", "training_30_castle_original")
+
+    config_file = os.path.join(base_dir, "cfg_castle_original.yml")
+    plot_dir = os.path.join("plots_offline_evaluation", "debug", "plots_lat_lon")
 
     variable = "prect"  # prect
 
