@@ -23,9 +23,9 @@ def tune_castle(config, inputs, outputs, var_index, seed, tuning_alg, tuning_met
     experiment.config.tuner.name = tuning_alg
     experiment.config.tuner.class_args['optimize_mode'] = 'minimize'
 
-    experiment.config.max_trial_number = 3
-    experiment.config.max_experiment_duration = "715m"  # less than 12h, so that the experiment finishes before the job limit
-    experiment.config.trial_concurrency = 3
+    experiment.config.max_trial_number = 60
+    experiment.config.max_experiment_duration = "1435m"  # less than 24h, so that the experiment finishes before the job limit
+    experiment.config.trial_concurrency = 4
     experiment.config.trial_gpu_number = 1
 
     # Set to false if multiple exp

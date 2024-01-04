@@ -1,5 +1,5 @@
 # noinspection PyUnresolvedReferences
-from utils.tf_gpu_management import set_memory_growth_gpu, limit_single_gpu
+from utils.tf_gpu_management import set_memory_growth_gpu
 
 import argparse
 import datetime
@@ -9,10 +9,10 @@ from pathlib import Path
 import nni
 import tensorflow as tf
 
-from neural_networks.tuning.models_split_over_nodes_tuning import generate_models
-from neural_networks.tuning.training_mirrored_strategy_tuning import train_all_models as train_all_models_mirrored
-from neural_networks.tuning.training_tuning import train_all_models
+from neural_networks.models_split_over_nodes import generate_models
+from neural_networks.training import train_all_models
 from utils.setup import SetupNeuralNetworks
+from utils.variable import Variable_Lev_Metadata
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
@@ -23,27 +23,49 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
     outputs = _read_txt_to_list(nn_outputs_file)
 
     params = {
-        "num_hidden_layers": 4,
-        "dense_units": 64,
-        "activation_type": 'leakyrelu',
-        "learning_rate": 1e-3,
+        "hidden_layers": [64, 64, 64, 64],
+        "activation": "leakyrelu",
         "learning_rate_schedule": {"schedule": "exp", "step": 5, "divide": 3},
-        "lambda_weight": 1.0,
+        "kernel_initializer": "RandomNormal",
+        "lambda_sparsity": 1.0,
     }
 
     optimized_params = nni.get_next_parameter()
     params.update(optimized_params)
     print(f"\nOptimized parameters: {params}")
 
+    # Set parameters in setup
+    setup.hidden_layers = params["hidden_layers"]
+    setup.activation = params["activation"]
+    setup.lr_schedule = params["learning_rate_schedule"]
+    setup.lambda_sparsity = float(params["lambda_sparsity"])
+    if params["kernel_initializer"] == "RandomNormal":
+        setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
+                                                 "mean": 0.0, "std": 0.01}
+        setup.kernel_initializer_hidden_layers = {"initializer": "RandomNormal",
+                                                  "mean": 0.0, "std": 0.1}
+        setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
+                                                  "mean": 0.0, "std": 0.01}
+    elif params["kernel_initializer"] == "GlorotUniform":
+        setup.kernel_initializer_input_layers = {"initializer": "GlorotUniform"}
+        setup.kernel_initializer_hidden_layers = {"initializer": "GlorotUniform"}
+        setup.kernel_initializer_output_layers = {"initializer": "GlorotUniform"}
+    else:
+        raise ValueError(f"Unknown value for kernel initializer: {params['kernel_initializer']}. "
+                         f"Configured only for RandomNormal and GlorotUniform.")
+
+    # Select output and generate model description
     selected_output = [outputs[var_idx]]
     print(f"\nTuning network for variable {selected_output[0]}.\n")
 
     model_descriptions = generate_models(setup, inputs, selected_output, params)
 
-    if setup.distribute_strategy == "mirrored" or setup.distribute_strategy == "multi_worker_mirrored":
-        train_all_models_mirrored(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
-    else:
-        train_all_models(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
+    # Train
+    histories = train_all_models(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
+
+    final_metric = histories[Variable_Lev_Metadata.parse_var_name(selected_output)].history[metric][-1]
+    nni.report_final_result(final_metric)
+    print(f"\n\nFinal {metric} is {final_metric}\n")
 
 
 def _read_txt_to_list(txt_file):
@@ -134,7 +156,7 @@ if __name__ == "__main__":
     print(f"Output variable index: {var_index}")
     print(f"Tuning metric:         {tuning_metric}")
 
-    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
+    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning.", flush=True)
     t_init = time.time()
 
     train_castle(yaml_config_file, inputs_file, outputs_file, var_index, tuning_metric)
