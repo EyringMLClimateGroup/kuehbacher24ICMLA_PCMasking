@@ -21,17 +21,23 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
             raise EnvironmentError("Trying to run function 'train_all_models' for tf.distribute.MirroredStrategy "
                                    "but Tensorflow found no GPUs. ")
 
+    histories = dict()
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     for model_description in model_descriptions:
         # todo: include CASTLE models?
         # This will not affect CASTLE models which are saved as .keras files
         out_model_name = model_description.get_filename() + '_model.h5'
         out_path = str(model_description.get_path(setup.nn_output_path))
+
         if not os.path.isfile(os.path.join(out_path, out_model_name)):
-            train_save_model(model_description, setup, from_checkpoint=from_checkpoint,
-                             continue_training=continue_training, timestamp=timestamp)
+            histories[model_description.output] = train_save_model(model_description, setup,
+                                                                   from_checkpoint=from_checkpoint,
+                                                                   continue_training=continue_training,
+                                                                   timestamp=timestamp)
         else:
             print(out_path + '/' + out_model_name, ' exists; skipping...')
+
+    return histories
 
 
 def train_save_model(
@@ -100,7 +106,7 @@ def train_save_model(
                                    additional_validation_datasets)
 
     # Train the model
-    model_description.fit_model(
+    history = model_description.fit_model(
         x=train_dataset,
         validation_data=val_dataset,
         epochs=setup.epochs,
@@ -132,6 +138,8 @@ def train_save_model(
             fmt='%1.6e',
             delimiter=",",
         )
+
+    return history
 
 
 def _create_output_directory(model_description, setup):
