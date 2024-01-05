@@ -480,7 +480,7 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
         print(f"\n\nBuilding and compiling models.", flush=True)
 
     training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
-    if setup.do_single_nn or setup.do_pca_nn or training_castle :
+    if setup.do_single_nn or setup.do_pca_nn or training_castle:
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 
     if setup.do_random_single_nn:
