@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=booster
+#SBATCH --partition=develbooster
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:4
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=24:00:00
+#SBATCH --time=1:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END
@@ -20,7 +20,7 @@
 
 # For starting one job after another has finished, add
 # #SBATCH --dependency=afterok:$JOBID1
-echo "hi"
+
 display_help() {
   echo ""
   echo "SLURM batch script for tuning CASTLE model for specified outputs."
@@ -208,4 +208,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_castle_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -r "$PORT" -s "$SEED" >"{$PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_castle_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -r "$PORT" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

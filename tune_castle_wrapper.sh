@@ -16,7 +16,7 @@ TUNER="GridSearch"
 METRIC="val_prediction_loss"
 var="tphystnd_691.39"      # tphystnd_691.39, tphystnd_820.86
 
-PORT=33123
+PORT=8123
 SEED=42
 JOB_NAME="tuning_${var}_${PORT}"
 
@@ -24,9 +24,9 @@ JOB_NAME="tuning_${var}_${PORT}"
 # Index for network to be tuned:
 # tphystnd_691.39 20, tphystnd_820.86 22
 if [[ $var == "tphystnd_691.39" ]]; then
-  VAR_INDEX="20-20"
+  VAR_INDEX=20
 elif [[ $var == "tphystnd_820.86" ]]; then
-  VAR_INDEX="22-22"
+  VAR_INDEX=22
 else
   echo -e "\nIndex for variable ${var} not known. Exiting script.\n"
   exit 1
@@ -85,5 +85,5 @@ fi
 
 echo -e "\nSubmitting job ${JOB_NAME}"
 echo "Index: ${VAR_INDEX}"
-sbatch --job-name "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -r "$PORT" -l "$log_dir"-s "$SEED" -j "$JOB_NAME"
+sbatch --job-name "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -r "$PORT" -l "$log_dir" -s "$SEED" -j "$JOB_NAME"
 echo ""
