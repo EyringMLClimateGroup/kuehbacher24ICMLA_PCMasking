@@ -25,6 +25,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
     params = {
         "hidden_layers": [64, 64, 64, 64],
         "activation": "leakyrelu",
+        "learning_rate": 0.01,
         "learning_rate_schedule": {"schedule": "exp", "step": 5, "divide": 3},
         "kernel_initializer": "RandomNormal",
         "lambda_sparsity": 1.0,
@@ -37,6 +38,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
     # Set parameters in setup
     setup.hidden_layers = params["hidden_layers"]
     setup.activation = params["activation"]
+    setup.init_lr = params["learning_rate"]
     setup.lr_schedule = params["learning_rate_schedule"]
     setup.lambda_sparsity = float(params["lambda_sparsity"])
     if params["kernel_initializer"] == "RandomNormal":
