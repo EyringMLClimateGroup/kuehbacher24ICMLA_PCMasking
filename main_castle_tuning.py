@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import os
 import time
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def tune_castle(config, inputs, outputs, var_index, seed, tuning_alg, tuning_met
     experiment.config.training_service.use_active_gpu = True
 
     print(f"\nRunning experiment with tuning algorithm {tuning_alg} and metric {tuning_metric}.\n")
-    experiment.run(port=port)
+    experiment.run(port=port, debug=True)
 
 
 def read_yaml(yaml_file):
@@ -98,7 +99,7 @@ def parse_arguments():
     search_space = args.search_space
     port = args.port
 
-    experiment_working_dir = yaml_config_file.parent
+    experiment_working_dir = os.path.join(yaml_config_file.parent, "nni_experiments")
 
     return yaml_config_file, inputs_file, outputs_file, var_index, random_seed_parsed, tuning_alg, tuning_metric, \
         search_space, experiment_working_dir, port
@@ -112,6 +113,7 @@ if __name__ == "__main__":
         exp_working_dir, experiment_port = parse_arguments()
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE tuning on port {experiment_port}.", flush=True)
+    print(f"Experiment working directory: {Path(*Path(exp_working_dir).parts[-4:])}")
     t_init = time.time()
 
     tune_castle(cfg_file, inputs_file, outputs_file, var_idx, random_seed, tuner, metric, tuning_search_space,
