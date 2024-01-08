@@ -63,7 +63,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, var_idx, metric):
     model_descriptions = generate_models(setup, inputs, selected_output, params)
 
     # Train
-    histories = train_all_models(model_descriptions, setup, tuning_params=params, tuning_metric=metric)
+    histories = train_all_models(model_descriptions, setup, from_checkpoint=False, continue_training=False)
 
     final_metric = histories[Variable_Lev_Metadata.parse_var_name(selected_output)].history[metric][-1]
     nni.report_final_result(final_metric)
