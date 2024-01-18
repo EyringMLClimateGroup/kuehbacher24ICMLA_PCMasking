@@ -6,11 +6,11 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_31_castle_simplified"
-JOB_NAME="shap_castle_simplified"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_32_gumbel_softmax_single_output"
+JOB_NAME="shap_gumbel_softmax"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_castle_simplified.yml"
+CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
