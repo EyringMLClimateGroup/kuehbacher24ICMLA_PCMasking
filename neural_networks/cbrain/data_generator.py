@@ -76,6 +76,8 @@ class DataGenerator(tf.keras.utils.Sequence):
 
     def __enter__(self):
         # Open datasets
+        # todo: remove debug output
+        print(f"\nOpening dataset {self.data_fn}\n")
         self.data_ds = xr.open_dataset(self.data_fn)
         if self.norm_fn is not None:
             self.norm_ds = xr.open_dataset(self.norm_fn)
@@ -120,6 +122,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         # This significantly speeds up the reading of the data...
         if not self.xarray:
             self.data_ds.close()
+            print(f"opening as h5py {self.data_fn}")
             self.data_ds = h5py.File(self.data_fn, "r")
 
         return self

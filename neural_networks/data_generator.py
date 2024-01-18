@@ -141,6 +141,8 @@ def build_additional_valid_generator(
         num_replicas_distributed=0,  # the number of GPUs when training was done in parallel
         diagnostic_mode=False,
 ):
+    # Todo: remove debug output
+    print(f"\nAdditional dataset filepath: {filepath}\n")
     out_scale_dict = load_pickle(
         Path(setup.out_scale_dict_folder, setup.out_scale_dict_fn)
     )
