@@ -17,12 +17,19 @@ class SPCAM_Vars(Enum):
     def __repr__(self):
         return f"({self._name_}, {self.dimensions}, {self.type})"
 
+    @classmethod
+    def _missing_(cls, value):
+        for v in SPCAM_Vars:
+            if value == v.name:
+                return v
+        raise ValueError(f"{value} is not a valid SPCAM_Vars")
+
     tphystndtdt = (3, "in", "Temperature tendency (t-1)")
     phqtdt = (3, "in", "Specific humidity tendency (t-1)")
     tbp = (3, "in", "Temperature")
     qbp = (3, "in", "Specific humidity")
     vbp = (3, "in", "Meridional wind")
-    rh  = (3, "in", "Relative humidity")
+    rh = (3, "in", "Relative humidity")
     bmse = (3, "in", "TODO")
 
     fsnttdt = (2, "in", "Net solar flux at top of model (t-1)")
