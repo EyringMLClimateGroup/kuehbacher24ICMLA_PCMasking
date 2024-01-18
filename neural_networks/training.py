@@ -97,7 +97,8 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel", "castleNN"]
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+                                        "GumbelSoftmaxSingleOutputModel", "castleNN"]
     if training_castle and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
@@ -217,6 +218,7 @@ def get_callbacks(init_lr, model_description, setup, save_dir, timestamp, additi
         temp_cb = TemperatureDecay(initial_temperature=setup.temperature,
                                    decay_rate=setup.temperature_decay_rate,
                                    decay_steps=setup.temperature_decay_steps,
+                                   warm_up=setup.temperature_warm_up,
                                    tb_log_dir=tensorboard_log_dir)
         callbacks.append(temp_cb)
     return callbacks, lrs

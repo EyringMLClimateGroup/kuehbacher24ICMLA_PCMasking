@@ -138,6 +138,7 @@ relu_alpha: 0.3
 temperature: 1.0
 temperature_decay_rate: 0.8
 temperature_decay_steps: 1
+temperature_warm_up: 1
 
 distribute_strategy: "mirrored" # mirrored or nothing for normal training
 additional_val_datasets:

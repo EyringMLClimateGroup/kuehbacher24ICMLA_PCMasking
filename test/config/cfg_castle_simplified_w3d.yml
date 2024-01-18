@@ -67,7 +67,7 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "GumbelSoftmaxSingleOutputModel" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "CASTLESimplified" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 nn_output_path: test/output/models_castle
 
@@ -132,13 +132,9 @@ divide_lr: 5 # From train.py (default)
 train_patience: 5 # TODO: This number was chosen arbitrarily
 
 
-# CASTLEOriginal
+# CASTLESimplified
 # ===================
 lambda_sparsity: 1.0
-temperature: 1.0
-temperature_decay_rate: 0.8
-temperature_decay_steps: 1
-temperature_warm_up: 1
 
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
 additional_val_datasets:

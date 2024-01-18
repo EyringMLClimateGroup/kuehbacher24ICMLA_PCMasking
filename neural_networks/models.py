@@ -91,8 +91,8 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
-                                              "castleNN"]
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+                                              "GumbelSoftmaxSingleOutputModel", "castleNN"]
         if training_castle:
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
@@ -250,12 +250,12 @@ class ModelDescription:
             path = path / Path(cfg_str.format(lambda_sparsity=self.setup.lambda_sparsity))
 
         elif self.model_type == "CASTLESimplified":
-            # Legacy version of GumbelSoftmaxSingleOutputModel for backwards compatibility
             cfg_str = "lspar{lambda_sparsity}"
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
 
-            path = path / Path(cfg_str.format(lambda_sparsity=setup.lambda_sparsity))
+            path = path / Path(cfg_str.format(lambda_sparsity=self.setup.lambda_sparsity))
+
         elif self.model_type == "castleNN":
             # Legacy version of CASTLE for backwards compatibility
             if self.setup.distribute_strategy == "mirrored":
@@ -299,8 +299,8 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
-                                              "castleNN"]
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+                                              "GumbelSoftmaxSingleOutputModel", "castleNN"]
         if training_castle:
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
@@ -489,7 +489,8 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel", "castleNN"]
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+                                        "GumbelSoftmaxSingleOutputModel", "castleNN"]
     if setup.do_single_nn or setup.do_pca_nn or training_castle:
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 

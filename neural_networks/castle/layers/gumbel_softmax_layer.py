@@ -15,7 +15,7 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
 
         self.num_vars = num_vars
 
-        self.temp = tf.Variable(temp, trainable=False)
+        self.temp = tf.Variable(temp, trainable=False, name="temperature")
 
         self.params_initializer = params_initializer
         self.params_regularizer = params_regularizer
@@ -37,7 +37,8 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
                                              constraint=self.params_constraint,
                                              trainable=True)
 
-        self.masking_vector = tf.Variable(tf.ones_like(self.params_vector, dtype=self.params_vector.dtype))
+        self.masking_vector = tf.Variable(tf.ones_like(self.params_vector, dtype=self.params_vector.dtype),
+                                          trainable=False, name="masking_vector")
 
     def call(self, inputs, training=None):
         self.masking_vector.assign(self.sample_masking_vector(self.params_vector, self.temp))

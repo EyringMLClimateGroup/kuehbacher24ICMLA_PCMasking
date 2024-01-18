@@ -35,6 +35,8 @@ except RuntimeError:
                         "cfg_castle_adapted_all_inputs_outputs_random_uniform_dagma.yml",
                         "cfg_castle_original_all_inputs_outputs_lecun_uniform.yml",
                         "cfg_castle_original_all_inputs_outputs_var_scaling.yml",
+                        "cfg_castle_simplified_all_inputs_outputs_random_normal.yml",
+                        "cfg_castle_simplified_all_inputs_outputs_random_uniform.yml",
                         "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_normal.yml",
                         "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_uniform.yml"])
 def setup_castle_all_inputs_outputs(request):

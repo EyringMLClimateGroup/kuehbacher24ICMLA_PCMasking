@@ -59,7 +59,26 @@ def test_create_setup_castle_adapted(config_name):
     _assert_identical_attributes(castle_setup, yml_cfg)
 
 
-@pytest.mark.parametrize("config_name", ["cfg_gumbel_softmax_single_output_model_2d.yml", "cfg_gumbel_softmax_single_output_model_w3d.yml"])
+@pytest.mark.parametrize("config_name", ["cfg_castle_simplified_2d.yml",
+                                         "cfg_castle_simplified_w3d.yml"])
+def test_create_setup_castle_simplified(config_name):
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
+    argv = ["-c", config_file]
+
+    castle_setup = SetupNeuralNetworks(argv)
+
+    # Assert
+    with open(config_file, "r") as f:
+        yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+    assert (castle_setup.nn_type == "CASTLESimplified")
+    assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
+
+    _assert_identical_attributes(castle_setup, yml_cfg)
+
+
+@pytest.mark.parametrize("config_name", ["cfg_gumbel_softmax_single_output_model_2d.yml",
+                                         "cfg_gumbel_softmax_single_output_model_w3d.yml"])
 def test_create_setup_gumbel_softmax_single_output_model(config_name):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
     argv = ["-c", config_file]
@@ -72,9 +91,15 @@ def test_create_setup_gumbel_softmax_single_output_model(config_name):
 
     assert (castle_setup.nn_type == "GumbelSoftmaxSingleOutputModel")
     assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
+
     assert (castle_setup.temperature == yml_cfg["temperature"])
-    assert (castle_setup.temperature_decay == yml_cfg["temperature_decay"])
-    assert (castle_setup.do_decay_temperature == yml_cfg["do_decay_temperature"])
+
+    assert (castle_setup.temperature_decay_rate == yml_cfg["temperature_decay_rate"])
+    assert (castle_setup.temperature_decay_steps == yml_cfg["temperature_decay_steps"])
+    try:
+        assert (castle_setup.temperature_warm_up == yml_cfg["temperature_warm_up"])
+    except KeyError:
+        assert (castle_setup.temperature_warm_up == 0)
 
     _assert_identical_attributes(castle_setup, yml_cfg)
 
@@ -105,12 +130,12 @@ def test_create_setup_castle_lr_schedule_kernel_initializer(config_name):
         assert (castle_setup.lr_schedule["schedule"] == "plateau")
         assert (castle_setup.lr_schedule["monitor"] == yml_cfg["monitor"])
         assert (castle_setup.lr_schedule["factor"] == yml_cfg["factor"])
-        assert (castle_setup.lr_schedule["min_lr"] == yml_cfg["min_lr"])
+        assert (castle_setup.lr_schedule["min_lr"] == float(yml_cfg["min_lr"]))
         assert (castle_setup.lr_schedule["patience"] == yml_cfg["patience"])
     if "lr_linear" in config_name:
         assert (castle_setup.lr_schedule["schedule"] == "linear")
         assert (castle_setup.lr_schedule["decay_steps"] == yml_cfg["decay_steps"])
-        assert (castle_setup.lr_schedule["end_lr"] == yml_cfg["end_lr"])
+        assert (castle_setup.lr_schedule["end_lr"] == float(yml_cfg["end_lr"]))
     elif "lr_cosine" in config_name:
         assert (castle_setup.lr_schedule["schedule"] == "cosine")
         assert (castle_setup.lr_schedule["decay_steps"] == yml_cfg["decay_steps"])

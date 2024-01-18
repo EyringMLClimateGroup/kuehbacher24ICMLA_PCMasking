@@ -140,7 +140,8 @@ relu_alpha: 0.3
 temperature: 1.0
 temperature_decay_rate: 0.8
 temperature_decay_steps: 1
-do_decay_temperature: True
+temperature_warm_up: 0
+
 distribute_strategy: "mirrored" # mirrored or nothing for normal training
 additional_val_datasets:
   - { name: "test_1", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }

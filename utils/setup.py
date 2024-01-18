@@ -232,13 +232,7 @@ class SetupNeuralNetworks(Setup):
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "CASTLESimplified":
-            # Legacy
             self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
-
-            self.temperature = float(yml_cfg["lambda_sparsity"])
-            self.temperature_decay = float(yml_cfg["temperature_decay"])
-            self.do_decay_temperature = yml_cfg["do_decay_temperature"]
-
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "GumbelSoftmaxSingleOutputModel":
@@ -247,6 +241,10 @@ class SetupNeuralNetworks(Setup):
             self.temperature = float(yml_cfg["temperature"])
             self.temperature_decay_rate = float(yml_cfg["temperature_decay_rate"])
             self.temperature_decay_steps = yml_cfg["temperature_decay_steps"]
+
+            self.temperature_warm_up = yml_cfg.get("temperature_warm_up")
+            if self.temperature_warm_up is None:
+                self.temperature_warm_up = 0
 
             self._set_common_castle_attributes(yml_cfg)
 
@@ -373,7 +371,7 @@ class SetupNeuralNetworks(Setup):
                                 "monitor": yml_cfg["monitor"],  # val_loss
                                 "factor": float(yml_cfg["factor"]),
                                 "patience": yml_cfg["patience"],
-                                "min_lr": yml_cfg["min_lr"]}  # 1e-8
+                                "min_lr": float(yml_cfg["min_lr"])}  # 1e-8
         elif lr_schedule == "linear":
             self.lr_schedule = {"schedule": "linear",
                                 "decay_steps": yml_cfg["decay_steps"],
