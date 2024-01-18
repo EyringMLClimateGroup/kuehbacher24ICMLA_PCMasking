@@ -7,14 +7,16 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
+from .callbacks.temperature_decay_callback import TemperatureDecay
 from .cbrain.learning_rate_schedule import LRUpdate
 from .cbrain.save_weights import save_norm
 from .data_generator import build_train_generator, build_valid_generator, build_additional_valid_generator
-from .extra_validation_callback import ExtraValidation
+from neural_networks.callbacks.extra_validation_callback import ExtraValidation
 from .load_models import load_model_weights_from_checkpoint, load_model_from_previous_training
 
 
-def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_training=False):
+def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_training=False,
+                     save_learning_rate=True):
     """ Train and save all the models """
     if setup.distribute_strategy == "mirrored":
         if any(md.strategy.num_replicas_in_sync == 0 for md in model_descriptions):
@@ -30,10 +32,11 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
         out_path = str(model_description.get_path(setup.nn_output_path))
 
         if not os.path.isfile(os.path.join(out_path, out_model_name)):
-            histories[model_description.output] = train_save_model(model_description, setup,
-                                                                   from_checkpoint=from_checkpoint,
-                                                                   continue_training=continue_training,
-                                                                   timestamp=timestamp)
+            histories[str(model_description.output)] = train_save_model(model_description, setup,
+                                                                        from_checkpoint=from_checkpoint,
+                                                                        continue_training=continue_training,
+                                                                        save_lr=save_learning_rate,
+                                                                        timestamp=timestamp)
         else:
             print(out_path + '/' + out_model_name, ' exists; skipping...')
 
@@ -41,7 +44,7 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
 
 
 def train_save_model(
-        model_description, setup, from_checkpoint=False, continue_training=False,
+        model_description, setup, from_checkpoint=False, continue_training=False, save_lr=True,
         timestamp=datetime.now().strftime("%Y%m%d-%H%M%S")):
     """ Train a model and save all information necessary for CAM """
     if setup.distribute_strategy == "mirrored":
@@ -94,7 +97,7 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel", "castleNN"]
     if training_castle and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
@@ -118,7 +121,8 @@ def train_save_model(
     model_description.save_model(setup.nn_output_path)
 
     # Save last learning rate
-    _save_final_learning_rate(lrs, model_description, save_dir)
+    if save_lr:
+        _save_final_learning_rate(lrs, model_description, save_dir)
 
     # Saving norm after saving the model avoids having to create
     # the folder ourselves
@@ -208,6 +212,13 @@ def get_callbacks(init_lr, model_description, setup, save_dir, timestamp, additi
         callbacks = [extra_validation_cb, lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
     else:
         callbacks = [lrs, tensorboard, early_stop, checkpoint_cont, checkpoint_best]
+
+    if setup.nn_type == "GumbelSoftmaxSingleOutputModel":
+        temp_cb = TemperatureDecay(initial_temperature=setup.temperature,
+                                   decay_rate=setup.temperature_decay_rate,
+                                   decay_steps=setup.temperature_decay_steps,
+                                   tb_log_dir=tensorboard_log_dir)
+        callbacks.append(temp_cb)
     return callbacks, lrs
 
 

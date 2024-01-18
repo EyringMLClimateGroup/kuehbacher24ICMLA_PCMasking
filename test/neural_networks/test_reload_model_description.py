@@ -18,7 +18,7 @@ except RuntimeError:
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                       "setup_castle_original_2d", "setup_castle_simplified_2d"])
+                                       "setup_castle_original_2d", "setup_gumbel_softmax_single_output_model_2d"])
 def test_load_model_weights_from_checkpoint_castle_model_description(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
@@ -42,7 +42,7 @@ def test_load_model_weights_from_checkpoint_castle_model_description(setup_str, 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                       "setup_castle_original_2d", "setup_castle_simplified_2d"])
+                                       "setup_castle_original_2d", "setup_gumbel_softmax_single_output_model_2d"])
 def test_train_castle_model_description_load_from_ckpt_true(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
@@ -56,7 +56,7 @@ def test_train_castle_model_description_load_from_ckpt_true(setup_str, strategy,
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                       "setup_castle_original_2d", "setup_castle_simplified_2d"])
+                                       "setup_castle_original_2d", "setup_gumbel_softmax_single_output_model_2d"])
 def test_load_model_from_previous_training_castle_model_description(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
@@ -80,7 +80,7 @@ def test_load_model_from_previous_training_castle_model_description(setup_str, s
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
-                                       "setup_castle_original_2d", "setup_castle_simplified_2d" ])
+                                       "setup_castle_original_2d", "setup_gumbel_softmax_single_output_model_2d"])
 def test_train_castle_model_description_continue_training_true(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)

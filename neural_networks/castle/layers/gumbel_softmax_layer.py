@@ -1,12 +1,12 @@
 import tensorflow as tf
 from tensorflow_probability.python.distributions import RelaxedOneHotCategorical
+
 from neural_networks.castle.castle_model_base import get_kernel_initializer
 
 
 @tf.keras.utils.register_keras_serializable()
 class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
-    def __init__(self, num_vars, temp=1.0, temp_decay=0.99,
-                 do_decay_temp=True,
+    def __init__(self, num_vars, temp=1.0,
                  params_initializer='glorot_uniform',
                  params_regularizer=None,
                  params_constraint=None, seed=None,
@@ -15,17 +15,13 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
 
         self.num_vars = num_vars
 
-        self.temp = temp
-        self.temp_decay = temp_decay
-        self.do_decay_temp = do_decay_temp
+        self.temp = tf.Variable(temp, trainable=False)
 
         self.params_initializer = params_initializer
         self.params_regularizer = params_regularizer
         self.params_constraint = params_constraint
 
         self.seed = seed
-
-        self.masking_vector = None
 
     def build(self, input_shape):
         input_shape = tf.TensorShape(input_shape)
@@ -41,15 +37,12 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
                                              constraint=self.params_constraint,
                                              trainable=True)
 
-        self.masking_vector = tf.ones_like(self.params_vector, dtype=self.params_vector.dtype)
+        self.masking_vector = tf.Variable(tf.ones_like(self.params_vector, dtype=self.params_vector.dtype))
 
     def call(self, inputs, training=None):
-        self.masking_vector = self.sample_masking_vector(self.params_vector, self.temp)
+        self.masking_vector.assign(self.sample_masking_vector(self.params_vector, self.temp))
 
         masked_inputs = tf.math.multiply(inputs, self.masking_vector)
-
-        if self.do_decay_temp:
-            self.temp *= self.temp_decay
 
         return masked_inputs
 
@@ -66,7 +59,7 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
         gumbel_softmax_sample = RelaxedOneHotCategorical(temp, logits=logits).sample()
 
         # Select the class 1 probabilities
-        binary_mask = gumbel_softmax_sample[..., 1]
+        binary_mask = gumbel_softmax_sample[:, 1]
 
         return binary_mask
 
@@ -75,8 +68,6 @@ class StraightThroughGumbelSoftmaxMaskingLayer(tf.keras.layers.Layer):
         config.update({
             "num_vars": self.num_vars,
             "temp": self.temp,
-            "temp_decay": self.temp_decay,
-            "do_decay_temp": self.do_decay_temp,
             "params_initializer": self.params_initializer,
             "params_regularizer": self.params_regularizer,
             "params_constraint": self.params_constraint,

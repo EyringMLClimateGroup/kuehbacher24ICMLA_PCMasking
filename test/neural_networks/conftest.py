@@ -46,16 +46,16 @@ def setup_castle_original_w3d():
     return SetupNeuralNetworks(argv)
 
 @pytest.fixture()
-def setup_castle_simplified_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_2d.yml")
+def setup_gumbel_softmax_single_output_model_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_gumbel_softmax_single_output_model_2d.yml")
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)
 
 
 @pytest.fixture()
-def setup_castle_simplified_w3d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_w3d.yml")
+def setup_gumbel_softmax_single_output_model_w3d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_gumbel_softmax_single_output_model_w3d.yml")
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)

@@ -59,8 +59,8 @@ def test_create_setup_castle_adapted(config_name):
     _assert_identical_attributes(castle_setup, yml_cfg)
 
 
-@pytest.mark.parametrize("config_name", ["cfg_castle_simplified_2d.yml", "cfg_castle_simplified_w3d.yml"])
-def test_create_setup_castle_simplified(config_name):
+@pytest.mark.parametrize("config_name", ["cfg_gumbel_softmax_single_output_model_2d.yml", "cfg_gumbel_softmax_single_output_model_w3d.yml"])
+def test_create_setup_gumbel_softmax_single_output_model(config_name):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
     argv = ["-c", config_file]
 
@@ -70,7 +70,7 @@ def test_create_setup_castle_simplified(config_name):
     with open(config_file, "r") as f:
         yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-    assert (castle_setup.nn_type == "CASTLESimplified")
+    assert (castle_setup.nn_type == "GumbelSoftmaxSingleOutputModel")
     assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
     assert (castle_setup.temperature == yml_cfg["temperature"])
     assert (castle_setup.temperature_decay == yml_cfg["temperature_decay"])

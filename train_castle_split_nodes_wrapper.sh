@@ -4,20 +4,22 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_31_castle_simplified"
+base_dir="output_castle/training_42_gumbel_softmax_single_output_spars0.0001"
 HPC="jsc" # jsc, dkrz
+
+job_name_base="training_42_spars0.0001"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
-NN_CONFIG="${base_dir}/cfg_castle_simplified.yml"
+NN_CONFIG="${base_dir}/cfg_gumbel_softmax_single_output.yml"
 
 NUM_NODES=65
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
 
-MAX_RUNNING_JOBS=20
+MAX_RUNNING_JOBS_DKRZ=20
 
 log_dir="${base_dir}/slurm_logs"
 mkdir -p "$log_dir"
@@ -918,10 +920,10 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
 
   # Set variable VAR_IDENT_STR
   set_var_ident_str "$i" "$END_INDEX"
-  JOB_NAME="training_castle_${VAR_IDENT_STR}"
+  JOB_NAME="${job_name_base}_${VAR_IDENT_STR}"
   # Check size of string (otherwise this may cause problems saving files
   if [[ ${#JOB_NAME} -gt 50 ]]; then
-    JOB_NAME="training_castle"
+    JOB_NAME="training_model"
   fi
 
   slurm_o="${log_dir}/%x_slurm_%j.out"

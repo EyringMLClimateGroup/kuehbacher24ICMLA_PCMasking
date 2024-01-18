@@ -91,7 +91,8 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
+                                              "castleNN"]
         if training_castle:
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
@@ -241,13 +242,20 @@ class ModelDescription:
                                               lambda_reconstruction=self.setup.lambda_reconstruction,
                                               lambda_acyclicity=self.setup.lambda_acyclicity,
                                               acyclicity_constraint=self.setup.acyclicity_constraint))
-        elif self.model_type == "CASTLESimplified":
+        elif self.model_type == "GumbelSoftmaxSingleOutputModel":
             cfg_str = "lspar{lambda_sparsity}"
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
 
             path = path / Path(cfg_str.format(lambda_sparsity=self.setup.lambda_sparsity))
 
+        elif self.model_type == "CASTLESimplified":
+            # Legacy version of GumbelSoftmaxSingleOutputModel for backwards compatibility
+            cfg_str = "lspar{lambda_sparsity}"
+            if self.setup.distribute_strategy == "mirrored":
+                cfg_str += "-mirrored"
+
+            path = path / Path(cfg_str.format(lambda_sparsity=setup.lambda_sparsity))
         elif self.model_type == "castleNN":
             # Legacy version of CASTLE for backwards compatibility
             if self.setup.distribute_strategy == "mirrored":
@@ -262,7 +270,8 @@ class ModelDescription:
         str_hl = str(self.setup.hidden_layers).replace(", ", "_")
         str_hl = str_hl.replace("[", "").replace("]", "")
         str_act = str(self.setup.activation)
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified"]
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
+                                              "CASTLESimplified"]
         if str_act.lower() == "leakyrelu" and training_castle:
             str_act += f"_{self.setup.relu_alpha}"
         path = path / Path(
@@ -290,7 +299,8 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
+                                              "castleNN"]
         if training_castle:
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
@@ -351,7 +361,7 @@ def generate_all_single_nn(setup, continue_training=False, seed=None):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
-    CASTLEAdapted, CASTLEOriginal, CASTLESimplified(legacy: castleNN): Generate all NN with one output
+    CASTLEAdapted, CASTLEOriginal, GumbelSoftmaxSingleOutputModel(legacy: castleNN): Generate all NN with one output
         and all inputs specified in the setup
     """
     model_descriptions = list()
@@ -479,7 +489,7 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel", "castleNN"]
     if setup.do_single_nn or setup.do_pca_nn or training_castle:
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 

@@ -7,7 +7,7 @@ from tensorflow import keras
 
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
-from neural_networks.castle.castle_model_simplified import CASTLESimplified
+from neural_networks.castle.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.castle.legacy.castle_model import CASTLE
 
 
@@ -40,7 +40,7 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
 
     Raises:
         ValueError: If the `setup.nn_type` is not one
-                    `['CastleOriginal', 'CastleAdapted', 'CASTLESimplified', 'castleNN]`.
+                    `['CastleOriginal', 'CastleAdapted', 'GumbelSoftmaxSingleOutputModel', 'castleNN]`.
     """
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)
@@ -91,16 +91,14 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
-        elif setup.nn_type == "CASTLESimplified":
-            model_ = CASTLESimplified(num_x_inputs, setup.hidden_layers, setup.activation,
-                                      lambda_sparsity=setup.lambda_sparsity,
-                                      relu_alpha=relu_alpha, seed=seed,
-                                      temperature=setup.temperature,
-                                      temperature_decay=setup.temperature_decay,
-                                      do_decay_temperature=setup.do_decay_temperature,
-                                      kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
-                                      kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
-                                      kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+        elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
+            model_ = GumbelSoftmaxSingleOutputModel(num_x_inputs, setup.hidden_layers, setup.activation,
+                                                    lambda_sparsity=setup.lambda_sparsity,
+                                                    relu_alpha=relu_alpha, seed=seed,
+                                                    temperature=setup.temperature,
+                                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
+                                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
         elif setup.nn_type == "CastleNN":
             # Backwards compatibility for older CASTLE version

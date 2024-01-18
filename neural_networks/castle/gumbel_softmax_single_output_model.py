@@ -10,7 +10,7 @@ from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGu
 
 
 @tf.keras.utils.register_keras_serializable()
-class CASTLESimplified(CASTLEBase):
+class GumbelSoftmaxSingleOutputModel(CASTLEBase):
     """A neural network model with CASTLE (Causal Structure Learning) regularization adapted
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
@@ -99,8 +99,6 @@ class CASTLESimplified(CASTLEBase):
                  relu_alpha=0.3,
                  seed=None,
                  temperature=1.0,
-                 temperature_decay=0.99,
-                 do_decay_temperature=True,
                  kernel_initializer_input_layers=None,
                  kernel_initializer_hidden_layers=None,
                  kernel_initializer_output_layers=None,
@@ -113,7 +111,7 @@ class CASTLESimplified(CASTLEBase):
                  bias_regularizer_output_layers=None,
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
-                 name="castle_simplified", **kwargs):
+                 name="gumbel_softmax_single_output_model", **kwargs):
 
         num_outputs = 1
 
@@ -124,8 +122,6 @@ class CASTLESimplified(CASTLEBase):
 
         input_layer = StraightThroughGumbelSoftmaxMaskingLayer(num_x_inputs,
                                                                temp=temperature,
-                                                               temp_decay=temperature_decay,
-                                                               do_decay_temp=do_decay_temperature,
                                                                params_initializer=kernel_initializer_input_layers,
                                                                params_regularizer=kernel_regularizer_input_layers,
                                                                seed=seed,
@@ -166,28 +162,26 @@ class CASTLESimplified(CASTLEBase):
 
         outputs = output_layer(hidden_outputs)
 
-        super(CASTLESimplified, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
-                                               activation=activation, seed=seed,
-                                               kernel_initializer_input_layers=kernel_initializer_input_layers,
-                                               kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
-                                               kernel_initializer_output_layers=kernel_initializer_output_layers,
-                                               bias_initializer_hidden_layers=bias_initializer_hidden_layers,
-                                               bias_initializer_output_layers=bias_initializer_output_layers,
-                                               kernel_regularizer_input_layers=kernel_regularizer_input_layers,
-                                               kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
-                                               kernel_regularizer_output_layers=kernel_regularizer_output_layers,
-                                               bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
-                                               bias_regularizer_output_layers=bias_regularizer_output_layers,
-                                               activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
-                                               activity_regularizer_output_layers=activity_regularizer_output_layers,
-                                               name=name, inputs=inputs, outputs=outputs, **kwargs)
+        super(GumbelSoftmaxSingleOutputModel, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
+                                                             activation=activation, seed=seed,
+                                                             kernel_initializer_input_layers=kernel_initializer_input_layers,
+                                                             kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
+                                                             kernel_initializer_output_layers=kernel_initializer_output_layers,
+                                                             bias_initializer_hidden_layers=bias_initializer_hidden_layers,
+                                                             bias_initializer_output_layers=bias_initializer_output_layers,
+                                                             kernel_regularizer_input_layers=kernel_regularizer_input_layers,
+                                                             kernel_regularizer_hidden_layers=kernel_regularizer_hidden_layers,
+                                                             kernel_regularizer_output_layers=kernel_regularizer_output_layers,
+                                                             bias_regularizer_hidden_layers=bias_regularizer_hidden_layers,
+                                                             bias_regularizer_output_layers=bias_regularizer_output_layers,
+                                                             activity_regularizer_hidden_layers=activity_regularizer_hidden_layers,
+                                                             activity_regularizer_output_layers=activity_regularizer_output_layers,
+                                                             name=name, inputs=inputs, outputs=outputs, **kwargs)
 
         self.lambda_sparsity = lambda_sparsity
         self.relu_alpha = relu_alpha
 
-        self.temperature = temperature
-        self.temperature_decay = temperature_decay
-        self.do_decay_temperature = do_decay_temperature
+        print(f"\n\nLambda sparsity = {self.lambda_sparsity}\n")
 
         self.input_layer = input_layer
         self.shared_hidden_layers = shared_hidden_layers
@@ -214,7 +208,7 @@ class CASTLESimplified(CASTLEBase):
         """
         prediction_loss = self.compute_prediction_loss(y, y_pred)
 
-        sparsity_regularizer = self.compute_sparsity_loss(self.input_layer.masking_vector)
+        sparsity_regularizer = self.compute_sparsity_loss(self.input_layer.trainable_variables[0])
         weighted_sparsity_regularizer = tf.math.multiply(self.lambda_sparsity, sparsity_regularizer)
 
         loss = tf.math.add(prediction_loss, weighted_sparsity_regularizer, name="overall_loss")
@@ -233,12 +227,19 @@ class CASTLESimplified(CASTLEBase):
         return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred), name="prediction_loss_reduce_mean")
 
     @staticmethod
-    def compute_sparsity_loss(masking_vector):
+    def compute_sparsity_loss(params_vector):
         """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
-        entry_wise_norm = tf.norm(masking_vector, ord=1, name='l1_norm_input_layer')
+        zeros = tf.zeros_like(params_vector)
+
+        logits = tf.stack([zeros, params_vector], axis=-1)
+        softmax_logits = tf.nn.softmax(logits, axis=1)
+
+        softmax_params_vector = softmax_logits[:, 1]
+
+        entry_wise_norm = tf.norm(softmax_params_vector, ord=1, name='l1_norm_input_layer')
 
         # Scale norm by number of inputs
-        sparsity_regularizer = tf.math.divide(entry_wise_norm, masking_vector.shape[0],
+        sparsity_regularizer = tf.math.divide(entry_wise_norm, params_vector.shape[0],
                                               name="l1_norm_input_layer_scaled")
 
         return sparsity_regularizer
@@ -259,15 +260,12 @@ class CASTLESimplified(CASTLEBase):
        Returns:
            Python dictionary containing the configuration of `CASTLE`.
        """
-        config = super(CASTLESimplified, self).get_config()
+        config = super(GumbelSoftmaxSingleOutputModel, self).get_config()
         # These are the constructor arguments
         config.update(
             {
                 "lambda_sparsity": self.lambda_sparsity,
                 "relu_alpha": self.relu_alpha,
-                "temperature": self.temperature,
-                "temperature_decay": self.temperature_decay,
-                "do_decay_temperature": self.do_decay_temperature,
             }
         )
 

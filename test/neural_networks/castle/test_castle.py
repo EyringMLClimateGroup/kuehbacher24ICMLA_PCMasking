@@ -9,7 +9,7 @@ from tensorflow import keras
 from neural_networks.castle.building_castle import build_castle
 from neural_networks.castle.castle_model_original import CASTLEOriginal
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
-from neural_networks.castle.castle_model_simplified import CASTLESimplified
+from neural_networks.castle.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
 from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 from test.testing_utils import set_memory_growth_gpu
@@ -64,15 +64,15 @@ def test_create_castle_original(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_create_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_gumbel_softmax_single_output_model_2d", "setup_gumbel_softmax_single_output_model_w3d"])
+def test_create_gumbel_softmax_single_output_model(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
     model = build_castle(setup, num_inputs, setup.init_lr,
                          eager_execution=True, strategy=strategy, seed=seed)
 
-    assert (isinstance(model, CASTLESimplified))
+    assert (isinstance(model, GumbelSoftmaxSingleOutputModel))
     assert (isinstance(model.outputs, list))
     assert (len(model.outputs[0].shape) == 2)
     assert (model.outputs[0].shape[-1] == 1)
@@ -103,7 +103,7 @@ def _print_plot_model_summary(model, plot_name):
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
                                        "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d",
-                                       "setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
+                                       "setup_gumbel_softmax_single_output_model_2d", "setup_gumbel_softmax_single_output_model_w3d"])
 def test_train_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -132,7 +132,7 @@ def test_train_castle(setup_str, strategy, seed, request):
 @pytest.mark.parametrize("setup_str", ["setup_castle_adapted_2d_dagma", "setup_castle_adapted_2d_notears",
                                        "setup_castle_adapted_w3d",
                                        "setup_castle_original_2d", "setup_castle_original_w3d",
-                                       "setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
+                                       "setup_gumbel_softmax_single_output_model_2d", "setup_gumbel_softmax_single_output_model_w3d"])
 def test_predict_castle(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
@@ -153,7 +153,7 @@ def test_predict_castle(setup_str, strategy, seed, request):
     num_batches = int(n_samples / batch_size)
 
     assert (prediction is not None)
-    if "simplified" in setup_str:
+    if "gumbel_softmax" in setup_str:
         assert (prediction.shape == (batch_size * num_batches, 1))
     else:
         assert (prediction.shape == (batch_size * num_batches, num_inputs + 1, 1))
@@ -223,8 +223,8 @@ def test_save_load_castle_original(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_save_load_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_gumbel_softmax_single_output_model_2d", "setup_gumbel_softmax_single_output_model_w3d"])
+def test_save_load_gumbel_softmax_single_output_model(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -239,7 +239,7 @@ def test_save_load_castle_simplified(setup_str, strategy, seed, request):
     model.save_weights(os.path.join(OUTPUT_DIR, weights_save_name))
 
     loaded_model = tf.keras.models.load_model(os.path.join(OUTPUT_DIR, model_save_name),
-                                              custom_objects={"CASTLESimplified": CASTLESimplified,
+                                              custom_objects={"GumbelSoftmaxSingleOutputModel": GumbelSoftmaxSingleOutputModel,
                                                               "StraightThroughGumbelSoftmaxMaskingLayer": StraightThroughGumbelSoftmaxMaskingLayer})
 
     assert (loaded_model.lambda_sparsity == model.lambda_sparsity)

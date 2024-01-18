@@ -12,8 +12,8 @@ from castle_offline_evaluation.castle_shapley_values import shap_single_variable
 from utils.variable import Variable_Lev_Metadata
 
 
-def compute_shapley(var, config_file, var2index, n_time, n_samples, metric, save_dir):
-    results = shap_single_variable(var, config_file, n_time, n_samples, metric)
+def compute_shapley(var, config_file, var2index, n_time, n_samples, metric, save_dir, temp=1e-6):
+    results = shap_single_variable(var, config_file, n_time, n_samples, metric, temp=temp)
 
     if metric == "none":
         save_shapley_values_inputs(results, save_dir, Variable_Lev_Metadata.parse_var_name(variable), var2index)

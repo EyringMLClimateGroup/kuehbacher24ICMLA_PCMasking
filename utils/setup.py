@@ -83,7 +83,7 @@ class Setup:
         # self.cond_ind_test = INDEPENDENCE_TESTS[self.ind_test_name]()
 
     def _evaluate_data_path(self, path):
-        if os.path.exists(path):
+        if os.path.isabs(path):
             return path
         elif Path(path).is_symlink():
             return os.path.realpath(path)
@@ -232,11 +232,21 @@ class SetupNeuralNetworks(Setup):
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "CASTLESimplified":
+            # Legacy
             self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
 
             self.temperature = float(yml_cfg["lambda_sparsity"])
             self.temperature_decay = float(yml_cfg["temperature_decay"])
             self.do_decay_temperature = yml_cfg["do_decay_temperature"]
+
+            self._set_common_castle_attributes(yml_cfg)
+
+        elif self.nn_type == "GumbelSoftmaxSingleOutputModel":
+            self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
+
+            self.temperature = float(yml_cfg["temperature"])
+            self.temperature_decay_rate = float(yml_cfg["temperature_decay_rate"])
+            self.temperature_decay_steps = yml_cfg["temperature_decay_steps"]
 
             self._set_common_castle_attributes(yml_cfg)
 
@@ -256,11 +266,12 @@ class SetupNeuralNetworks(Setup):
             raise ValueError(f"Unknown Network type: {self.nn_type}")
 
     def _set_common_castle_attributes(self, yml_cfg):
-        if yml_cfg["activation"].lower() == "leakyrelu":
-            try:
-                self.relu_alpha = float(yml_cfg["relu_alpha"])
-            except KeyError:
-                self.relu_alpha = 0.3
+        try:
+            self.relu_alpha = float(yml_cfg["relu_alpha"])
+        except KeyError:
+            self.relu_alpha = 0.3
+        # todo: remove
+        print(f"\nSet leaky relu alpha to {self.relu_alpha}\n")
 
         self._set_additional_val_datasets(yml_cfg)
 
@@ -314,7 +325,7 @@ class SetupNeuralNetworks(Setup):
 
         # Training configuration
         self.train_verbose = yml_cfg["train_verbose"]
-        self.tensorboard_folder = yml_cfg["tensorboard_folder"]
+        self.tensorboard_folder = self._evaluate_data_path(yml_cfg["tensorboard_folder"])
 
         self.train_data_folder = self._evaluate_data_path(yml_cfg["train_data_folder"])
         self.train_data_fn = yml_cfg["train_data_fn"]
@@ -366,7 +377,7 @@ class SetupNeuralNetworks(Setup):
         elif lr_schedule == "linear":
             self.lr_schedule = {"schedule": "linear",
                                 "decay_steps": yml_cfg["decay_steps"],
-                                "end_lr": yml_cfg["end_lr"]}
+                                "end_lr": float(yml_cfg["end_lr"])}
         elif lr_schedule == "cosine":
             self.lr_schedule = {"schedule": "cosine",
                                 "decay_steps": yml_cfg["decay_steps"],

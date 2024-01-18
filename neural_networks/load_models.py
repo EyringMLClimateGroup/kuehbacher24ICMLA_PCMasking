@@ -6,7 +6,7 @@ import tensorflow as tf
 from utils.variable import Variable_Lev_Metadata
 from neural_networks.castle.castle_model_adapted import CASTLEAdapted
 from neural_networks.castle.castle_model_original import CASTLEOriginal
-from neural_networks.castle.castle_model_simplified import CASTLESimplified
+from neural_networks.castle.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.castle.legacy.castle_model import CASTLE
 from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
 from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
@@ -61,7 +61,15 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
                                           lambda_reconstruction=setup.lambda_reconstruction,
                                           lambda_acyclicity=setup.lambda_acyclicity,
                                           acyclicity_constraint=setup.acyclicity_constraint))
+    elif model_type == "GumbelSoftmaxSingleOutputModel":
+        cfg_str = "lspar{lambda_sparsity}"
+        if setup.distribute_strategy == "mirrored":
+            cfg_str += "-mirrored"
+
+        path = path / Path(cfg_str.format(lambda_sparsity=setup.lambda_sparsity))
+
     elif model_type == "CASTLESimplified":
+        # Legacy version of GumbelSoftmaxSingleOutputModel for backwards compatibility
         cfg_str = "lspar{lambda_sparsity}"
         if setup.distribute_strategy == "mirrored":
             cfg_str += "-mirrored"
@@ -83,7 +91,8 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
     str_hl = str_hl.replace("[", "").replace("]", "")
     str_act = str(setup.activation)
 
-    training_castle = model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified"]
+    training_castle = model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+                                     "GumbelSoftmaxSingleOutputModel"]
     if str_act.lower() == "leakyrelu" and training_castle:
         str_act += f"_{setup.relu_alpha}"
 
@@ -157,12 +166,22 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
 
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEAdapted': CASTLEAdapted,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
-    elif setup.nn_type == "CASTLESimplified":
+    elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified,
-                                                                      'StraightThroughGumbelSoftmaxMaskingLayer': StraightThroughGumbelSoftmaxMaskingLayer})
+        model = tf.keras.models.load_model(modelname, custom_objects={
+            'GumbelSoftmaxSingleOutputModel': GumbelSoftmaxSingleOutputModel,
+            'StraightThroughGumbelSoftmaxMaskingLayer': StraightThroughGumbelSoftmaxMaskingLayer})
+
+    elif setup.nn_type == "CASTLESimplified":
+        # Legacy version of GumbelSoftmaxSingleOutputModel for backwards compatibility
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
+
+        model = tf.keras.models.load_model(modelname, custom_objects={
+            'CASTLESimplified': GumbelSoftmaxSingleOutputModel,
+            'StraightThroughGumbelSoftmaxMaskingLayer': StraightThroughGumbelSoftmaxMaskingLayer})
 
     elif setup.nn_type == "castleNN":
         # Legacy version of CASTLE for backwards compatibility
@@ -204,7 +223,7 @@ def get_var_list(setup, target_vars):
 
 def load_single_model(setup, var_name):
     loading_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or \
-                     setup.nn_type == "CASTLESimplified" or setup.nn_type == "castleNN"
+                     setup.nn_type == "GumbelSoftmaxSingleOutputModel" or setup.nn_type == "castleNN"
     if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or loading_castle:
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
@@ -231,7 +250,8 @@ def load_models(setup, skip_causal_phq=False):
     models = collections.defaultdict(dict)
 
     output_list = get_var_list(setup, setup.spcam_outputs)
-    model_is_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified", "castleNN"]
+    model_is_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
+                                        "CASTLESimplified", "castleNN"]
     if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or model_is_castle:
         nn_type = setup.nn_type  # if setup.do_random_single_nn else 'SingleNN'
         for output in output_list:
