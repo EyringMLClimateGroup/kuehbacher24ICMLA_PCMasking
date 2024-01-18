@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:4
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=1:00:00
+#SBATCH --time=3:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END
@@ -25,7 +25,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for tuning CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs tune_castle_split_nodes_batch_jsc.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x var_index -u tuner -p metric -e search_space.yml -l python_log_dir [-r port] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs tune_castle_split_nodes_batch_jsc.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x var_index -u tuner -p metric -e search_space.yml -l python_log_dir [-d restore_dir] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -35,8 +35,8 @@ display_help() {
   echo " -u    Tuning algorithm to be used (e.g. TPE, Random, Hyperband, GP)."
   echo " -p    Tuning metric used to measure performance (eg. val_loss, val_prediction_loss)."
   echo " -e    YAML configuration file for tuning search space."
-  echo " -r    Experiment port. Defaults to 32325."
   echo " -l    Output directory for Python logs."
+  echo " -d    Restore directory for continuing previous experiment (str)."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -j    SLURM job name."
   echo " -h    Print this help."
@@ -61,11 +61,11 @@ found_j=0
 found_u=0
 found_p=0
 found_e=0
-found_r=0
 found_l=0
+found_d=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:u:p:l:e:r:h" opt; do
+while getopts "c:i:o:x:s:j:u:p:l:e:d:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -145,15 +145,9 @@ while getopts "c:i:o:x:s:j:u:p:l:e:r:h" opt; do
     found_u=1
     TUNER=$OPTARG
     ;;
-  r)
-    found_r=1
-    re='^[0-9]+$'
-    if [[ $OPTARG =~ $re ]]; then
-      PORT=$OPTARG
-    else
-      echo -e "\nError: Invalid value for option -r (experiment port). Must be a positive integer."
-      error_exit
-    fi
+  d)
+    found_d=1
+    RESTORE_DIR=$OPTARG
     ;;
   :)
     echo -e "\nOption $opt requires an argument."
@@ -198,8 +192,8 @@ fi
 if ((found_j == 0)); then
   JOB_NAME="castle_tuning_${PORT}"
 fi
-if ((found_r == 0)); then
-  PORT=32325
+if ((found_d == 0)); then
+  RESTORE_DIR=""
 fi
 
 ##################
@@ -208,4 +202,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_castle_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -r "$PORT" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes_tuning.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$VAR_INDEX" -u "$TUNER" -p "$METRIC" -e "$SEARCH_SPACE_CONFIG" -d "$RESTORE_DIR" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
