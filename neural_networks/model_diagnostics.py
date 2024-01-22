@@ -266,7 +266,7 @@ class ModelDiagnostics():
                             # Here, X is actually [truth, X]
                             t_X = valid_gen[i]
                             t_tmp = deepcopy(t_X[:, 0])
-                            
+
                             # Replace truth_tmp in truth_X with zeros/ones to get accurate evaluation results
                             t_X[:, 0] = np.zeros_like(t_tmp)
                             # t_X[:, 0] = np.ones_like(t_tmp)
@@ -927,6 +927,12 @@ class ModelDiagnostics():
             save_path = Path(save_dir, save_str)
             fig.savefig(save_path)
             print(f"\nSaved plot {save_path.name}.")
+
+            if stats:
+                stats_file = f"{varname}_stats-{stats[0]}.p"
+                with open(os.path.join(save_dir, stats_file), 'wb') as f:
+                    pickle.dump(stats[1], f)
+                print(f"\nSaved stats {stats_file}.")
 
         return fig
 
