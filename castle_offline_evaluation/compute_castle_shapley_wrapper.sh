@@ -6,16 +6,16 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_32_gumbel_softmax_single_output"
-JOB_NAME="shap_gumbel_softmax"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_50_castle_simplified_spars0.001"
+JOB_NAME="shap_50_castle_simplified_spars0.001_plus4K"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"
+CONFIG="${TRAINING_DIR}/cfg_castle_simplified_plus4K.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap_plus4K"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
@@ -23,7 +23,6 @@ mkdir -p "$SLURM_LOG_DIR"
 N_TIME="False"
 N_SAMPLES=1000
 METRIC="all"
-
 
 ################
 # Help Display #
@@ -60,6 +59,26 @@ error_exit() {
   exit 1
 }
 
+graceful_exit() {
+  echo -e "Exiting script.\n"
+  exit 0
+}
+
+want_to_continue() {
+  echo ""
+  read -r -e -p "Do you want to continue? [y]/n: " input
+  answer=${input:-"y"}
+
+  if [[ $answer == "y" ]]; then
+    :
+  elif [[ $answer == "n" ]]; then
+    graceful_exit
+  else
+    echo "Unknown value."
+    error_exit
+  fi
+}
+
 # Parse options
 while getopts "h" opt; do
   case ${opt} in
@@ -91,9 +110,11 @@ fi
 # Start SLURM jobs #
 ####################
 
-echo -e "\n\n--- Starting SHAP computation jobs with "
-echo " Config:           ${CONFIG}"
-echo -e " Output directory: ${PLOT_DIR}\n---\n"
+echo -e "\n\n--- Starting SHAP computation jobs with\n "
+echo -e " Directory:          ${TRAINING_DIR}\n"
+echo -e " Config:             ${CONFIG}\n"
+echo -e " Output directory:   ${PLOT_DIR}\n\n---\n"
+want_to_continue
 
 NUM_OUTPUTS="$(grep -c ".*" "${OUTPUTS}")"
 

@@ -15,21 +15,34 @@ from castle_offline_evaluation.castle_evaluation_utils import create_castle_mode
 from pathlib import Path
 import pickle
 import shap
+import numpy as np
 
 from neural_networks.load_models import load_single_model
 from utils.setup import SetupDiagnostics
 from utils.variable import Variable_Lev_Metadata
 
 
-def shap_single_variable(var_name, config, n_time, n_samples, metric):
+def shap_single_variable(var_name, config, n_time, n_samples, metric, temp=1e-6):
     argv = ["-c", config]
     setup = SetupDiagnostics(argv)
 
+    var = Variable_Lev_Metadata.parse_var_name(var_name)
     var_model = load_single_model(setup, var_name)
+
+    # if setup.nn_type == "GumbelSoftmaxSingleOutputModel":
+    #     m = var_model[var][0]
+    #     masking_layer = m.get_layer("input_masking_layer")
+    #
+    #     masking_vector = masking_layer.sample_masking_vector(masking_layer.params_vector, temp)
+    #
+    #     # double check
+    #     if not np.all((masking_vector == 1.) | (masking_vector == 0.)):
+    #         raise ValueError(f"Mask for var {var} is not discrete: \n{masking_vector}")
+    #
+    #     masking_layer.masking_vector = masking_vector
 
     model_desc = create_castle_model_description(setup, var_model)
 
-    var = Variable_Lev_Metadata.parse_var_name(var_name)
     return model_desc.get_shapley_values("range", var, nTime=n_time, nSamples=n_samples, metric=metric)
 
 
@@ -83,8 +96,8 @@ def save_shapley_values_inputs(result, out_path, var, map_dict):
 
     shap_out_file = "shap_" + var_idx_str + ".p"
     inputs_out_file = "inputs_" + var_idx_str + ".p"
-    test_out_file = "test_"+ var_idx_str + ".p"
-    expected_value_out_file = "expected_value_"+ var_idx_str + ".p"
+    test_out_file = "test_" + var_idx_str + ".p"
+    expected_value_out_file = "expected_value_" + var_idx_str + ".p"
 
     save_pickle(shap_values, os.path.join(out_path, shap_out_file))
     print(f"\nSaved SHAP values {shap_out_file}.")
@@ -98,9 +111,11 @@ def save_shapley_values_inputs(result, out_path, var, map_dict):
     save_pickle(expected_value, os.path.join(out_path, expected_value_out_file))
     print(f"\nSaved expected values {expected_value_out_file}.")
 
+
 def save_pickle(data, f_out):
     with open(f_out, 'wb') as f:
         pickle.dump(data, f)
+
 
 if __name__ == "__main__":
     ##########################################
@@ -111,10 +126,10 @@ if __name__ == "__main__":
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    training_dir = Path("output_castle/manual_tuning_tphystnd_691.39_v3/castle_adapted_small_dagma/lambda_pred_1-lambda_sparsity_1.0")
-    config_file = os.path.join(project_root, training_dir, "cfg_castle_adapted.yml")
+    training_dir = Path("output_castle/training_39_gumbel_softmax_single_output_spars1.0")
+    config_file = os.path.join(project_root, training_dir, "cfg_gumbel_softmax_single_output.yml")
     plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/shap/")
-    outputs_map = os.path.join(project_root, "output_castle/manual_tuning_tphystnd_691.39_v3/outputs_map.txt")
+    outputs_map = os.path.join(project_root, training_dir, "outputs_map.txt")
 
     variable = "tphystnd-691.39"
     ##########################################

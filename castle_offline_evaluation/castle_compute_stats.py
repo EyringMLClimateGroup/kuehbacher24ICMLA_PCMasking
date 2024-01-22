@@ -15,12 +15,12 @@ from pathlib import Path
 from neural_networks.load_models import load_models
 from neural_networks.model_diagnostics import ModelDiagnostics
 from utils.setup import SetupDiagnostics
-from utils.variable import Variable_Lev_Metadata
-import matplotlib.pyplot as plt
 import gc
 
+import pickle
 
-def plot_profiles(i_time, n_time, lats, lons, stats, config, plot_dir):
+
+def compute_stats(i_time, n_time, config, plot_dir):
     argv = ["-c", config]
     setup = SetupDiagnostics(argv)
 
@@ -29,26 +29,40 @@ def plot_profiles(i_time, n_time, lats, lons, stats, config, plot_dir):
     model_key = setup.nn_type
 
     md = ModelDiagnostics(setup=setup, models=models[model_key])
-
-    var_unit_str_three_d = [("tphystnd-3.64", "K/s"), ("phq-14.35", "kg/(kg*s)")]  # "phq-14.35", "phq-3.64"
-    three_d_keys = [(Variable_Lev_Metadata.parse_var_name(var_str), unit) for var_str, unit in var_unit_str_three_d]
-
     dict_keys = models[model_key].keys()
 
-    print("\nComputing profile plots ...\n")
-    for var, unit in three_d_keys:
+    save_dir = Path(plot_dir, get_save_str(i_time, num_time=n_time))
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+    stats_dict = dict()
+
+    print("\nComputing stats ...\n")
+    for var in dict_keys:
         print(f"\n\n---- Variable {var}")
-        var_keys = [k for k in dict_keys if var.var.value in str(k)]
+        md.compute_stats(i_time, var, nTime=n_time)
+        stats_dict[str(var)] = md.stats
 
-        _ = md.plot_double_profile(var, var_keys, itime=i_time, nTime=n_time,
-                                   lats=lats, lons=lons, save=plot_dir,
-                                   stats=stats, show_plot=False, unit=unit)
-        plt.close()
-        gc.collect()
+    print("\nFinished computing stats. Saving stats ...\n")
+    f_name = f"hor_stats.p"
+    out_file = os.path.join(save_dir, f_name)
+    with open(out_file, "wb") as f:
+        pickle.dump(stats_dict, f)
+
+    print(f"\nSaved stats file {Path(*Path(out_file).parts[-5:])}\n\n")
 
 
-def _get_var_keys(var_str, dict_keys):
-    return [k for k in dict_keys if var_str in str(k)]
+def get_save_str(idx_time, num_time=False):
+    if type(idx_time) is int:
+        idx_time_str = f"step-{idx_time}"
+    elif type(idx_time) is str:
+        if num_time:
+            idx_time_str = f"{idx_time}-{num_time}"
+        else:
+            idx_time_str = f"{idx_time}-all"
+    else:
+        raise ValueError(f"Unkown value for idx_time: {idx_time}")
+
+    return idx_time_str
 
 
 if __name__ == "__main__":
@@ -56,22 +70,19 @@ if __name__ == "__main__":
     # Parameters
     i_time = "range"
     n_time = 1440
-    lats = [-90, 90]
-    lons = [0., 359.]
-    stats = ["r2", "mse"]
 
     project_root = Path(__file__).parent.parent.resolve()
 
     config_file = Path(project_root,
                        "output_castle/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
     plot_dir = Path(project_root,
-                    "output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/plots_profiles/")
+                    "output_castle/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/stats/")
     ##########################################
 
-    print(f"\n\n{datetime.datetime.now()} --- Start plotting profiles.", flush=True)
+    print(f"\n\n{datetime.datetime.now()} --- Start computing stats.", flush=True)
     t_init = time.time()
 
-    plot_profiles(i_time, n_time, lats, lons, stats, config_file, plot_dir)
+    compute_stats(i_time, n_time, config_file, plot_dir)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
