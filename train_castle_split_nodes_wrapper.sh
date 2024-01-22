@@ -4,10 +4,10 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_46_gumbel_softmax_single_output_spars1e-7"
+base_dir="output_castle/training_59_gumbel_softmax_single_output_spars1e-8_plus4K"
 HPC="jsc" # jsc, dkrz
 
-job_name_base="training_47_spars1e-7"
+job_name_base="training_59_gumbel_softmax_spars1e-8_plus4K"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
