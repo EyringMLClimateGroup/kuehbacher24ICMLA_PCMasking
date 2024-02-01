@@ -70,7 +70,7 @@ plot_file_pattern:
 nn_type: "CASTLEAdapted" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 # Paths are relative to project root
-nn_output_path: test/output/models_castle
+nn_output_path: test/output/models
 
 input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
 output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]

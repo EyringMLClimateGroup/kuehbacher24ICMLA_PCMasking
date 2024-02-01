@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from neural_networks.castle.building_castle import build_castle
-from neural_networks.castle.castle_model_original import CASTLEOriginal
-from test.neural_networks.castle.test_castle import train_castle
-from test.testing_utils import set_memory_growth_gpu
+from neural_networks.custom_models.building_custom_model import build_custom_model
+from neural_networks.custom_models.castle_model_original import CASTLEOriginal
+from test.neural_networks.custom_models.utils import train_castle
+from test.testing_utils import set_memory_growth_gpu, create_masking_vector
 from utils.setup import SetupNeuralNetworks
 
 # The purpose of these tests is to see whether the training loss is still a number,
@@ -38,20 +38,29 @@ except RuntimeError:
                         "cfg_castle_simplified_all_inputs_outputs_random_normal.yml",
                         "cfg_castle_simplified_all_inputs_outputs_random_uniform.yml",
                         "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_normal.yml",
-                        "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_uniform.yml"])
+                        "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_uniform.yml",
+                        "cfg_vector_mask_net_all_inputs_outputs_glorot_uniform.yml",
+                        "cfg_vector_mask_net_all_inputs_outputs_random_normal.yml"])
 def setup_castle_all_inputs_outputs(request):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", request.param)
     argv = ["-c", config_file]
 
-    return SetupNeuralNetworks(argv)
+    setup = SetupNeuralNetworks(argv)
+
+    if setup.nn_type == "VectorMaskNet" and not os.path.isfile(setup.masking_vector_file):
+        num_inputs = len(setup.input_order_list)
+        create_masking_vector(num_inputs, setup.masking_vector_file)
+
+    return setup
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
+@pytest.mark.timeout(300)
 def test_train_castle_overflow(setup_castle_all_inputs_outputs, strategy, seed):
     num_inputs = len(setup_castle_all_inputs_outputs.input_order_list)
 
-    model = build_castle(setup_castle_all_inputs_outputs, num_inputs, setup_castle_all_inputs_outputs.init_lr,
-                         eager_execution=True, strategy=strategy, seed=seed)
+    model = build_custom_model(setup_castle_all_inputs_outputs, num_inputs, setup_castle_all_inputs_outputs.init_lr,
+                               eager_execution=True, strategy=strategy, seed=seed)
 
     epochs = 1
     if isinstance(model, CASTLEOriginal):
@@ -70,11 +79,12 @@ def test_train_castle_overflow(setup_castle_all_inputs_outputs, strategy, seed):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
+@pytest.mark.timeout(300)
 def test_train_castle_stress_test(setup_castle_all_inputs_outputs, strategy, seed):
     num_inputs = len(setup_castle_all_inputs_outputs.input_order_list)
 
-    model = build_castle(setup_castle_all_inputs_outputs, num_inputs, setup_castle_all_inputs_outputs.init_lr,
-                         eager_execution=True, strategy=strategy, seed=seed)
+    model = build_custom_model(setup_castle_all_inputs_outputs, num_inputs, setup_castle_all_inputs_outputs.init_lr,
+                               eager_execution=True, strategy=strategy, seed=seed)
 
     epochs = 1
     if isinstance(model, CASTLEOriginal):

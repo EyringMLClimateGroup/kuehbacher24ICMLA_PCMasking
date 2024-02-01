@@ -10,7 +10,7 @@ from tensorflow import keras
 
 
 @tf.keras.utils.register_keras_serializable()
-class CASTLEBase(tf.keras.Model, ABC):
+class ModelBase(tf.keras.Model, ABC):
     """Abstract base class for a neural network model with CASTLE (Causal Structure Learning) regularization
     adapted from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
@@ -74,9 +74,9 @@ class CASTLEBase(tf.keras.Model, ABC):
                  kernel_initializer_input_layers=None,
                  kernel_initializer_hidden_layers=None,
                  kernel_initializer_output_layers=None,
-                 bias_initializer_input_layers=None,
-                 bias_initializer_hidden_layers=None,
-                 bias_initializer_output_layers=None,
+                 bias_initializer_input_layers='zeros',
+                 bias_initializer_hidden_layers='zeros',
+                 bias_initializer_output_layers='zeros',
                  kernel_regularizer_input_layers=None,
                  kernel_regularizer_hidden_layers=None,
                  kernel_regularizer_output_layers=None,
@@ -87,7 +87,7 @@ class CASTLEBase(tf.keras.Model, ABC):
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
                  name="castle_model", **kwargs):
-        super(CASTLEBase, self).__init__(name=name, **kwargs)
+        super(ModelBase, self).__init__(name=name, **kwargs)
 
         self.seed = seed
 
@@ -99,20 +99,13 @@ class CASTLEBase(tf.keras.Model, ABC):
         self.hidden_layers = hidden_layers
 
         if kernel_initializer_input_layers is None:
-            kernel_initializer_input_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
+            kernel_initializer_input_layers = {"initializers": "GlorotUniform"}
 
         if kernel_initializer_hidden_layers is None:
-            kernel_initializer_hidden_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.1}
+            kernel_initializer_hidden_layers = {"initializers": "GlorotUniform"}
 
         if kernel_initializer_output_layers is None:
-            kernel_initializer_output_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
-
-        if bias_initializer_input_layers is None:
-            bias_initializer_input_layers = "zeros"
-        if bias_initializer_hidden_layers is None:
-            bias_initializer_hidden_layers = "zeros"
-        if bias_initializer_output_layers is None:
-            bias_initializer_output_layers = "zeros"
+            kernel_initializer_output_layers = {"initializers": "GlorotUniform"}
 
         self.kernel_initializer_input_layers = kernel_initializer_input_layers
         self.kernel_initializer_hidden_layers = kernel_initializer_hidden_layers
@@ -187,7 +180,7 @@ class CASTLEBase(tf.keras.Model, ABC):
        Returns:
            Python dictionary containing the configuration of `CASTLE`.
        """
-        config = super(CASTLEBase, self).get_config()
+        config = super(ModelBase, self).get_config()
         # These are the constructor arguments
         config.update(
             {
@@ -222,7 +215,7 @@ class CASTLEBase(tf.keras.Model, ABC):
 
 
 @tf.keras.utils.register_keras_serializable()
-class CASTLEBaseWReconstruction(CASTLEBase):
+class CASTLEBaseWReconstruction(ModelBase):
     """Abstract base class for a neural network model with CASTLE (Causal Structure Learning) regularization
     adapted from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
     https://doi.org/10/grw6pt.
@@ -288,9 +281,9 @@ class CASTLEBaseWReconstruction(CASTLEBase):
                  kernel_initializer_input_layers=None,
                  kernel_initializer_hidden_layers=None,
                  kernel_initializer_output_layers=None,
-                 bias_initializer_input_layers=None,
-                 bias_initializer_hidden_layers=None,
-                 bias_initializer_output_layers=None,
+                 bias_initializer_input_layers='zeros',
+                 bias_initializer_hidden_layers='zeros',
+                 bias_initializer_output_layers='zeros',
                  kernel_regularizer_input_layers=None,
                  kernel_regularizer_hidden_layers=None,
                  kernel_regularizer_output_layers=None,
@@ -301,6 +294,16 @@ class CASTLEBaseWReconstruction(CASTLEBase):
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
                  name="castle_model", **kwargs):
+
+        if kernel_initializer_input_layers is None:
+            kernel_initializer_input_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
+
+        if kernel_initializer_hidden_layers is None:
+            kernel_initializer_hidden_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.1}
+
+        if kernel_initializer_output_layers is None:
+            kernel_initializer_output_layers = {"initializers": "RandomNormal", "mean": 0.0, "std": 0.01}
+
         super(CASTLEBaseWReconstruction, self).__init__(num_x_inputs=num_x_inputs,
                                                         hidden_layers=hidden_layers,
                                                         activation=activation,

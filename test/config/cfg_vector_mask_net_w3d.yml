@@ -67,7 +67,7 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "CASTLESimplified" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "VectorMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 nn_output_path: test/output/models
 
@@ -134,29 +134,14 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 
 # CASTLESimplified
 # ===================
-lambda_sparsity: 1.0
+mask_threshold: 2.0
+masking_vector_file: "test/output/masking_vector_3d.npy"
 
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
 additional_val_datasets:
   - { name: "test_1", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
   - { name: "test_2", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
 
-# Input layers kernel initializer
-kernel_initializer_input_layers: "RandomNormal"
-input_init_random_normal_mean: 0.0
-input_init_random_normal_std: 0.01
-
-#kernel_initializer_input_layers: "RandomUniform"
-#input_init_random_uniform_min_val: 0.0
-#input_init_random_uniform_max_val: 1.0
-#
-#kernel_initializer_input_layers: "VarianceScaling"
-#input_init_variance_scaling_scale: 1.0
-#input_init_variance_scaling_mode: "fan_in"
-#input_init_variance_scaling_distribution: "truncated_normal"
-#
-#kernel_initializer_input_layers: "LecunNormal"
-#kernel_initializer_input_layers: "LecunUniform"
 
 
 # Hidden layers kernel initializer

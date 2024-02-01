@@ -104,6 +104,50 @@ def test_create_setup_gumbel_softmax_single_output_model(config_name):
     _assert_identical_attributes(castle_setup, yml_cfg)
 
 
+@pytest.mark.parametrize("config_name", ["cfg_vector_mask_net_2d.yml",
+                                         "cfg_vector_mask_net_w3d.yml"])
+def test_create_setup_vector_mask_net(config_name):
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
+    argv = ["-c", config_file]
+
+    castle_setup = SetupNeuralNetworks(argv)
+
+    # Assert
+    with open(config_file, "r") as f:
+        yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+    assert (castle_setup.nn_type == "VectorMaskNet")
+    assert ((Path(*Path(castle_setup.masking_vector_file).parts[-3:])) == Path(yml_cfg["masking_vector_file"]))
+    assert (castle_setup.mask_threshold == yml_cfg["mask_threshold"])
+
+
+@pytest.mark.parametrize("config_name", ["cfg_gumbel_softmax_single_output_model_2d.yml",
+                                         "cfg_gumbel_softmax_single_output_model_w3d.yml"])
+def test_create_setup_gumbel_softmax_single_output_model(config_name):
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
+    argv = ["-c", config_file]
+
+    castle_setup = SetupNeuralNetworks(argv)
+
+    # Assert
+    with open(config_file, "r") as f:
+        yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+    assert (castle_setup.nn_type == "GumbelSoftmaxSingleOutputModel")
+    assert (castle_setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
+
+    assert (castle_setup.temperature == yml_cfg["temperature"])
+
+    assert (castle_setup.temperature_decay_rate == yml_cfg["temperature_decay_rate"])
+    assert (castle_setup.temperature_decay_steps == yml_cfg["temperature_decay_steps"])
+    try:
+        assert (castle_setup.temperature_warm_up == yml_cfg["temperature_warm_up"])
+    except KeyError:
+        assert (castle_setup.temperature_warm_up == 0)
+
+    _assert_identical_attributes(castle_setup, yml_cfg)
+
+
 @pytest.mark.parametrize("config_name",
                          ["cfg_castle_adapted_2d_lr_cosine_init_orthogonal_random_normal_random_uniform.yml",
                           "cfg_castle_adapted_2d_lr_exp_init_he_normal_he_uniform_identity.yml",

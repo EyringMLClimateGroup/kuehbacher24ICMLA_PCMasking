@@ -1,6 +1,6 @@
 import pytest
 
-from neural_networks.castle.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
+from neural_networks.custom_models.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 import numpy as np
 from test.testing_utils import set_memory_growth_gpu
 

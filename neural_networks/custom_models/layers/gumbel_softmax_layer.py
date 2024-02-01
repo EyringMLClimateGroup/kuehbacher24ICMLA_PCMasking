@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow_probability.python.distributions import RelaxedOneHotCategorical
 
-from neural_networks.castle.castle_model_base import get_kernel_initializer
+from neural_networks.custom_models.model_base import get_kernel_initializer
 
 
 @tf.keras.utils.register_keras_serializable()

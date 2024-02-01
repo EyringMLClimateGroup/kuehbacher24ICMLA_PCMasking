@@ -12,7 +12,7 @@ from utils.constants import SPCAM_Vars
 from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
 from neural_networks.sklearn_lasso import sklasso
-from neural_networks.castle.building_castle import build_castle
+from neural_networks.custom_models.building_custom_model import build_custom_model
 
 
 class ModelDescription:
@@ -92,7 +92,7 @@ class ModelDescription:
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
         training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
-                                              "GumbelSoftmaxSingleOutputModel", "castleNN"]
+                                              "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
         if training_castle:
             if setup.distribute_strategy == "mirrored":
                 # Train with MirroredStrategy across multiple GPUs
@@ -109,8 +109,8 @@ class ModelDescription:
                     learning_rate = pickle.load(f)["last_lr"]
                 print(f"Learning rate = {learning_rate}\n", flush=True)
 
-            self.model = build_castle(self.setup, num_x_inputs=len(self.inputs), learning_rate=learning_rate,
-                                      strategy=self.strategy, seed=self.seed)
+            self.model = build_custom_model(self.setup, num_x_inputs=len(self.inputs), learning_rate=learning_rate,
+                                            strategy=self.strategy, seed=self.seed)
         else:
             self.model = self._build_model()
 
@@ -249,6 +249,14 @@ class ModelDescription:
 
             path = path / Path(cfg_str.format(lambda_sparsity=self.setup.lambda_sparsity))
 
+        elif self.model_type == "VectorMaskNet":
+            cfg_str = "threshold{threshold}"
+
+            if self.setup.distribute_strategy == "mirrored":
+                cfg_str += "-mirrored"
+
+            path = path / Path(cfg_str.format(threshold=self.setup.mask_threshold))
+
         elif self.model_type == "CASTLESimplified":
             cfg_str = "lspar{lambda_sparsity}"
             if self.setup.distribute_strategy == "mirrored":
@@ -271,7 +279,7 @@ class ModelDescription:
         str_hl = str_hl.replace("[", "").replace("]", "")
         str_act = str(self.setup.activation)
         training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
-                                              "CASTLESimplified"]
+                                              "CASTLESimplified", "VectorMaskNet"]
         if str_act.lower() == "leakyrelu" and training_castle:
             str_act += f"_{self.setup.relu_alpha}"
         path = path / Path(
@@ -300,7 +308,7 @@ class ModelDescription:
         Path(folder).mkdir(parents=True, exist_ok=True)
 
         training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
-                                              "GumbelSoftmaxSingleOutputModel", "castleNN"]
+                                              "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
         if training_castle:
             # Castle model is custom, so it cannot be saved in legacy h5 format
             self.model.save(Path(folder, f"{filename}_model.keras"), save_format="keras_v3")
@@ -361,8 +369,8 @@ def generate_all_single_nn(setup, continue_training=False, seed=None):
     """ 
     SingleNN: Generate all NN with one output and all inputs specified in the setup 
     pcaNN:    Generate all NN with one output and PCs (PCA) as inputs
-    CASTLEAdapted, CASTLEOriginal, GumbelSoftmaxSingleOutputModel(legacy: castleNN): Generate all NN with one output
-        and all inputs specified in the setup
+    CASTLEAdapted, CASTLEOriginal, GumbelSoftmaxSingleOutputModel, VectorMaskNet (legacy: castleNN):
+        Generate all NN with one output and all inputs specified in the setup
     """
     model_descriptions = list()
 
@@ -490,7 +498,7 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
         print(f"\n\nBuilding and compiling models.", flush=True)
 
     training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
-                                        "GumbelSoftmaxSingleOutputModel", "castleNN"]
+                                        "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
     if setup.do_single_nn or setup.do_pca_nn or training_castle:
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))
 

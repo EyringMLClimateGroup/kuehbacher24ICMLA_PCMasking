@@ -1,6 +1,9 @@
-import pytest
 import os
 from pathlib import Path
+
+import pytest
+
+from test.testing_utils import create_masking_vector
 from utils.setup import SetupNeuralNetworks
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -76,6 +79,34 @@ def setup_gumbel_softmax_single_output_model_w3d():
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)
+
+
+@pytest.fixture()
+def setup_vector_mask_net_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_2d.yml")
+    argv = ["-c", config_file]
+
+    setup = SetupNeuralNetworks(argv)
+
+    if not os.path.isfile(setup.masking_vector_file):
+        num_inputs = len(setup.input_order_list)
+        create_masking_vector(num_inputs, setup.masking_vector_file)
+
+    return setup
+
+
+@pytest.fixture()
+def setup_vector_mask_net_w3d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_w3d.yml")
+    argv = ["-c", config_file]
+
+    setup = SetupNeuralNetworks(argv)
+
+    if not os.path.isfile(setup.masking_vector_file):
+        num_inputs = len(setup.input_order_list)
+        create_masking_vector(num_inputs, setup.masking_vector_file)
+
+    return setup
 
 
 @pytest.fixture(params=["cfg_castle_adapted_2d_lr_cosine_init_orthogonal_random_normal_random_uniform.yml",

@@ -2,19 +2,21 @@
 # Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
 # Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
 # https://github.com/trentkyono/CASTLE
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from neural_networks.castle.castle_model_original import CASTLEOriginal
-from neural_networks.castle.castle_model_adapted import CASTLEAdapted
-from neural_networks.castle.castle_model_simplified import CASTLESimplified
-from neural_networks.castle.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
-from neural_networks.castle.legacy.castle_model import CASTLE
+from neural_networks.custom_models.castle_model_adapted import CASTLEAdapted
+from neural_networks.custom_models.castle_model_original import CASTLEOriginal
+from neural_networks.custom_models.castle_model_simplified import CASTLESimplified
+from neural_networks.custom_models.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
+from neural_networks.custom_models.legacy.castle_model import CASTLE
+from neural_networks.custom_models.vector_mask_model import VectorMaskNet
 
 
 # Todo:
 #  - Implement partial training
-def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False, strategy=None, seed=None):
+def build_custom_model(setup, num_x_inputs, learning_rate=0.001, eager_execution=False, strategy=None, seed=None):
     """
     Builds and compiles a neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
@@ -49,26 +51,14 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
     if eager_execution:
         tf.data.experimental.enable_debug_mode()
 
-    if setup.kernel_initializer_input_layers is None:
-        setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
-                                                 "mean": 0.0,
-                                                 "std": 0.01}
+    _set_kernel_initializer(setup)
 
-    if setup.kernel_initializer_hidden_layers is None:
-        setup.kernel_initializer_hidden_layers = {"initializer": "RandomNormal",
-                                                  "mean": 0.0,
-                                                  "std": 0.1}
-
-    if setup.kernel_initializer_output_layers is None:
-        setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
-                                                  "mean": 0.0,
-                                                  "std": 0.01}
     try:
         relu_alpha = setup.relu_alpha
     except AttributeError:
         relu_alpha = None
 
-    def _build_castle():
+    def _build_custom_model():
         # Build model
         if setup.nn_type == "CASTLEOriginal":
             model_ = CASTLEOriginal(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho,
@@ -108,13 +98,21 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
                                                     kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                                     kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
+        elif setup.nn_type == "VectorMaskNet":
+            masking_vector = np.load(setup.masking_vector_file)
+            model_ = VectorMaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
+                                   threshold=setup.mask_threshold,
+                                   relu_alpha=relu_alpha, seed=seed,
+                                   kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                   kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+
         elif setup.nn_type == "CastleNN":
             # Backwards compatibility for older CASTLE version
             model_ = CASTLE(num_x_inputs, setup.hidden_layers, setup.activation, rho=setup.rho, alpha=setup.alpha,
                             lambda_weight=setup.lambda_weight, relu_alpha=0.3, seed=seed)
         else:
-            raise ValueError(f"Unknown CASTLE type {setup.nn_type}. "
-                             f"Must be one of ['CastleOriginal', 'CastleAdapted'].")
+            raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
+                             f"'CastleAdapted', 'CASTLESimplified', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
 
         model_.build(input_shape=(None, num_x_inputs))
         # Compile model
@@ -122,9 +120,9 @@ def build_castle(setup, num_x_inputs, learning_rate=0.001, eager_execution=False
 
     if strategy is not None:
         with strategy.scope():
-            model = _build_castle()
+            model = _build_custom_model()
     else:
-        model = _build_castle()
+        model = _build_custom_model()
     return model
 
 
@@ -145,3 +143,47 @@ def _compile_castle(model, learning_rate, eager_execution):
     )
 
     return model
+
+
+def _set_kernel_initializer(setup):
+    is_castle_version = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified"]
+
+    if is_castle_version:
+        if setup.kernel_initializer_input_layers is None:
+            setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
+                                                     "mean": 0.0,
+                                                     "std": 0.01}
+
+        if setup.kernel_initializer_hidden_layers is None:
+            setup.kernel_initializer_hidden_layers = {"initializer": "RandomNormal",
+                                                      "mean": 0.0,
+                                                      "std": 0.1}
+
+        if setup.kernel_initializer_output_layers is None:
+            setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
+                                                      "mean": 0.0,
+                                                      "std": 0.01}
+
+    elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
+        if setup.kernel_initializer_input_layers is None:
+            setup.kernel_initializer_input_layers = {"initializer": "Constant",
+                                                     "value": 3.0}
+
+        if setup.kernel_initializer_hidden_layers is None:
+            setup.kernel_initializer_hidden_layers = {"initializer": "GlorotUniform"}
+
+        if setup.kernel_initializer_output_layers is None:
+            setup.kernel_initializer_output_layers = {"initializer": "GlorotUniform"}
+
+    elif setup.nn_type == "VectorMaskNet":
+        # No input layer kernel Initializer
+
+        if setup.kernel_initializer_hidden_layers is None:
+            setup.kernel_initializer_hidden_layers = {"initializer": "GlorotUniform"}
+
+        if setup.kernel_initializer_output_layers is None:
+            setup.kernel_initializer_output_layers = {"initializer": "GlorotUniform"}
+
+    else:
+        raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
+                         f"'CastleAdapted', 'CASTLESimplified', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")

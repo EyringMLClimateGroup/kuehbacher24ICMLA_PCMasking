@@ -1,7 +1,10 @@
 import os
 import shutil
+from pathlib import Path
 
+import numpy as np
 import tensorflow as tf
+from scipy import stats as stats
 
 from neural_networks.data_generator import build_valid_generator
 from neural_networks.models import generate_models
@@ -70,3 +73,18 @@ def build_test_gen(model_description, setup):
     return build_valid_generator(input_vars_dict, output_vars_dict, setup,
                                  input_pca_vars_dict=setup.input_pca_vars_dict,
                                  num_replicas_distributed=num_replicas)
+
+
+def create_masking_vector(num_inputs, out_file):
+    if not os.path.isdir((Path(out_file).parent)):
+        Path(out_file).mkdir(parents=True)
+
+    np.random.seed(42)
+
+    lower, upper = 0, 5
+    mu, sigma = 0, 5
+
+    masking_vector = stats.truncnorm.rvs((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma,
+                                         size=(num_inputs,))
+
+    np.save(out_file, masking_vector.astype(np.float32))

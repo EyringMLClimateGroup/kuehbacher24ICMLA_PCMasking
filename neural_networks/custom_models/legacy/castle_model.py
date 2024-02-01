@@ -5,7 +5,7 @@
 import tensorflow as tf
 from tensorflow import keras
 
-from neural_networks.castle.layers.masked_dense_layer import MaskedDenseLayer
+from neural_networks.custom_models.layers.masked_dense_layer import MaskedDenseLayer
 
 
 @tf.keras.utils.register_keras_serializable()

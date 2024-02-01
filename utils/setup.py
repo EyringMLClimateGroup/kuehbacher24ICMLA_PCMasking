@@ -248,6 +248,15 @@ class SetupNeuralNetworks(Setup):
 
             self._set_common_castle_attributes(yml_cfg)
 
+        elif self.nn_type == "VectorMaskNet":
+            self.mask_threshold = float(yml_cfg["mask_threshold"])
+            self.masking_vector_file = self._evaluate_data_path(yml_cfg["masking_vector_file"])
+            if not self.masking_vector_file.name.endswith(".npy"):
+                raise ValueError(f"Expected masking vector to be saved in numpy format .npy. "
+                                 f"Got file {self.masking_vector_file}")
+
+            self._set_common_castle_attributes(yml_cfg)
+
         elif self.nn_type == "castleNN":
             # Legacy version of CASTLE. Keep this for backwards compatibility
             self.rho = float(yml_cfg["rho"])
