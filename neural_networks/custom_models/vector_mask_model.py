@@ -28,13 +28,20 @@ class VectorMaskNet(ModelBase):
 
         num_outputs = 1
 
-        # Masking vector. Initially set to 1
+        # Masking vector
         masking_vector = tf.Variable(masking_vector, trainable=False, name="masking_vector")
+
+        # Quantitative (mask anything below threshold but keep original values for above threshold values)
+        # masking_vector.assign(tf.where(masking_vector > threshold,
+        #                                x=masking_vector,
+        #                                y=tf.zeros_like(masking_vector),
+        #                                name="threshold_masking_vector"))
+
+        # Qualitative (only 0s and 1s)
         masking_vector.assign(tf.where(masking_vector > threshold,
-                                       x=masking_vector,
+                                       x=tf.ones_like(masking_vector),
                                        y=tf.zeros_like(masking_vector),
                                        name="threshold_masking_vector"))
-
         # Create layers
         # Get activation function
         act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation.lower() == "leakyrelu" \
