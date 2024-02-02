@@ -202,8 +202,10 @@ for gpu_index in {0..3}; do
     break 2
   fi
 
-  echo -e "\nGPU: ${gpu_index}\n"
+  echo -e "\nRun with GPU: ${gpu_index}\n"
   new_start_end_idx="${var_index}-${var_index}"
 
-  conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$new_start_end_idx" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out" &
+  conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$new_start_end_idx" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${var_index}_${SLURM_JOB_ID}.out" 2>&1 &
 done
+
+wait

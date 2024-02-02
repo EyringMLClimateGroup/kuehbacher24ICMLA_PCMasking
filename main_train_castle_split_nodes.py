@@ -64,8 +64,8 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--seed", help="Integer value for random seed. "
                                              "Use 'False' or leave out this option to not set a random seed.",
                         default=False, type=parse_str_to_bool_or_int, nargs='?', const=True)
-    parser.add_argument("-g" "--gpu", help="GPU index. Only GPU specified by index will be used for training.",
-                        required=False, type=int)
+    parser.add_argument("-g", "--gpu_index", help="GPU index. If given, only the GPU specified by index will be used for training.",
+                        required=False, default=False, type=int, nargs='?')
 
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     load_ckpt = args.load_ckpt
     continue_training = args.continue_training
     random_seed_parsed = args.seed
-    gpu_index = args.gpu
+    gpu_index = args.gpu_index
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
