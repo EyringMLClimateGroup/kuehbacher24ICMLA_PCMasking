@@ -6,7 +6,7 @@ from pathlib import Path
 from neural_networks.models_split_over_nodes import generate_models
 from neural_networks.training import train_all_models
 from utils.setup import SetupNeuralNetworks
-from utils.tf_gpu_management import manage_gpu, set_tf_random_seed
+from utils.tf_gpu_management import manage_gpu, set_tf_random_seed, set_gpu
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
@@ -64,6 +64,8 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--seed", help="Integer value for random seed. "
                                              "Use 'False' or leave out this option to not set a random seed.",
                         default=False, type=parse_str_to_bool_or_int, nargs='?', const=True)
+    parser.add_argument("-g" "--gpu", help="GPU index. Only GPU specified by index will be used for training.",
+                        required=False, type=int)
 
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
@@ -92,6 +94,7 @@ if __name__ == "__main__":
     load_ckpt = args.load_ckpt
     continue_training = args.continue_training
     random_seed_parsed = args.seed
+    gpu_index = args.gpu
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -101,7 +104,10 @@ if __name__ == "__main__":
         parser.error(f"File with neural network outputs must be .txt file. Got {outputs_file}")
 
     # GPU management: Allow memory growth if training is done on multiple GPUs, otherwise limit GPUs to single GPU
-    manage_gpu(yaml_config_file)
+    if gpu_index is None:
+        manage_gpu(yaml_config_file)
+    else:
+        set_gpu(index=gpu_index)
 
     # Parse indices of outputs selected for training
     start, end = train_idx.split("-")
