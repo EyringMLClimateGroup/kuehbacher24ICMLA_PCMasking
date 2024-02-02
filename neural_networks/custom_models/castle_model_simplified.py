@@ -236,16 +236,16 @@ class CASTLESimplified(ModelBase):
     def compute_sparsity_loss(input_layer_kernel):
         """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
 
-        # entry_wise_norm = tf.norm(input_layer_kernel, ord=1, name='l1_norm_input_layer')
-        #
-        # # Scale norm by matrix size (number of inputs * first hidden layer dimensions)
-        # sparsity_regularizer = tf.math.divide(entry_wise_norm,
-        #                                       (input_layer_kernel.shape[0] * input_layer_kernel.shape[1]),
-        #                                       name="l1_norm_input_layer_scaled")
+        entry_wise_norm = tf.norm(input_layer_kernel, ord=1, name='l1_norm_input_layer')
 
-        matrix_norm = tf.norm(tf.transpose(input_layer_kernel), ord=2, axis=[-2, -1])
-        # Scale by number of rows (first hidden layer dimensions)
-        sparsity_regularizer = tf.divide(matrix_norm, input_layer_kernel.shape[1])
+        # Scale norm by matrix size (number of inputs * first hidden layer dimensions)
+        sparsity_regularizer = tf.math.divide(entry_wise_norm,
+                                              (input_layer_kernel.shape[0] * input_layer_kernel.shape[1]),
+                                              name="l1_norm_input_layer_scaled")
+
+        # matrix_norm = tf.norm(tf.transpose(input_layer_kernel), ord=2, axis=[-2, -1])
+        # # Scale by number of rows (first hidden layer dimensions)
+        # sparsity_regularizer = tf.divide(matrix_norm, input_layer_kernel.shape[1])
 
         return sparsity_regularizer
 
