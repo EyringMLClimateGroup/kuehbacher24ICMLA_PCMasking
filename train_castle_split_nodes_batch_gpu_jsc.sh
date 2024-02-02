@@ -10,7 +10,7 @@
 #SBATCH --time=24:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
-#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
