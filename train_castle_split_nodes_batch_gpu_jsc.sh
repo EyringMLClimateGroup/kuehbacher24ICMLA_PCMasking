@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=develbooster
+#SBATCH --partition=booster
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=00:02:00
+#SBATCH --time=24:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END
@@ -194,9 +194,7 @@ echo "Starting job ${JOB_NAME}: $(date)"
 
 start_idx=$(echo $START_END_IDX | sed 's@^[^0-9]*\([0-9]\+\).*@\1@')
 
-
 for gpu_index in {0..3}; do
-
 
   var_index=$((start_idx + gpu_index))
 
