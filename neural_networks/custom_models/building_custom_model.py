@@ -5,6 +5,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+from pathlib import Path
 
 from neural_networks.custom_models.castle_model_adapted import CASTLEAdapted
 from neural_networks.custom_models.castle_model_original import CASTLEOriginal
@@ -16,7 +17,8 @@ from neural_networks.custom_models.vector_mask_model import VectorMaskNet
 
 # Todo:
 #  - Implement partial training
-def build_custom_model(setup, num_x_inputs, learning_rate=0.001, eager_execution=False, strategy=None, seed=None):
+def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None, eager_execution=False, strategy=None,
+                       seed=None):
     """
     Builds and compiles a neural network with CASTLE (Causal Structure Learning) regularization
     from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
@@ -99,6 +101,8 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, eager_execution
                                                     kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
         elif setup.nn_type == "VectorMaskNet":
+            if output_var is not None:
+                setup.masking_vector_file = Path(str(setup.masking_vector_file).format(var=output_var))
             masking_vector = np.load(setup.masking_vector_file)
             model_ = VectorMaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
                                    threshold=setup.mask_threshold,

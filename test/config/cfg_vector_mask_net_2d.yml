@@ -136,7 +136,7 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 # VectorMaskNet
 # ----------------------
 mask_threshold: 2.0
-masking_vector_file: "test/output/masking_vector_2d.npy"
+masking_vector_file: "test/output/masking_vectors/masking_vector_2d_{var}.npy"
 relu_alpha: 0.3
 
 distribute_strategy: "mirrored" # mirrored or nothing for normal training

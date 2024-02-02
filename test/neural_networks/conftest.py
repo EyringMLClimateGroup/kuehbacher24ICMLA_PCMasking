@@ -3,10 +3,17 @@ from pathlib import Path
 
 import pytest
 
-from test.testing_utils import create_masking_vector
+from test.testing_utils import create_masking_vector, generate_output_var_list
 from utils.setup import SetupNeuralNetworks
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
+
+
+# default time out
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if item.get_closest_marker('timeout') is None:
+            item.add_marker(pytest.mark.timeout(180))
 
 
 @pytest.fixture()
@@ -88,9 +95,8 @@ def setup_vector_mask_net_2d():
 
     setup = SetupNeuralNetworks(argv)
 
-    if not os.path.isfile(setup.masking_vector_file):
-        num_inputs = len(setup.input_order_list)
-        create_masking_vector(num_inputs, setup.masking_vector_file)
+    num_inputs = len(setup.input_order_list)
+    create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=generate_output_var_list(setup))
 
     return setup
 
@@ -102,9 +108,8 @@ def setup_vector_mask_net_w3d():
 
     setup = SetupNeuralNetworks(argv)
 
-    if not os.path.isfile(setup.masking_vector_file):
-        num_inputs = len(setup.input_order_list)
-        create_masking_vector(num_inputs, setup.masking_vector_file)
+    num_inputs = len(setup.input_order_list)
+    create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=generate_output_var_list(setup))
 
     return setup
 

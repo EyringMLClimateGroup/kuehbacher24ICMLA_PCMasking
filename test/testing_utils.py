@@ -75,9 +75,9 @@ def build_test_gen(model_description, setup):
                                  num_replicas_distributed=num_replicas)
 
 
-def create_masking_vector(num_inputs, out_file):
+def create_masking_vector(num_inputs, out_file, outputs_list):
     if not os.path.isdir((Path(out_file).parent)):
-        Path(out_file).mkdir(parents=True)
+        Path(out_file.parent).mkdir(parents=True)
 
     np.random.seed(42)
 
@@ -88,3 +88,22 @@ def create_masking_vector(num_inputs, out_file):
                                          size=(num_inputs,))
 
     np.save(out_file, masking_vector.astype(np.float32))
+
+    for out_var in outputs_list:
+        mv_file = Path(str(out_file).format(var=out_var))
+        np.save(mv_file, masking_vector.astype(np.float32))
+
+
+def generate_output_var_list(setup):
+    output_list = list()
+    for spcam_var in setup.spcam_outputs:
+        if spcam_var.dimensions == 3:
+            for level, _ in setup.children_idx_levs:
+                # There's enough info to build a Variable_Lev_Metadata list
+                # However, it could be better to do a bigger reorganization
+                var_name = f"{spcam_var.name}-{round(level, 2)}"
+                output_list.append(var_name)
+        elif spcam_var.dimensions == 2:
+            var_name = spcam_var.name
+            output_list.append(var_name)
+    return output_list

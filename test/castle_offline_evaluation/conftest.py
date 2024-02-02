@@ -5,7 +5,7 @@ import pytest
 
 from neural_networks.load_models import load_models
 from neural_networks.model_diagnostics import ModelDiagnostics
-from test.testing_utils import train_model_if_not_exists, create_masking_vector
+from test.testing_utils import train_model_if_not_exists, create_masking_vector, generate_output_var_list
 from utils.setup import SetupDiagnostics
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -52,9 +52,8 @@ def diagnostic_setup_vector_mask_net_2d():
 
     setup = SetupDiagnostics(argv)
 
-    if not os.path.isfile(setup.masking_vector_file):
-        num_inputs = len(setup.input_order_list)
-        create_masking_vector(num_inputs, setup.masking_vector_file)
+    num_inputs = len(setup.input_order_list)
+    create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=generate_output_var_list(setup))
 
     return setup
 

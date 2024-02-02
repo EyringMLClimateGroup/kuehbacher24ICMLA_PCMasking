@@ -110,7 +110,7 @@ class ModelDescription:
                 print(f"Learning rate = {learning_rate}\n", flush=True)
 
             self.model = build_custom_model(self.setup, num_x_inputs=len(self.inputs), learning_rate=learning_rate,
-                                            strategy=self.strategy, seed=self.seed)
+                                            output_var=self.output, strategy=self.strategy, seed=self.seed)
         else:
             self.model = self._build_model()
 
