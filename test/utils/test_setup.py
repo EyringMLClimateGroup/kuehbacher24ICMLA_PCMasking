@@ -117,7 +117,7 @@ def test_create_setup_vector_mask_net(config_name):
         yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
 
     assert (castle_setup.nn_type == "VectorMaskNet")
-    assert ((Path(*Path(castle_setup.masking_vector_file).parts[-3:])) == Path(yml_cfg["masking_vector_file"]))
+    assert ((Path(*Path(castle_setup.masking_vector_file).parts[-4:])) == Path(yml_cfg["masking_vector_file"]))
     assert (castle_setup.mask_threshold == yml_cfg["mask_threshold"])
 
 
