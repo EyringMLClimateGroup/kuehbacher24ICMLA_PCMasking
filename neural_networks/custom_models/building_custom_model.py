@@ -103,6 +103,8 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
         elif setup.nn_type == "VectorMaskNet":
             if output_var is not None:
                 setup.masking_vector_file = Path(str(setup.masking_vector_file).format(var=output_var))
+            print(f"\nLoading masking vector {(Path(*Path(setup.masking_vector_file).parts[-4:]))}\n")
+
             masking_vector = np.load(setup.masking_vector_file)
             model_ = VectorMaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
                                    threshold=setup.mask_threshold,
