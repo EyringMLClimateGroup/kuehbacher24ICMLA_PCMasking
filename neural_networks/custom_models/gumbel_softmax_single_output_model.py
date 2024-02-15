@@ -267,7 +267,9 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
         # Pre-calculate values outside the loop
         x_out = 1
         output_dim = self.output_var["dimensions"]
-        level_out = tf.cast(self.output_var["level"], tf.float32) if output_dim == 3 else None
+
+        if output_dim == 3:
+            level_out = tf.cast(self.output_var["level"], tf.float32)
 
         for index, input_var in enumerate(self.ordered_input_vars):
             x_in = masking_vector[index]
@@ -278,7 +280,7 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
                 level_in = get_2d_level(input_var["name"])
 
             if output_dim == 2:
-                level_out = get_2d_level(input_var["name"], level_in)
+                level_out = get_2d_level(self.output_var["name"], level_in)
 
             crf_loss = tf.tensor_scatter_nd_update(
                 crf_loss, [[index]],
@@ -399,6 +401,8 @@ def get_2d_level(varname, in_level=None):
         return tf.cast(992, tf.float32)
     elif varname == "prect":
         return tf.cast(in_level, tf.float32)
+    else:
+        raise ValueError(f"Level for 2d variable {varname} not known.")
 
 
 def parse_variable_lev_metadata_to_dict(var):
