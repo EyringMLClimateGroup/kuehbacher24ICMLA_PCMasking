@@ -1,4 +1,5 @@
 import os
+import pickle
 import shutil
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from scipy import stats as stats
 from neural_networks.data_generator import build_valid_generator
 from neural_networks.models import generate_models
 from neural_networks.training import train_all_models
+from utils.variable import Variable_Lev_Metadata
 
 
 def delete_output_dirs(model_description, setup):
@@ -93,6 +95,24 @@ def create_masking_vector(num_inputs, out_file, outputs_list):
         mv_file = Path(str(out_file).format(var=out_var))
         np.save(mv_file, masking_vector.astype(np.float32))
 
+def create_threshold_file(out_file, outputs_list):
+    if not os.path.isdir((Path(out_file).parent)):
+        Path(out_file.parent).mkdir(parents=True)
+
+    np.random.seed(42)
+
+    lower, upper = 0, 3
+    mu, sigma = 0, 3
+    t = stats.truncnorm.rvs((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
+
+    threshold_dict = dict()
+
+    for out_var in outputs_list:
+        threshold_dict[out_var] = t
+
+    with open(out_file, "wb") as f:
+        pickle.dump(threshold_dict, f)
+
 
 def generate_output_var_list(setup):
     output_list = list()
@@ -102,8 +122,8 @@ def generate_output_var_list(setup):
                 # There's enough info to build a Variable_Lev_Metadata list
                 # However, it could be better to do a bigger reorganization
                 var_name = f"{spcam_var.name}-{round(level, 2)}"
-                output_list.append(var_name)
+                output_list.append(Variable_Lev_Metadata.parse_var_name(var_name))
         elif spcam_var.dimensions == 2:
             var_name = spcam_var.name
-            output_list.append(var_name)
+            output_list.append(Variable_Lev_Metadata.parse_var_name(var_name))
     return output_list

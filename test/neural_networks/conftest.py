@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from test.testing_utils import create_masking_vector, generate_output_var_list
+from test.testing_utils import create_masking_vector, generate_output_var_list, create_threshold_file
 from utils.setup import SetupNeuralNetworks
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -102,6 +102,22 @@ def setup_vector_mask_net_2d():
 
 
 @pytest.fixture()
+def setup_vector_mask_net_2d_threshold_file():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_2d_threshold_file.yml")
+    argv = ["-c", config_file]
+
+    setup = SetupNeuralNetworks(argv)
+
+    num_inputs = len(setup.input_order_list)
+    outputs_list = generate_output_var_list(setup)
+
+    create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=outputs_list)
+    create_threshold_file(setup.mask_threshold_file, outputs_list=outputs_list)
+
+    return setup
+
+
+@pytest.fixture()
 def setup_vector_mask_net_w3d():
     config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_w3d.yml")
     argv = ["-c", config_file]
@@ -110,6 +126,22 @@ def setup_vector_mask_net_w3d():
 
     num_inputs = len(setup.input_order_list)
     create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=generate_output_var_list(setup))
+
+    return setup
+
+
+@pytest.fixture()
+def setup_vector_mask_net_w3d_threshold_file():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_w3d_threshold_file.yml")
+    argv = ["-c", config_file]
+
+    setup = SetupNeuralNetworks(argv)
+
+    num_inputs = len(setup.input_order_list)
+    outputs_list = generate_output_var_list(setup)
+
+    create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=outputs_list)
+    create_threshold_file(setup.mask_threshold_file, outputs_list=outputs_list)
 
     return setup
 

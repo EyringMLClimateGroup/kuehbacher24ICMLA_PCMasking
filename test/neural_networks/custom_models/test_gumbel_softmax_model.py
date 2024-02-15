@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import pytest
 import tensorflow as tf
 
@@ -9,7 +10,7 @@ from neural_networks.custom_models.gumbel_softmax_single_output_model import Gum
 from neural_networks.custom_models.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 from test.neural_networks.custom_models.utils import assert_identical_attributes, train_castle, create_dataset, \
     print_plot_model_summary
-from test.testing_utils import set_memory_growth_gpu
+from test.testing_utils import set_memory_growth_gpu, generate_output_var_list
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 print(PROJECT_ROOT)
@@ -36,7 +37,8 @@ def test_create_gumbel_softmax_single_output_model(setup_str, strategy, seed, re
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0]
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     assert (isinstance(model, GumbelSoftmaxSingleOutputModel))
@@ -53,7 +55,8 @@ def test_train_gumbel_softmax_single_output_model(setup_str, strategy, seed, req
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0]
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     epochs = 2
@@ -77,7 +80,8 @@ def test_predict_gumbel_softmax_single_output_model(setup_str, strategy, seed, r
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0]
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     n_samples = 160
@@ -100,8 +104,9 @@ def test_save_load_gumbel_softmax_single_output_model(setup_str, strategy, seed,
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
-                               eager_execution=True, strategy=strategy, seed=seed)
+    var = generate_output_var_list(setup)[0]
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
+                               eager_execution=False, strategy=strategy, seed=seed)
 
     _ = train_castle(model, num_inputs, epochs=1, strategy=strategy)
 
@@ -115,7 +120,14 @@ def test_save_load_gumbel_softmax_single_output_model(setup_str, strategy, seed,
                                                   "GumbelSoftmaxSingleOutputModel": GumbelSoftmaxSingleOutputModel,
                                                   "StraightThroughGumbelSoftmaxMaskingLayer": StraightThroughGumbelSoftmaxMaskingLayer})
 
-    assert (loaded_model.lambda_sparsity == model.lambda_sparsity)
+    assert (loaded_model.lambda_prediction == model.lambda_prediction)
+    assert (loaded_model.lambda_crf == model.lambda_crf)
+    assert (loaded_model.lambda_vol_min == model.lambda_vol_min)
+    assert (loaded_model.lambda_vol_avg == model.lambda_vol_avg)
+
+    assert (loaded_model.sigma_crf == model.sigma_crf)
+    assert (np.all(loaded_model.level_bins == model.level_bins))
+
     assert (loaded_model.relu_alpha == model.relu_alpha)
     assert (loaded_model.layers[1].temp == model.layers[1].temp)
 

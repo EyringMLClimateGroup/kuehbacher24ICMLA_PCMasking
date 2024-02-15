@@ -2,10 +2,12 @@
 # Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
 # Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
 # https://github.com/trentkyono/CASTLE
+import pickle
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from pathlib import Path
 
 from neural_networks.custom_models.castle_model_adapted import CASTLEAdapted
 from neural_networks.custom_models.castle_model_original import CASTLEOriginal
@@ -13,6 +15,7 @@ from neural_networks.custom_models.castle_model_simplified import CASTLESimplifi
 from neural_networks.custom_models.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.custom_models.legacy.castle_model import CASTLE
 from neural_networks.custom_models.vector_mask_model import VectorMaskNet
+from utils.variable import Variable_Lev_Metadata
 
 
 # Todo:
@@ -92,8 +95,18 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                                       kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                       kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
+            if output_var is None:
+                raise ValueError("Must pass output variable of type Variable_Lev_Metadata to create GumbelSoftmaxSingleOutputModel.")
+
             model_ = GumbelSoftmaxSingleOutputModel(num_x_inputs, setup.hidden_layers, setup.activation,
-                                                    lambda_sparsity=setup.lambda_sparsity,
+                                                    lambda_prediction=setup.lambda_prediction,
+                                                    lambda_crf=setup.lambda_crf,
+                                                    lambda_vol_min=setup.lambda_vol_min,
+                                                    lambda_vol_avg=setup.lambda_vol_avg,
+                                                    sigma_crf=setup.sigma_crf,
+                                                    level_bins=setup.level_bins,
+                                                    output_var=output_var,
+                                                    ordered_input_vars=generate_ordered_input_vars(setup),
                                                     relu_alpha=relu_alpha, seed=seed,
                                                     temperature=setup.temperature,
                                                     kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
@@ -101,14 +114,35 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                                                     kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
         elif setup.nn_type == "VectorMaskNet":
+            # Get masking vector for output variable
             if output_var is not None:
                 setup.masking_vector_file = Path(str(setup.masking_vector_file).format(var=output_var))
-            print(f"\nLoading masking vector {(Path(*Path(setup.masking_vector_file).parts[-4:]))}\n")
 
+            print(f"\nLoading masking vector {(Path(*Path(setup.masking_vector_file).parts[-4:]))}\n")
             masking_vector = np.load(setup.masking_vector_file)
+
+            # Get threshold for masking vector
+            if setup.mask_threshold is not None:
+                # Single float threshold given
+                threshold = setup.mask_threshold
+            elif setup.mask_threshold_file is not None:
+                # Make sure that the output variable is given
+                if output_var is None:
+                    raise ValueError("Must pass output variable of type Variable_Lev_Metadata when providing "
+                                     "threshold in threshold file for VectorMaskNet.")
+
+                # Dictionary with threshold values per output variable given
+                print(f"\nLoading threshold file {(Path(*Path(setup.mask_threshold_file).parts[-4:]))}\n")
+
+                with open(setup.mask_threshold_file, "rb") as in_file:
+                    mask_threshold_file = pickle.load(in_file)
+                    threshold = mask_threshold_file[output_var]
+            else:
+                raise ValueError(f"Neither mask threshold float value or threshold file has been given.")
+
+            print(f"\nUsing threshold {threshold}\n")
             model_ = VectorMaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
-                                   threshold=setup.mask_threshold,
-                                   relu_alpha=relu_alpha, seed=seed,
+                                   threshold=threshold, relu_alpha=relu_alpha, seed=seed,
                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
@@ -193,3 +227,18 @@ def _set_kernel_initializer(setup):
     else:
         raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
                          f"'CastleAdapted', 'CASTLESimplified', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
+
+
+def generate_ordered_input_vars(setup):
+    inputs_list = list()
+    for spcam_var in setup.spcam_inputs:
+        if spcam_var.dimensions == 3:
+            for level, _ in setup.parents_idx_levs:
+                # There's enough info to build a Variable_Lev_Metadata list
+                # However, it could be better to do a bigger reorganization
+                var_name = f"{spcam_var.name}-{round(level, 2)}"
+                inputs_list.append(Variable_Lev_Metadata.parse_var_name(var_name))
+        elif spcam_var.dimensions == 2:
+            var_name = spcam_var.name
+            inputs_list.append(Variable_Lev_Metadata.parse_var_name(var_name))
+    return inputs_list

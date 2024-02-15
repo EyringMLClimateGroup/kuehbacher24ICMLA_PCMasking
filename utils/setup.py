@@ -236,7 +236,13 @@ class SetupNeuralNetworks(Setup):
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "GumbelSoftmaxSingleOutputModel":
-            self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
+            self.lambda_prediction = float(yml_cfg["lambda_prediction"])
+            self.lambda_crf = float(yml_cfg["lambda_crf"])
+            self.lambda_vol_min = float(yml_cfg["lambda_vol_min"])
+            self.lambda_vol_avg = float(yml_cfg["lambda_vol_avg"])
+
+            self.sigma_crf = float(yml_cfg["sigma_crf"])
+            self.level_bins = yml_cfg["level_bins"]
 
             self.temperature = float(yml_cfg["temperature"])
             self.temperature_decay_rate = float(yml_cfg["temperature_decay_rate"])
@@ -249,7 +255,13 @@ class SetupNeuralNetworks(Setup):
             self._set_common_castle_attributes(yml_cfg)
 
         elif self.nn_type == "VectorMaskNet":
-            self.mask_threshold = float(yml_cfg["mask_threshold"])
+            try:
+                self.mask_threshold = float(yml_cfg["mask_threshold"])
+                self.mask_threshold_file = None
+            except KeyError:
+                self.mask_threshold_file = self._evaluate_data_path(yml_cfg["mask_threshold_file"])
+                self.mask_threshold = None
+
             self.masking_vector_file = self._evaluate_data_path(yml_cfg["masking_vector_file"])
             if not self.masking_vector_file.name.endswith(".npy"):
                 raise ValueError(f"Expected masking vector to be saved in numpy format .npy. "

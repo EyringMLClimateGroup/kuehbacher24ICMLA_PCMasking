@@ -928,6 +928,16 @@ class ModelDiagnostics():
             fig.savefig(save_path)
             print(f"\nSaved plot {save_path.name}.")
 
+            # save prediction and truth
+            pred_file = f"{varname}_profile_pred.p"
+            with open(os.path.join(save_dir, pred_file), "wb") as f:
+                pickle.dump(p, f)
+
+            truth_file = f"{varname}_profile_truth.p"
+            with open(os.path.join(save_dir, truth_file), "wb") as f:
+                pickle.dump(t, f)
+
+            # save stats
             if stats:
                 stats_file = f"{varname}_stats-{stats[0]}.p"
                 with open(os.path.join(save_dir, stats_file), 'wb') as f:

@@ -133,7 +133,19 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 
 # GumbelSoftmaxSingleOutputModel
 # ----------------------
-lambda_sparsity: 1.0
+lambda_prediction: 1.0
+lambda_crf: 1.0
+lambda_vol_min: 1.0
+lambda_vol_avg: 1.0
+
+sigma_crf: 200
+# Specify boundaries for vertical level bins
+# bin1: 0-100
+# bin2: 101-440
+# bin3: 441-680
+# bin4: 681-1000
+level_bins: [ 100, 440, 680 ]
+
 relu_alpha: 0.3
 temperature: 1.0
 temperature_decay_rate: 0.8

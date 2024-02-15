@@ -64,11 +64,17 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
                                           lambda_acyclicity=setup.lambda_acyclicity,
                                           acyclicity_constraint=setup.acyclicity_constraint))
     elif model_type == "GumbelSoftmaxSingleOutputModel":
-        cfg_str = "lspar{lambda_sparsity}"
+        cfg_str = "lpred{lambda_prediction}-lcrf{lambda_crf}-lvol_min{lambda_vol_min}-lvol_avg{lambda_vol_avg}-" \
+                  "simga_crf{sigma_crf}-temp{temperature}"
         if setup.distribute_strategy == "mirrored":
             cfg_str += "-mirrored"
 
-        path = path / Path(cfg_str.format(lambda_sparsity=setup.lambda_sparsity))
+        path = path / Path(cfg_str.format(lambda_prediction=setup.lambda_prediction,
+                                          lambda_crf=setup.lambda_crf,
+                                          lambda_vol_min=setup.lambda_vol_min,
+                                          lambda_vol_avg=setup.lambda_vol_avg,
+                                          sigma_crf=setup.sigma_crf,
+                                          temperature=setup.temperature))
 
     elif model_type == "VectorMaskNet":
         cfg_str = "threshold{threshold}"

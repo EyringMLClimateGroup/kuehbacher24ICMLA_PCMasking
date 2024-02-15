@@ -9,7 +9,7 @@ from neural_networks.custom_models.building_custom_model import build_custom_mod
 from neural_networks.custom_models.vector_mask_model import VectorMaskNet
 from test.neural_networks.custom_models.utils import assert_identical_attributes, train_castle, create_dataset, \
     print_plot_model_summary
-from test.testing_utils import set_memory_growth_gpu, create_masking_vector
+from test.testing_utils import set_memory_growth_gpu, generate_output_var_list
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 print(PROJECT_ROOT)
@@ -30,12 +30,15 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
+                                       "setup_vector_mask_net_2d_threshold_file",
+                                       "setup_vector_mask_net_w3d_threshold_file"])
 def test_create_vector_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     assert (isinstance(model, VectorMaskNet))
@@ -46,12 +49,15 @@ def test_create_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
+                                       "setup_vector_mask_net_2d_threshold_file",
+                                       "setup_vector_mask_net_w3d_threshold_file"])
 def test_train_vector_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     epochs = 2
@@ -69,12 +75,15 @@ def test_train_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
+                                       "setup_vector_mask_net_2d_threshold_file",
+                                       "setup_vector_mask_net_w3d_threshold_file"])
 def test_predict_vector_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     n_samples = 160
@@ -91,12 +100,15 @@ def test_predict_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
+                                       "setup_vector_mask_net_2d_threshold_file",
+                                       "setup_vector_mask_net_w3d_threshold_file"])
 def test_save_load_vector_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
-    model = build_custom_model(setup, num_inputs, setup.init_lr,
+    var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
+    model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
     _ = train_castle(model, num_inputs, epochs=1, strategy=strategy)

@@ -26,8 +26,8 @@ documentation:
 analysis: 'single' # 'single': gridpoints individually;
 # 'concat': gridpoints contatenated into a
 #           single time-series;
-spcam_parents: [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
-spcam_children: [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
+spcam_parents: [ 'tbq', 'lhflx' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
+spcam_children: [ 'tphystnd', 'prect' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
@@ -67,16 +67,15 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "GumbelSoftmaxSingleOutputModel" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "VectorMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
-# Paths are relative to project root
 nn_output_path: test/output/models
 
-input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
-output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
+input_order: [ tbp, lhflx ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
+output_order: [ tphystnd, prect ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
 hidden_layers: [ 32, 32 ]  # [ 256,256,256,256,256,256,256,256,256 ]
-activation: LeakyReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
+activation: ReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 
 
 # Training configuration
@@ -100,7 +99,9 @@ input_sub: mean
 input_div: maxrs
 out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
-batch_size: 1024
+batch_size: 256  #1024
+val_batch_size: 256
+
 
 # Learning Rate Scheduler
 init_lr: 0.001 # From train.py (default)
@@ -131,60 +132,27 @@ divide_lr: 5 # From train.py (default)
 train_patience: 5 # TODO: This number was chosen arbitrarily
 
 
-# GumbelSoftmaxSingleOutputModel
-# ----------------------
-lambda_prediction: 1.0
-lambda_crf: 1.0
-lambda_vol_min: 1.0
-lambda_vol_avg: 1.0
+# CASTLESimplified
+# ===================
+mask_threshold_file: "test/output/bespoke_thresholds/thresholds_per_var_w3d.p"
+masking_vector_file: "test/output/masking_vectors/masking_vector_3d_{var}.npy"
 
-sigma_crf: 200
-# Specify boundaries for vertical level bins
-# bin1: 0-100
-# bin2: 101-440
-# bin3: 441-680
-# bin4: 681-1000
-level_bins: [ 100, 440, 680 ]
-
-relu_alpha: 0.3
-
-temperature: 1.0
-temperature_decay_rate: 0.8
-temperature_decay_steps: 1
-temperature_warm_up: 0
-
-distribute_strategy: "mirrored" # mirrored or nothing for normal training
+distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training
 additional_val_datasets:
   - { name: "test_1", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
   - { name: "test_2", data: "test/test_data/2021_09_02_TEST_For_Nando_shuffle_perc0-0002.nc" }
 
-# Input layers kernel initializer
-#kernel_initializer_input_layers: "RandomNormal"
-#input_init_random_normal_mean: 0.0
-#input_init_random_normal_std: 0.01
-
-kernel_initializer_input_layers: "RandomUniform"
-input_init_random_uniform_min_val: 0.0
-input_init_random_uniform_max_val: 0.01
-
-#kernel_initializer_input_layers: "VarianceScaling"
-#input_init_variance_scaling_scale: 1.0
-#input_init_variance_scaling_mode: "fan_in"
-#input_init_variance_scaling_distribution: "truncated_normal"
-#
-#kernel_initializer_input_layers: "LecunNormal"
-#kernel_initializer_input_layers: "LecunUniform"
 
 
 # Hidden layers kernel initializer
-#kernel_initializer_hidden_layers: "RandomNormal"
-#hidden_init_random_normal_mean: 0.0
-#hidden_init_random_normal_std: 0.01
+kernel_initializer_hidden_layers: "RandomNormal"
+hidden_init_random_normal_mean: 0.0
+hidden_init_random_normal_std: 0.01
 
-kernel_initializer_hidden_layers: "RandomUniform"
-hidden_init_random_uniform_min_val: 0.0
-hidden_init_random_uniform_max_val: 0.1
-
+#kernel_initializer_hidden_layers: "RandomUniform"
+#hidden_output_init_random_uniform_min_val: 0.0
+#hidden_output_init_random_uniform_max_val: 1.0
+#
 #kernel_initializer_hidden_layers: "GlorotUniform"
 #kernel_initializer_hidden_layers: "GlorotNormal"
 #
@@ -194,14 +162,15 @@ hidden_init_random_uniform_max_val: 0.1
 #kernel_initializer_hidden_layers: "HeNormal"
 #kernel_initializer_hidden_layers: "HeUniform"
 
-# Output layers kernel initializer
-#kernel_initializer_output_layers: "RandomNormal"
-#output_init_random_normal_mean: 0.0
-#output_init_random_normal_std: 0.01
 
-kernel_initializer_output_layers: "RandomUniform"
-output_init_random_uniform_min_val: 0.0
-output_init_random_uniform_max_val: 0.01
+# Output layers kernel initializer
+kernel_initializer_output_layers: "RandomNormal"
+output_init_random_normal_mean: 0.0
+output_init_random_normal_std: 0.01
+
+#kernel_initializer_output_layers: "RandomUniform"
+#output_output_init_random_uniform_min_val: 0.0
+#output_output_init_random_uniform_max_val: 1.0
 #
 #kernel_initializer_output_layers: "GlorotUniform"
 #kernel_initializer_output_layers: "GlorotNormal"

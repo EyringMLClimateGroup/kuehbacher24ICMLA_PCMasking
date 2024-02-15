@@ -243,11 +243,17 @@ class ModelDescription:
                                               lambda_acyclicity=self.setup.lambda_acyclicity,
                                               acyclicity_constraint=self.setup.acyclicity_constraint))
         elif self.model_type == "GumbelSoftmaxSingleOutputModel":
-            cfg_str = "lspar{lambda_sparsity}"
+            cfg_str = "lpred{lambda_prediction}-lcrf{lambda_crf}-lvol_min{lambda_vol_min}-lvol_avg{lambda_vol_avg}-" \
+                      "simga_crf{sigma_crf}-temp{temperature}"
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
 
-            path = path / Path(cfg_str.format(lambda_sparsity=self.setup.lambda_sparsity))
+            path = path / Path(cfg_str.format(lambda_prediction=self.setup.lambda_prediction,
+                                              lambda_crf=self.setup.lambda_crf,
+                                              lambda_vol_min=self.setup.lambda_vol_min,
+                                              lambda_vol_avg=self.setup.lambda_vol_avg,
+                                              sigma_crf=self.setup.sigma_crf,
+                                              temperature=self.setup.temperature))
 
         elif self.model_type == "VectorMaskNet":
             cfg_str = "threshold{threshold}"

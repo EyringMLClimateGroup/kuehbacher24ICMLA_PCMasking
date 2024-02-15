@@ -2,30 +2,20 @@
 # Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
 # Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
 # https://github.com/trentkyono/CASTLE
+import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 
-from neural_networks.custom_models.model_base import ModelBase, get_kernel_initializer
 from neural_networks.custom_models.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
+from neural_networks.custom_models.model_base import ModelBase, get_kernel_initializer
+from utils.variable import Variable_Lev_Metadata
 
 
 @tf.keras.utils.register_keras_serializable()
 class GumbelSoftmaxSingleOutputModel(ModelBase):
-    """A neural network model with CASTLE (Causal Structure Learning) regularization adapted
-    from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
-    https://doi.org/10/grw6pt.
+    """A neural network model with for SPCAM parametrization prediction for a single output with masking
+    using straight-through Gumbel-Softmax estimator ([1] and [2]).
 
-    The output of the model is an array of shape `[batch_size, num_x_inputs + 1]`.
-    The first element of the output (`output[:, 0]`) contains the prediction for the target variable `y`, while
-    the other outputs are reconstructions of the regressors `x`.
-
-    In contrast to the original paper, this adapted model only the receives the regressors `x` as input and not
-    the label `y`. There is one input sub-layer for all elements in the input vector
-    (i.e. there are `num_x_inputs` input sub-layers). The computation of the sparsity loss is also slightly
-    adapted from the paper, as the L1-norm is scaled both by the number of units in the first hidden layer
-    and the number of input layers.
-    The L2-norms used to create the weight matrix for computing the acyclicity constraint
-    are also scaled by the number of units in the first hidden layer.
+    The masking vector is regularized using loss from semi-supervised image segmentation [3].
 
     Args:
         num_x_inputs (int): The number of regressors, i.e. the x-variables.
@@ -35,15 +25,14 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
             e.g. `relu`, `linear`, `sigmoid`, `tanh`. In addition to tf.keras specific strings for
             built-in activation functions, `LeakyReLU` can be used to specify leaky ReLU activation function.
             See also https://www.tensorflow.org/api_docs/python/tf/keras/layers/Activation.
-        rho (float): Penalty parameter for Lagrangian optimization scheme for acyclicity constraint.
-            `rho` must be greater than 0.
-        alpha (float): Lagrangian multiplier for Lagrangian optimization scheme for acyclicity constraint.
         lambda_prediction (float): Weighting coefficient for prediction loss
-        lambda_sparsity (float): Weighting coefficient for sparsity loss
-        lambda_reconstruction (float): Weighting coefficient for reconstruction loss
-        lambda_acyclicity (float): Weighting coefficient for acyclicity loss
-        acyclicity_constraint (str, case insensitive): Specifies whether the acyclicity constraint from
-            NOTEARS [1] or DAGMA [2] should be used.
+        lambda_crf (float): Weighting coefficient for CRF regularization loss.
+        lambda_vol_min (float): Weighting coefficient for minimum volume regularization loss.
+        lambda_vol_avg (float): Weighting coefficient for average volume regularization loss.
+        sigma_crf (float): Sigma value for CRF regularization loss.
+        level_bins (list of int): List with bin separation values for binning vertical levels.
+        output_var (Variable_Lev_Metadata or dict): SPCAM output variable for which the model is trained.
+        ordered_input_vars (list of Variable_Lev_Metadata or dict): List of SPCAM input variables.
         relu_alpha (float): Negative slope coefficient for leaky ReLU activation function. Default: 0.3.
         seed (int): Random seed. Used to make the behavior of the initializer deterministic.
             Note that a seeded initializer will produce the same random values across multiple calls.
@@ -84,18 +73,26 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
          ValueError: If `acyclicity_constraint` is not in `['DAGMA', 'NOTEARS']`.
 
 
-    [1] Zheng et al. 2018. DAGs with NO TEARS: Continuous Optimization for Structure Learning.
-        https://doi.org/10/grxdgr
-        Zheng et al. 2019. Learning Sparse Nonparametric DAGs. https://doi.org/10/grxsr9
-    [2] Bello et al. 2022. DAGMA: Learning DAGs via M-matrices and a log-determinant acyclicity characterization.
-        https://doi.org/10.48550/arXiv.2209.08037
+    [1] Jang, E., Gu, S., Poole, B., 2017. Categorical Reparameterization with Gumbel-Softmax.
+        https://doi.org/10.48550/arXiv.1611.01144
+    [2] Maddison, C.J., Mnih, A., Teh, Y.W., 2017. The Concrete Distribution: A Continuous Relaxation of
+        Discrete Random Variables. https://doi.org/10.48550/arXiv.1611.00712
+    [3] Veksler, O., 2020. Regularized Loss for Weakly Supervised Single Class Semantic Segmentation,
+        Computer Vision – ECCV 2020. https://doi.org/10/gtgdj4
     """
 
     def __init__(self,
                  num_x_inputs,
                  hidden_layers,
                  activation,
-                 lambda_sparsity,
+                 lambda_prediction,
+                 lambda_crf,
+                 lambda_vol_min,
+                 lambda_vol_avg,
+                 sigma_crf,
+                 level_bins,
+                 output_var,
+                 ordered_input_vars,
                  relu_alpha=0.3,
                  seed=None,
                  temperature=1.0,
@@ -178,18 +175,35 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
                                                              activity_regularizer_output_layers=activity_regularizer_output_layers,
                                                              name=name, inputs=inputs, outputs=outputs, **kwargs)
 
-        self.lambda_sparsity = lambda_sparsity
         self.relu_alpha = relu_alpha
-
-        print(f"\n\nLambda sparsity = {self.lambda_sparsity}\n")
 
         self.input_layer = input_layer
         self.shared_hidden_layers = shared_hidden_layers
         self.output_layer = output_layer
 
+        self.level_bins = level_bins
+        self.output_var = parse_variable_lev_metadata_to_dict(output_var)
+        self.ordered_input_vars = [parse_variable_lev_metadata_to_dict(v) for v in ordered_input_vars]
+
+        self.lambda_prediction = lambda_prediction
+        self.lambda_crf = lambda_crf
+        self.lambda_vol_min = lambda_vol_min
+        self.lambda_vol_avg = lambda_vol_avg
+        self.sigma_crf = sigma_crf
+
+        self.vol_min = get_vol_min(self.output_var, self.level_bins)
+        self.vol_avg = get_vol_avg(self.output_var, self.level_bins)
+
         # Additional metrics
-        self.metric_dict["sparsity_loss_tracker"] = tf.keras.metrics.Mean(name="sparsity_loss")
-        self.metric_dict["weighted_sparsity_loss_tracker"] = keras.metrics.Mean(name="weighted_sparsity_loss")
+        self.metric_dict["weighted_prediction_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_prediction_loss")
+        self.metric_dict["minimum_volume_loss_tracker"] = tf.keras.metrics.Mean(name="minimum_volume_loss")
+        self.metric_dict["weighted_minimum_volume_loss_tracker"] = tf.keras.metrics.Mean(
+            name="weighted_minimum_volume_loss")
+        self.metric_dict["average_volume_loss_tracker"] = tf.keras.metrics.Mean(name="average_volume_loss")
+        self.metric_dict["weighted_average_volume_loss_tracker"] = tf.keras.metrics.Mean(
+            name="weighted_average_volume_loss")
+        self.metric_dict["crf_loss_tracker"] = tf.keras.metrics.Mean(name="crf_loss")
+        self.metric_dict["weighted_crf_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_crf_loss_tracker")
 
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """
@@ -207,17 +221,29 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
             is the case when called by `Model.test_step`).
         """
         prediction_loss = self.compute_prediction_loss(y, y_pred)
+        weighted_prediction_loss = self.lambda_prediction * prediction_loss
 
-        sparsity_regularizer = self.compute_sparsity_loss(self.input_layer.trainable_variables[0])
-        weighted_sparsity_regularizer = tf.math.multiply(self.lambda_sparsity, sparsity_regularizer)
+        crf_loss = self.compute_crf_loss(self.input_layer.masking_vector)
+        weighted_crf_loss = self.lambda_crf * crf_loss
 
-        loss = tf.math.add(prediction_loss, weighted_sparsity_regularizer, name="overall_loss")
+        min_vol_loss = self.compute_minimum_volume_loss(self.input_layer.masking_vector)
+        weighted_min_vol_loss = self.lambda_vol_min * min_vol_loss
+
+        avg_vol_loss = self.compute_average_volume_loss(self.input_layer.masking_vector)
+        weighted_avg_vol_loss = self.lambda_vol_avg * avg_vol_loss
+
+        loss = weighted_prediction_loss * weighted_crf_loss * weighted_min_vol_loss * weighted_avg_vol_loss
 
         # Update metrics
         self.metric_dict["loss_tracker"].update_state(loss)
         self.metric_dict["prediction_loss_tracker"].update_state(prediction_loss)
-        self.metric_dict["sparsity_loss_tracker"].update_state(sparsity_regularizer)
-        self.metric_dict["weighted_sparsity_loss_tracker"].update_state(weighted_sparsity_regularizer)
+        self.metric_dict["weighted_prediction_loss_tracker"].update_state(weighted_prediction_loss)
+        self.metric_dict["minimum_volume_loss_tracker"].update_state(min_vol_loss)
+        self.metric_dict["weighted_minimum_volume_loss_tracker"].update_state(weighted_min_vol_loss)
+        self.metric_dict["average_volume_loss_tracker"].update_state(avg_vol_loss)
+        self.metric_dict["weighted_average_volume_loss_tracker"].update_state(weighted_avg_vol_loss)
+        self.metric_dict["crf_loss_tracker"].update_state(crf_loss)
+        self.metric_dict["weighted_crf_loss_tracker"].update_state(weighted_crf_loss)
 
         return loss
 
@@ -226,30 +252,47 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
         """Computes CASTLE prediction loss."""
         return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred), name="prediction_loss_reduce_mean")
 
-    @staticmethod
-    def compute_sparsity_loss(params_vector):
-        """Computes sparsity loss as the sum of the matrix L1-norm of the input layer weight matrices."""
-        zeros = tf.zeros_like(params_vector)
+    def compute_minimum_volume_loss(self, masking_vector):
+        min_vol_loss = tf.cast((tf.math.reduce_mean(masking_vector) < self.vol_min), tf.float32) * (
+                tf.math.reduce_mean(masking_vector) - self.vol_min) ** 2
+        return min_vol_loss
 
-        logits = tf.stack([zeros, params_vector], axis=-1)
-        softmax_logits = tf.nn.softmax(logits, axis=1)
+    def compute_average_volume_loss(self, masking_vector):
+        avg_vol_loss = (tf.math.reduce_mean(masking_vector) - self.vol_avg) ** 2
+        return avg_vol_loss
 
-        softmax_params_vector = softmax_logits[:, 1]
+    def compute_crf_loss(self, masking_vector):
+        crf_loss = tf.zeros_like(masking_vector)
 
-        entry_wise_norm = tf.norm(softmax_params_vector, ord=1, name='l1_norm_input_layer')
+        # Pre-calculate values outside the loop
+        x_out = 1
+        output_dim = self.output_var["dimensions"]
+        level_out = tf.cast(self.output_var["level"], tf.float32) if output_dim == 3 else None
 
-        # Scale norm by number of inputs
-        sparsity_regularizer = tf.math.divide(entry_wise_norm, params_vector.shape[0],
-                                              name="l1_norm_input_layer_scaled")
+        for index, input_var in enumerate(self.ordered_input_vars):
+            x_in = masking_vector[index]
 
-        return sparsity_regularizer
+            if input_var["dimensions"] == 3:
+                level_in = tf.cast(input_var["level"], tf.float32)
+            else:
+                level_in = get_2d_level(input_var["name"])
+
+            if output_dim == 2:
+                level_out = get_2d_level(input_var["name"], level_in)
+
+            crf_loss = tf.tensor_scatter_nd_update(
+                crf_loss, [[index]],
+                [tf.math.exp(-(level_out - level_in) ** 2 / (2 * self.sigma_crf)) * tf.abs(x_out - x_in)]
+            )
+
+        return tf.reduce_mean(crf_loss)
 
     def get_config(self):
-        """Returns the config of `CASTLEAdapted`.
+        """Returns the config of `GumbelSoftmaxSingleOutputModel`.
         Overrides base method.
 
        Config is a Python dictionary (serializable) containing the
-       configuration of a `CASTLE` model. This allows
+       configuration of a `GumbelSoftmaxSingleOutputModel` model. This allows
        the model to be re-instantiated later (without its trained weights)
        from this configuration.
 
@@ -262,11 +305,111 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
        """
         config = super(GumbelSoftmaxSingleOutputModel, self).get_config()
         # These are the constructor arguments
+
         config.update(
             {
-                "lambda_sparsity": self.lambda_sparsity,
+                "lambda_prediction": self.lambda_prediction,
+                "lambda_crf": self.lambda_crf,
+                "lambda_vol_min": self.lambda_vol_min,
+                "lambda_vol_avg": self.lambda_vol_avg,
+                "sigma_crf": self.sigma_crf,
+                "level_bins": self.level_bins,
+                "output_var": self.output_var,
+                "ordered_input_vars": self.ordered_input_vars,
                 "relu_alpha": self.relu_alpha,
             }
         )
 
         return config
+
+
+def get_bin(var, bins):
+    if var["dimensions"] == 3:
+        return np.digitize(var["level"], bins)
+    else:
+        return -1
+
+
+def get_vol_avg(var, bins):
+    b = get_bin(var, bins)
+
+    if b == -1:
+        # 2d case
+        return 0.7
+
+    if b == 0:
+        # levels 0 - 100
+        return 0.7  # physically, this should be 0, but we have SPCAM artifacts
+
+    elif b == 1:
+        # levels 101 - 440
+        return 0.45
+
+    elif b == 2:
+        # levels 441 - 680
+        return 0.75
+
+    elif b == 3:
+        # levels 681 - 1000
+        return 0.45
+
+
+def get_vol_min(var, bins):
+    b = get_bin(var, bins)
+
+    if b == -1:
+        # 2d case
+        return 0.3
+
+    if b == 0:
+        # levels 0 - 100
+        return 0.05  # physically, this should be 0, but we have SPCAM artifacts
+
+    elif b == 1:
+        # levels 101 - 440
+        return 0.1
+
+    elif b == 2:
+        # levels 441 - 680
+        return 0.6
+
+    elif b == 3:
+        # levels 681 - 1000
+        return 0.3
+
+
+def get_2d_level(varname, in_level=None):
+    # in
+    if varname == "ps":
+        return tf.cast(992, tf.float32)
+    elif varname == "solin":
+        return tf.cast(272, tf.float32)
+    elif varname == "shflx":
+        return tf.cast(912, tf.float32)
+    elif varname == "lhflx":
+        return tf.cast(912, tf.float32)
+    # out
+    elif varname == "fsnt":
+        return tf.cast(3, tf.float32)
+    elif varname == "fsns":
+        return tf.cast(992, tf.float32)
+    elif varname == "flnt":
+        return tf.cast(3, tf.float32)
+    elif varname == "flns":
+        return tf.cast(992, tf.float32)
+    elif varname == "prect":
+        return tf.cast(in_level, tf.float32)
+
+
+def parse_variable_lev_metadata_to_dict(var):
+    if isinstance(var, Variable_Lev_Metadata):
+        var_dict = {
+            "name": var.var.name,
+            "level": var.level,
+            "dimensions": var.var.dimensions
+        }
+    # else case assumes is already a correct dictionary (this is the case when reloading a model)
+    else:
+        var_dict = var
+
+    return var_dict
