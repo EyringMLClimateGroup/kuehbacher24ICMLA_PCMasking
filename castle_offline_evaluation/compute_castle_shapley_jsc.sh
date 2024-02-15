@@ -3,15 +3,14 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=90
+#SBATCH --cpus-per-task=20
 #SBATCH --gres=gpu:1
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=0:10:00
+#SBATCH --time=3:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END
-
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -23,7 +22,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for computing CASTLE shapley values."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs compute_castle_shapley.sh -c config.yml -o outputs_file.txt -x var_index -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric -l log_dir [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs compute_castle_shapley.sh -c config.yml -o outputs_file.txt  -m outputs_map.txt -p plot_directory -t n_time -s n_samples -e metric -l log_dir [-x var_index] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -86,7 +85,7 @@ while getopts "c:o:x:m:p:t:s:e:l:j:h" opt; do
     fi
     ;;
   x)
-   found_x=1
+    found_x=1
     re='^[+-]?[0-9]+$'
     if [[ $OPTARG =~ $re ]]; then
       VAR_INDEX=$OPTARG
@@ -162,9 +161,6 @@ if ((found_c == 0)); then
 elif ((found_o == 0)); then
   echo -e "\nError: Failed to provide output variables networks .txt file.\n"
   error_exit
-elif ((found_x == 0)); then
-  echo -e "\nError: Failed to provide value for output variable index.\n"
-  error_exit
 elif ((found_m == 0)); then
   echo -e "\nError: Failed to provide output variables mapping .txt file.\n"
   error_exit
@@ -185,9 +181,8 @@ elif ((found_l == 0)); then
   error_exit
 fi
 
-
 if ((found_j == 0)); then
-  JOB_NAME="compute_castle_shap"
+  JOB_NAME="compute_shap"
 fi
 
 ##################################
@@ -198,4 +193,12 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" --no-capture-output -n kuehbacher1_py3.9_tf python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+if ((found_x == 0)); then
+  echo -e "\nComputing SHAP for all output variables.\n"
+  conda run --cwd "$PROJECT_ROOT" --no-capture-output -n kuehbacher1_py3.9_tf python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+elif ((found_x == 1)); then
+  echo -e "\nComputing SHAP for variable index ${VAR_INDEX}.\n"
+  conda run --cwd "$PROJECT_ROOT" --no-capture-output -n kuehbacher1_py3.9_tf python -u -m castle_offline_evaluation.main_castle_shapley -c "$CONFIG" -o "$OUTPUTS" -x "$VAR_INDEX" -m "$MAP" -p "$PLOT_DIR" -t "$N_TIME" -s "$N_SAMPLES" -e "$METRIC" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+else
+  echo -e "\nSomething went wrong with the variable index"
+fi

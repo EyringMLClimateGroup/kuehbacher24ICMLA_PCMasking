@@ -6,15 +6,15 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_50_castle_simplified_spars0.001"
-JOB_NAME="plot_profiles_50_castle_simplified_spars0.001_plus4K"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_69_vector_mask_net_minus4K"
+JOB_NAME="plot_profiles_69_vector_mask_net_minus4K_t0.9"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_castle_simplified_plus4K.yml"
+CONFIG="${TRAINING_DIR}/cfg_vector_mask_net_t0.9.yml"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles_plus4K"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles_t0.9"
 mkdir -p "$PLOT_DIR"
-SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
+SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs_t0.9"
 mkdir -p "$SLURM_LOG_DIR"
 
 ################

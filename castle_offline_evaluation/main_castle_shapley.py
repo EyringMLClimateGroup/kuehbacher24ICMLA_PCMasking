@@ -29,18 +29,21 @@ if __name__ == "__main__":
     if len(tf.config.list_physical_devices("GPU")):
         print(f"\nAllow memory growth on GPUs.", flush=True)
         set_memory_growth_gpu()
-
     parser = argparse.ArgumentParser(description="Computes shapley values using SHAP package.")
+
+    parser.add_argument("-x", "--var_index",
+                        help="Index of the output variable in outputs_file.txt for which to compute the "
+                             "Shapley values (int). If no index is given, SHAP values for all outputs "
+                             "will be computed.",
+                        required=False, type=int, nargs='?', default=None)
+
     required_args = parser.add_argument_group("setup arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
                                required=True)
     required_args.add_argument("-o", "--outputs_file",
                                help="Text file specifying output variable networks (.txt).",
                                required=True, type=str)
-    required_args.add_argument("-x", "--var_index",
-                               help="Index of the output variable in outputs_file.txt for which to "
-                                    "compute the Shapley values (int).",
-                               required=True, type=int)
+
     required_args.add_argument("-m", "--outputs_map_file",
                                help=".txt file specifying the mapping between variable names and saved network names.",
                                required=True, type=str)
@@ -81,24 +84,37 @@ if __name__ == "__main__":
         parser.error(f"File with outputs mapping be .txt file. Got {map_file}")
 
     output_vars = parse_txt_to_list(outputs_file)
-    variable = output_vars[var_index]
     output_map_dict = parse_txt_to_dict(map_file)
+
+    if var_index is None:
+        shap_for_variables = output_vars
+    elif isinstance(var_index, int):
+        shap_for_variables = [output_vars[var_index]]
+    else:
+        raise ValueError(f"Variable index must be integer or None. Got {var_index}")
 
     save_dir = Path(plot_dir,
                     get_save_str(idx_time="range", num_time=n_time, num_samples=n_samples, shap_metric=metric))
     Path(save_dir).mkdir(parents=True, exist_ok=True)
 
-    print(f"\n\nYAML config file:           {yaml_config_file}")
-    print(f"Output variable network:    {variable}")
-    print(f"Save directory:             {save_dir}")
-    print(f"Number of time steps:       {n_time}")
-    print(f"Number of samples:          {n_samples}")
-    print(f"Averaging metric:           {metric}\n")
+    print(f"\n\nYAML config file:        {yaml_config_file}")
+    print(f"Networks:                {output_vars}")
+    print(f"Save directory:          {save_dir}")
+    print(f"Number of time steps:    {n_time}")
+    print(f"Number of samples:       {n_samples}")
+    print(f"Averaging metric:        {metric}\n")
 
-    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE shapley computation for variable {variable}.", flush=True)
+    print(f"\n\n{datetime.datetime.now()} --- Start CASTLE shapley computation.", flush=True)
     t_init = time.time()
 
-    compute_shapley(variable, yaml_config_file, output_map_dict, n_time, n_samples, metric, save_dir)
+    for variable in shap_for_variables:
+        print(f"\n--- Variable {variable}\n", flush=True)
+        t_var_start = time.time()
+
+        compute_shapley(variable, yaml_config_file, output_map_dict, n_time, n_samples, metric, save_dir)
+
+        t_var_total = datetime.timedelta(seconds=time.time() - t_init)
+        print(f"\n--- Finished variable {variable}. Time elapsed {t_var_total}\n\n")
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Total elapsed time: {t_total}")
