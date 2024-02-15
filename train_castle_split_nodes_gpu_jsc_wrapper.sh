@@ -4,15 +4,15 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_69_vector_mask_net_minus4K"
+base_dir="output_castle/training_71_gumbel_softmax_single_output_crf"
 HPC="gpu_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_69_vector_mask_net_minus4K_t0.9"
+job_name_base="training_71_gumbel_softmax_single_output_crf"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
-NN_CONFIG="${base_dir}/cfg_vector_mask_net_t0.9.yml"
+NN_CONFIG="${base_dir}/cfg_gumbel_softmax_single_output.yml"
 
 NUM_NODES=17
 NN_PER_NODE=4
@@ -22,7 +22,7 @@ CONTINUE_TRAINING="False"
 
 MAX_RUNNING_JOBS_DKRZ=20
 
-log_dir="${base_dir}/slurm_logs_0.9"
+log_dir="${base_dir}/slurm_logs"
 mkdir -p "$log_dir"
 
 #############
