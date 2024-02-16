@@ -232,7 +232,7 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
         avg_vol_loss = self.compute_average_volume_loss(self.input_layer.masking_vector)
         weighted_avg_vol_loss = self.lambda_vol_avg * avg_vol_loss
 
-        loss = weighted_prediction_loss * weighted_crf_loss * weighted_min_vol_loss * weighted_avg_vol_loss
+        loss = weighted_prediction_loss + weighted_crf_loss + weighted_min_vol_loss + weighted_avg_vol_loss
 
         # Update metrics
         self.metric_dict["loss_tracker"].update_state(loss)
