@@ -6,18 +6,18 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_69_vector_mask_net_minus4K"
-JOB_NAME="shap_68_vector_mask_net_minus4K_t0.9"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_71_gumbel_softmax_single_output_crf"
+JOB_NAME="shap_71_gumbel_softmax_single_output_crf"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_vector_mask_net_t0.9.yml"
+CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap_t0.9"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap"
 mkdir -p "$PLOT_DIR"
-SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs_t0.9"
+SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
 
 N_TIME="False"

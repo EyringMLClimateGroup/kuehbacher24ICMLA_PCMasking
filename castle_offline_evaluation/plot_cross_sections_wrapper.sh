@@ -6,14 +6,14 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_50_castle_simplified_spars0.001"
-JOB_NAME="plots_cross_section_50_castle_simplified_spars0.001_plus4K"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_71_gumbel_softmax_single_output_crf"
+JOB_NAME="plots_cross_section_71_gumbel_softmax_single_output_crf"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_castle_simplified_plus4K.yml"
+CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"
 
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section_plus4K"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
@@ -26,7 +26,7 @@ display_help() {
   echo ""
   echo "Wrapper for SLURM batch script for plotting cross sections."
   echo ""
-  echo "Usage: ./plot_double_yz_wrapper.sh -h"
+  echo "Usage: ./plot_cross_sections_wrapper.sh -h"
   echo ""
   echo " Options:"
   echo " -h    Print this help."

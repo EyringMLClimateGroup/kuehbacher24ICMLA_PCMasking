@@ -8,12 +8,14 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 from castle_offline_evaluation.castle_evaluation_utils import create_castle_model_description
-
+import matplotlib.pyplot as plt
+import gc
 from pathlib import Path
 
-from neural_networks.load_models import load_single_model
+from neural_networks.load_models import load_single_model, load_models
 from utils.setup import SetupDiagnostics
 from utils.variable import Variable_Lev_Metadata
+from neural_networks.model_diagnostics import ModelDiagnostics
 
 
 def plot_single_variable(var_name, config, i_time, n_time, diff, stats, vmin, vmax, save_dir):
@@ -33,33 +35,33 @@ def plot_single_variable(var_name, config, i_time, n_time, diff, stats, vmin, vm
                                   show_plot=False, save=save_dir)
 
 
-def plot_multiple_variables(var_names, config, i_time, n_time, diff, stats, vmin, vmax, save_dir):
+def plot_all_lat_lons(config, i_time, n_time, diff, stats, save_dir):
     argv = ["-c", config]
     setup = SetupDiagnostics(argv)
 
-    var_models = dict()
-    for var_name in var_names:
-        var_models.update(load_single_model(setup, var_name))
+    print("\nLoading models ...\n")
+    models = load_models(setup, skip_causal_phq=True)
+    model_key = setup.nn_type
 
-    model_desc = create_castle_model_description(setup, var_models)
+    md = ModelDiagnostics(setup=setup, models=models[model_key])
 
-    variables = [Variable_Lev_Metadata.parse_var_name(var_name) for var_name in var_names]
-    if vmin and vmax:
-        for var in variables:
-            model_desc.plot_double_xy(i_time, var, diff=diff, nTime=n_time, stats=stats, cmap="RdBu_r",
-                                      show_plot=False, save=save_dir, vmin=vmin, vmax=vmax)
-    else:
-        for var in variables:
-            model_desc.plot_double_xy(i_time, var, diff=diff, nTime=n_time, stats=stats, cmap="RdBu_r",
-                                      show_plot=False, save=save_dir)
+    dict_keys = models[model_key].keys()
+
+    for var in list(dict_keys):
+        print(f"\n\n---- Variable {var}")
+        _ = md.plot_double_xy(i_time, var, diff=diff, nTime=n_time, stats=stats, cmap="RdBu_r", show_plot=False,
+                              save=save_dir)
+
+        plt.close()
+        gc.collect()
 
 
 if __name__ == "__main__":
     # Parameters
     i_time = 1  # 'mean', 'range' --> range doesn't work
-    n_time = 5 # 1440  # about a month
+    n_time = 5  # 1440  # about a month
     diff = False
-    stats = False # ["r2", "mse"]  # mean, r2
+    stats = False  # ["r2", "mse"]  # mean, r2
 
     # Additional params for setting plot color map range
     vmin = False  # False, -3e-7
