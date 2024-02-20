@@ -6,8 +6,8 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_71_gumbel_softmax_single_output_crf"
-JOB_NAME="shap_71_gumbel_softmax_single_output_crf"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_72_gumbel_softmax_single_output_crf"
+JOB_NAME="shap_72_gumbel_softmax_single_output_crf"
 HPC="jsc" # jsc, dkrz
 
 CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"

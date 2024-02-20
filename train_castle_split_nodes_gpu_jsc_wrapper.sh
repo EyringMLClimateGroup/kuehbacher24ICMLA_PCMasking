@@ -4,10 +4,10 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_71_gumbel_softmax_single_output_crf"
+base_dir="output_castle/training_72_gumbel_softmax_single_output_crf"
 HPC="gpu_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_71_gumbel_softmax_single_output_crf"
+job_name_base="training_72_gumbel_softmax_single_output_crf"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
