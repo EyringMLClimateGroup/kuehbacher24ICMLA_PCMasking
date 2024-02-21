@@ -195,6 +195,7 @@ class GumbelSoftmaxSingleOutputModel(ModelBase):
         self.vol_avg = get_vol_avg(self.output_var, self.level_bins)
 
         # Additional metrics
+        self.metric_dict["prediction_loss_tracker"] = tf.keras.metrics.Mean(name="prediction_loss")
         self.metric_dict["weighted_prediction_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_prediction_loss")
         self.metric_dict["minimum_volume_loss_tracker"] = tf.keras.metrics.Mean(name="minimum_volume_loss")
         self.metric_dict["weighted_minimum_volume_loss_tracker"] = tf.keras.metrics.Mean(

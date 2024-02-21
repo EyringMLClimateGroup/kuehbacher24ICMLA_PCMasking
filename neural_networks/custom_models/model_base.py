@@ -130,7 +130,6 @@ class ModelBase(tf.keras.Model, ABC):
         # Metrics
         self.metric_dict = dict()
         self.metric_dict["loss_tracker"] = tf.keras.metrics.Mean(name="loss")
-        self.metric_dict["prediction_loss_tracker"] = tf.keras.metrics.Mean(name="prediction_loss")
 
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """Compute the total loss and return it.

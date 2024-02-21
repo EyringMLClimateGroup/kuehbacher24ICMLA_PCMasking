@@ -194,6 +194,7 @@ class CASTLESimplified(ModelBase):
         self.output_layer = output_layer
 
         # Additional metrics
+        self.metric_dict["prediction_loss_tracker"] = tf.keras.metrics.Mean(name="prediction_loss")
         self.metric_dict["sparsity_loss_tracker"] = tf.keras.metrics.Mean(name="sparsity_loss")
         self.metric_dict["weighted_sparsity_loss_tracker"] = keras.metrics.Mean(name="weighted_sparsity_loss")
 

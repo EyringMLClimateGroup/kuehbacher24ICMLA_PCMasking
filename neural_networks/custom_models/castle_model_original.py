@@ -203,6 +203,14 @@ class CASTLEOriginal(CASTLEBaseWReconstruction):
         self.shared_hidden_layers = shared_hidden_layers
         self.output_sub_layers = output_sub_layers
 
+        self.metric_dict["prediction_loss_tracker"] = tf.keras.metrics.Mean(name="prediction_loss")
+        self.metric_dict["reconstruction_loss_tracker"] = tf.keras.metrics.Mean(name="reconstruction_loss")
+        self.metric_dict["sparsity_loss_tracker"] = tf.keras.metrics.Mean(name="sparsity_loss")
+        self.metric_dict["acyclicity_loss_tracker"] = tf.keras.metrics.Mean(name="acyclicity_loss")
+        self.metric_dict["mse_x_tracker"] = tf.keras.metrics.Mean(name="mse_x")
+        self.metric_dict["mse_y_tracker"] = tf.keras.metrics.Mean(name="mse_y")
+
+
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """
         Compute model loss. Overrides base method.

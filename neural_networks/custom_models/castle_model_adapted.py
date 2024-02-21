@@ -246,11 +246,17 @@ class CASTLEAdapted(CASTLEBaseWReconstruction):
             raise ValueError(f"Unknown value for acyclicity constraint function: {acyclicity_constraint}")
 
         # Additional metrics
-        self.metric_dict["weighted_prediction_loss_tracker"] = keras.metrics.Mean(name="weighted_prediction_loss")
-        self.metric_dict["weighted_reconstruction_loss_tracker"] = keras.metrics.Mean(
+        self.metric_dict["prediction_loss_tracker"] = tf.keras.metrics.Mean(name="prediction_loss")
+        self.metric_dict["reconstruction_loss_tracker"] = tf.keras.metrics.Mean(name="reconstruction_loss")
+        self.metric_dict["sparsity_loss_tracker"] = tf.keras.metrics.Mean(name="sparsity_loss")
+        self.metric_dict["acyclicity_loss_tracker"] = tf.keras.metrics.Mean(name="acyclicity_loss")
+        self.metric_dict["weighted_prediction_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_prediction_loss")
+        self.metric_dict["weighted_reconstruction_loss_tracker"] = tf.keras.metrics.Mean(
             name="weighted_reconstruction_loss")
-        self.metric_dict["weighted_sparsity_loss_tracker"] = keras.metrics.Mean(name="weighted_sparsity_loss")
-        self.metric_dict["weighted_acyclicity_loss_tracker"] = keras.metrics.Mean(name="weighted_acyclicity_loss")
+        self.metric_dict["weighted_sparsity_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_sparsity_loss")
+        self.metric_dict["weighted_acyclicity_loss_tracker"] = tf.keras.metrics.Mean(name="weighted_acyclicity_loss")
+        self.metric_dict["mse_x_tracker"] = tf.keras.metrics.Mean(name="mse_x")
+        self.metric_dict["mse_y_tracker"] = tf.keras.metrics.Mean(name="mse_y")
 
     def compute_loss(self, x=None, y=None, y_pred=None, sample_weight=None):
         """
