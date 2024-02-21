@@ -140,7 +140,6 @@ want_to_continue() {
   done
 }
 
-
 read_distributed() {
   if [ -f "$NN_CONFIG" ]; then
     TMP=$(grep 'distribute_strategy:' $NN_CONFIG)
@@ -214,22 +213,8 @@ set_var_ident_str() {
 if [ $# -eq 0 ]; then
   echo -e "\nNo arguments were given. Using default values.\nFor more information about arguments use option -h."
 
-  #######################
-  # Check files exists #
-  #######################
-  check_outputs_file_exists
-  check_inputs_file_exists
-  check_map_file_exists
-
-  #######################################
-  # Read distributed strategy from YAML #
-  #######################################
-  read_distributed
-
-  echo -e "\n\nRunning script with the following variables:"
-  print_variables
-
 else
+
   ############################
   # Read and check arguments #
   ############################
@@ -750,22 +735,30 @@ else
       outer_counter=$(($outer_counter + 1))
     done
   fi
-
-  #######################
-  # Check files exists #
-  #######################
-  check_outputs_file_exists
-  check_inputs_file_exists
-  check_map_file_exists
-
-  #######################################
-  # Read distributed strategy from YAML #
-  #######################################
-  read_distributed
-
-  echo -e "\n\nRunning script with the following variables:"
-  print_variables
 fi
+
+#######################
+# Check files exists #
+#######################
+check_outputs_file_exists
+check_inputs_file_exists
+check_map_file_exists
+
+#######################################
+# Read distributed strategy from YAML #
+#######################################
+read_distributed
+
+NUM_NODES=$((NUM_OUTPUTS / 4))
+remainder=$((NUM_OUTPUTS % 4))
+
+if [[ $remainder -gt 0 ]]; then
+  NUM_NODES=$((NUM_NODES + 1))
+fi
+
+echo -e "\n\nRunning script with the following variables:"
+print_variables
+
 ###################################
 # Check: Do you want to continue? #
 ###################################
