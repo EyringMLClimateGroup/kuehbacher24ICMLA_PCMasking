@@ -57,7 +57,7 @@ def plot_links(
 
     linked_variables = find_linked_variables(links)
     linked_variables.sort() # set() does not work with climate_invariant
-    
+
     link_matrix = build_link_matrix(links)
 
     if len(linked_variables) != 0:
@@ -96,7 +96,7 @@ def plot_links(
     )
     plt.show()
 
-    
+
 def plot_links_metrics(
     setup,
     dict_combinations,
@@ -105,11 +105,11 @@ def plot_links_metrics(
     node_size=0.15,
     **kwargs
 ):
-    
+
     pc_alphas  = [str(a) for a in setup.pc_alphas]
     thresholds = np.array(setup.thresholds)
     outputs_nm = [var.name for var in setup.list_spcam if var.type == "out"]
-    
+
 #     fig = plt.figure()
     fig, ax = plt.subplots(1, figsize=figsize)
     '''
@@ -122,15 +122,15 @@ def plot_links_metrics(
      'tableau-colorblind10']
     '''
 #     plt.style.use('default')
-#     plt.style.use('tableau-colorblind10') # Not really clear 
+#     plt.style.use('tableau-colorblind10') # Not really clear
     plt.style.use('seaborn-pastel')
-    
+
     linestyles = ['dotted','dashed','dashdot']
     colors     = ['blue','orange','red','purple','brown','pink','gray','olive','cyan']
 
     for i, iVar in enumerate(outputs_nm):
         for j, jPC in enumerate(pc_alphas):
-            
+
             if len(dict_combinations[iVar][jPC]) > 1:
                 for k, kLev in enumerate(dict_combinations[iVar][jPC].keys()):
                     if kLev != 'mean':
@@ -144,7 +144,7 @@ def plot_links_metrics(
                             color=colors[i],
                             alpha=.8,
                         )
-                        
+
             ax.plot(
                 thresholds,
                 dict_combinations[iVar][jPC]['mean']['num_parents'],
@@ -154,7 +154,7 @@ def plot_links_metrics(
                 alpha=.8,
                 label=iVar+' (\u03B1 '+str(jPC)+')',
             )
-    
+
     for j, jPC in enumerate(pc_alphas):
         ax.plot(
             thresholds,
@@ -165,25 +165,25 @@ def plot_links_metrics(
             alpha=.8,
             label='pc-alpha (\u03B1 '+str(jPC)+')',
         )
-    
 
-    
+
+
 #     plt.xlim(thresholds[0],thresholds[-1])
     plt.ylim(0,100)
-    
+
     plt.xlabel('Threshols (ratio)')
     plt.ylabel('Num. Causal links')
-    
+
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax.xaxis.set_major_locator(MultipleLocator(.10))
     ax.xaxis.set_minor_locator(MultipleLocator(.05))
 #     ax.yaxis.set_major_locator(MultipleLocator(10))
     ax.yaxis.set_minor_locator(MultipleLocator(5))
-    
+
 #     plt.legend(loc=0)
     plt.legend(ncol=3,bbox_to_anchor=(1.05, -.2))
 #     plt.legend(ncol=2,fontsize='medium')
-    
+
     if save:
         sPath = save.split('/')[0]
         sName = save.split('/')[-1]
@@ -194,20 +194,20 @@ def plot_links_metrics(
             facecolor='auto', edgecolor='auto',
             backend=None, **kwargs
        )
-    
+
     plt.show()
 
-    
+
 def plot_matrix(
     pc_alpha,
     matrix,
     in_vars,
     in_box_idx,
-    in_ticks, 
+    in_ticks,
     in_ticks_labs,
     out_vars,
     out_box_idx,
-    out_ticks, 
+    out_ticks,
     out_ticks_labs,
     extend,
     cbar_label,
@@ -225,16 +225,16 @@ def plot_matrix(
         # 'tphystnd':'dT/dt (hPa)',
         # 'phq':'dq/dt (hPa)',
     }
-    
+
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
     import matplotlib as mpl
-    
+
     # mpl.rcParams['font.size']      = 12
     mpl.rcParams['axes.labelsize'] = 'large'
-    
+
     fig, axes = plt.subplots(1, 1, figsize=(12, 5))
-    
+
     # Mask?
     if mask is not False:
         X, Y = np.meshgrid(np.arange(0,len(matrix[0]),1), np.arange(0,len(matrix),1))
@@ -255,10 +255,10 @@ def plot_matrix(
     axes.set_yticks(out_ticks); axes.set_yticklabels(out_ticks_labs)
     axes.vlines(in_box_idx, ymin=-.5, ymax=len(matrix), color='k')
     axes.hlines(out_box_idx, xmin=-.5, xmax=len(matrix[0]), color='k')
-    
+
     axes.set_xlim(xmax=len(matrix[0])-.5)
     axes.set_ylim(ymin=len(matrix)-.5)
-    
+
     trans = axes.get_xaxis_transform()
     xy_coor = [(-15., .68),(-15., .20)]
     for i, iVar in enumerate(out_vars):
@@ -268,7 +268,7 @@ def plot_matrix(
     for i, iVar in enumerate(in_vars):
         axes.annotate(vars_labs_dict[iVar], xy=xy_coor[i], xycoords=trans, rotation=0,fontsize='large')
     axes.annotate('in-2Ds', xy=(.6, -.2), xycoords=trans, rotation=90,fontsize='large')
-    
+
     if isinstance(num_parents, np.ndarray):
         divider = make_axes_locatable(axes)
         axy = divider.append_axes("right", size="20%", pad=.5, sharey=axes)
@@ -289,10 +289,37 @@ def plot_matrix(
         axy.spines['bottom'].set_visible(True)
 #         axy.spines['left'].set_visible(False)
         axy.set_xlim(-1.,100.)
-    
-    
+
+    if isinstance(num_parents, dict):
+        divider = make_axes_locatable(axes)
+        axy = divider.append_axes("right", size="20%", pad=.5, sharey=axes)
+
+        colors = {"CausalSingleNN": "darkred", "VectorMaskNet": "darkblue"}
+        for key, values in num_parents.items():
+            axy.plot(
+                values,
+                range(len(values)),
+                color=colors[key],
+                alpha=.8,
+                linewidth=3.,
+                label=key,
+            )
+
+        axy.set_xticks([0, 50, 100])
+        axy.xaxis.set_tick_params(labelright=False)
+        axy.yaxis.set_tick_params(labelleft=False)
+        axy.set_xlabel('Num. Inputs')
+        axy.get_yaxis().set_visible(False)
+        axy.spines['top'].set_visible(False)
+        axy.spines['right'].set_visible(False)
+        axy.spines['bottom'].set_visible(True)
+        #         axy.spines['left'].set_visible(False)
+        axy.set_xlim(-1., 100.)
+        axy.legend(prop={'size': 8}, bbox_to_anchor=(1.2, -0.15))
+        # axy.legend(loc="upper left", prop={'size': 8})
+
     # fig.suptitle(pc_alpha)
-    
+
     return fig, axes
 
 
@@ -301,13 +328,13 @@ def plot_matrix_insets(
     raw_matrix,
     in_vars,
     in_box_idx,
-    in_ticks, 
+    in_ticks,
     in_ticks_labs,
     out_vars,
     out_box_idx,
-    out_ticks, 
+    out_ticks,
     out_ticks_labs,
-    out_vars_2d, 
+    out_vars_2d,
     out_vars_2d_ticks,
     extend,
     cbar_label,
@@ -330,16 +357,16 @@ def plot_matrix_insets(
         'flnt':'$Q\mathregular{_{lw}^{top}}$',
         'prect':'$P$',
     }
-    
+
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
     import matplotlib as mpl
-    
+
     # mpl.rcParams['font.size']      = 12
     mpl.rcParams['axes.labelsize'] = 'large'
-    
+
     fig, axes = plt.subplots(1, 1, figsize=(12, 5))
-    
+
     # Mask?
     if mask is not False:
         X, Y = np.meshgrid(np.arange(0,len(matrix[0]),1), np.arange(0,len(matrix),1))
@@ -355,9 +382,9 @@ def plot_matrix_insets(
 
     matrix    = ma.zeros([raw_matrix.shape[0], raw_matrix.shape[-1]], dtype="d")
     matrix[:] = raw_matrix
-    
+
     extent = (0, matrix.shape[-1], 0, matrix.shape[0])
-        
+
     I  = axes.imshow(matrix,extent=extent,origin="upper",**kwargs)
     cbar = plt.colorbar(I, ax=axes, extend=extend)
     cbar.set_label(cbar_label)
@@ -365,10 +392,10 @@ def plot_matrix_insets(
     axes.set_yticks(out_ticks[::-1]); axes.set_yticklabels(out_ticks_labs)
     axes.vlines(in_box_idx, ymin=-.5, ymax=len(matrix), color='k')
     axes.hlines(out_box_idx, xmin=-.5, xmax=len(matrix[0]), color='k')
-    
+
     axes.set_xlim(xmin=0,xmax=len(matrix[0])-.5)
     axes.set_ylim(ymin=0)
-    
+
     trans = axes.get_xaxis_transform()
     xy_coor = [(-15., .68),(-15., .20)]
     for i, iVar in enumerate(out_vars):
@@ -378,7 +405,7 @@ def plot_matrix_insets(
     for i, iVar in enumerate(in_vars):
         axes.annotate(vars_labs_dict[iVar], xy=xy_coor[i], xycoords=trans, rotation=0,fontsize='large')
     axes.annotate('in-2Ds', xy=(.6, -.2), xycoords=trans, rotation=90,fontsize='large')
-    
+
     if isinstance(num_parents, np.ndarray):
         divider = make_axes_locatable(axes)
         axy = divider.append_axes("right", size="20%", pad=.5, sharey=axes)
@@ -399,7 +426,7 @@ def plot_matrix_insets(
         axy.spines['bottom'].set_visible(True)
 #         axy.spines['left'].set_visible(False)
         axy.set_xlim(-1.,100.)
-    
+
     ## 3D inset
     ax3ins = zoomed_inset_axes(axes, 2.,
                               bbox_to_anchor=(1.015, 1.87),
@@ -436,7 +463,7 @@ def plot_matrix_insets(
     ax2ins.set_ylim(y1, y2)
     ax2ins.set_aspect(4.52)
     mark_inset(axes, ax2ins, loc1=2, loc2=1, linewidth=3, ec='k', fc='none',linestyle='--',alpha=.7)
-    
+
     # fig.suptitle(pc_alpha)
-    
+
     return fig, axes
