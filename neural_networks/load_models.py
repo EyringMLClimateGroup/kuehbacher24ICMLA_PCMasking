@@ -1,4 +1,5 @@
 import collections
+import pickle
 from pathlib import Path
 
 import tensorflow as tf
@@ -189,6 +190,10 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified})
 
     elif setup.nn_type == "VectorMaskNet":
+        # In case a mask threshold file was given, mask_threshold needs to be set for model loading to work
+        setup.mask_threshold = _get_vector_mask_net_threshold(setup, output)
+        folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
+
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
@@ -221,6 +226,21 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         input_indices = [i for i, v in enumerate(inputs_file.readlines()) if int(v)]
 
     return (model, input_indices)
+
+
+def _get_vector_mask_net_threshold(setup, output_var):
+    # Get threshold for masking vector
+    if setup.mask_threshold is not None:
+        # Single float threshold given
+        threshold = setup.mask_threshold
+    elif setup.mask_threshold_file is not None:
+        # Dictionary with threshold values per output variable given
+        print(f"\nLoading threshold file {(Path(*Path(setup.mask_threshold_file).parts[-4:]))}\n")
+
+        with open(setup.mask_threshold_file, "rb") as in_file:
+            mask_threshold_file = pickle.load(in_file)
+            threshold = mask_threshold_file[str(output_var)]
+    return threshold
 
 
 def get_var_list(setup, target_vars):
