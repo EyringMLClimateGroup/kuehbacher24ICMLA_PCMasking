@@ -29,18 +29,6 @@ def shap_single_variable(var_name, config, n_time, n_samples, metric, temp=1e-6)
     var = Variable_Lev_Metadata.parse_var_name(var_name)
     var_model = load_single_model(setup, var_name)
 
-    # if setup.nn_type == "GumbelSoftmaxSingleOutputModel":
-    #     m = var_model[var][0]
-    #     masking_layer = m.get_layer("input_masking_layer")
-    #
-    #     masking_vector = masking_layer.sample_masking_vector(masking_layer.params_vector, temp)
-    #
-    #     # double check
-    #     if not np.all((masking_vector == 1.) | (masking_vector == 0.)):
-    #         raise ValueError(f"Mask for var {var} is not discrete: \n{masking_vector}")
-    #
-    #     masking_layer.masking_vector = masking_vector
-
     model_desc = create_castle_model_description(setup, var_model)
 
     return model_desc.get_shapley_values("range", var, nTime=n_time, nSamples=n_samples, metric=metric)
@@ -126,8 +114,8 @@ if __name__ == "__main__":
     n_samples = 5  # 1024; 2048; 4096; 8192
     project_root = Path(__file__).parent.parent.resolve()
 
-    training_dir = Path("output_castle/training_39_gumbel_softmax_single_output_spars1.0")
-    config_file = os.path.join(project_root, training_dir, "cfg_gumbel_softmax_single_output.yml")
+    training_dir = Path("output_castle/training_73_vector_mask_net_prediction_thresholds")
+    config_file = os.path.join(project_root, training_dir, "cfg_vector_mask_net_thresholds_train.yml")
     plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/shap/")
     outputs_map = os.path.join(project_root, training_dir, "outputs_map.txt")
 
