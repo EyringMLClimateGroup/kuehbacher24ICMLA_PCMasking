@@ -121,7 +121,7 @@ class PreMaskNet(ModelBase):
         act_func = tf.keras.layers.LeakyReLU(alpha=relu_alpha) if activation.lower() == "leakyrelu" \
             else tf.keras.layers.Activation(activation.lower())
 
-        input_layer = tf.keras.layers.Dense(hidden_layers[0], activation=act_func,
+        input_layer = tf.keras.layers.Dense(num_x_inputs, activation=act_func,
                                             name=f"input_layer",
                                             kernel_initializer=get_kernel_initializer(kernel_initializer_input_layers,
                                                                                       seed),
