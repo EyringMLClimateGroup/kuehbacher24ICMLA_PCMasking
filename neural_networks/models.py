@@ -1,18 +1,16 @@
-import sys
-
-import numpy as np
-import tensorflow as tf
 import pickle
 from pathlib import Path
 
+import numpy as np
+import tensorflow as tf
 from tensorflow.keras import Sequential, Input
 from tensorflow.keras.layers import Dense, Activation
 
-from utils.constants import SPCAM_Vars
-from utils.variable import Variable_Lev_Metadata
 import utils.pcmci_aggregation as aggregation
-from neural_networks.sklearn_lasso import sklasso
 from neural_networks.custom_models.building_custom_model import build_custom_model
+from neural_networks.sklearn_lasso import sklasso
+from utils.variable import Variable_Lev_Metadata
+from neural_networks.load_models import get_vector_mask_net_threshold
 
 
 class ModelDescription:
@@ -91,7 +89,7 @@ class ModelDescription:
 
         if setup.do_sklasso_nn: self.lasso_coefs = setup.lasso_coefs
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
                                               "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
         if training_castle:
             if setup.distribute_strategy == "mirrored":
@@ -203,6 +201,7 @@ class ModelDescription:
     def get_path(self, base_path):
         """ Generate a path based on this model metadata """
         path = Path(base_path, self.model_type)
+
         if self.model_type == "CausalSingleNN" or self.model_type == "CorrSingleNN":
             if self.setup.area_weighted:
                 cfg_str = "a{pc_alpha}-t{threshold}-latwts/"
@@ -261,9 +260,11 @@ class ModelDescription:
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
 
+            self.setup.mask_threshold = get_vector_mask_net_threshold(self.setup, self.output)
             path = path / Path(cfg_str.format(threshold=self.setup.mask_threshold))
 
-        elif self.model_type == "CASTLESimplified":
+        elif self.model_type == "PreMaskNet" or self.model_type == "CASTLESimplified":
+            # CASTLESimplified is the legacy version of PreMaskNet
             cfg_str = "lspar{lambda_sparsity}"
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
@@ -285,7 +286,7 @@ class ModelDescription:
         str_hl = str_hl.replace("[", "").replace("]", "")
         str_act = str(self.setup.activation)
         training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
-                                              "CASTLESimplified", "VectorMaskNet"]
+                                              "PreMaskNet", "VectorMaskNet"]
         if str_act.lower() == "leakyrelu" and training_castle:
             str_act += f"_{self.setup.relu_alpha}"
         path = path / Path(
@@ -313,7 +314,7 @@ class ModelDescription:
         # Save model
         Path(folder).mkdir(parents=True, exist_ok=True)
 
-        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+        training_castle = self.model_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
                                               "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
         if training_castle:
             # Castle model is custom, so it cannot be saved in legacy h5 format
@@ -503,7 +504,7 @@ def generate_models(setup, threshold_dict=False, continue_training=False, seed=N
     else:
         print(f"\n\nBuilding and compiling models.", flush=True)
 
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
                                         "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "castleNN"]
     if setup.do_single_nn or setup.do_pca_nn or training_castle:
         model_descriptions.extend(generate_all_single_nn(setup, continue_training, seed=seed))

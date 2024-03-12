@@ -26,8 +26,8 @@ documentation:
 analysis: 'single' # 'single': gridpoints individually;
 # 'concat': gridpoints contatenated into a
 #           single time-series;
-spcam_parents: [ 'ps', 'lhflx' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
-spcam_children: [ 'flnt', 'prect' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
+spcam_parents: [ 'tbp','qbp','vbp','ps','solin','shflx','lhflx' ]
+spcam_children: [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
@@ -67,13 +67,13 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "CASTLESimplified" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "PreMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 # Paths are relative to project root
 nn_output_path: test/output/models
 
-input_order: [ ps, lhflx ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
-output_order: [ flnt, prect ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
+input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
+output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
 hidden_layers: [ 32, 32 ]  # [ 256,256,256,256,256,256,256,256,256 ]
 activation: LeakyReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
@@ -100,9 +100,7 @@ input_sub: mean
 input_div: maxrs
 out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
-batch_size: 256  #1024
-val_batch_size: 256
-
+batch_size: 1024
 
 # Learning Rate Scheduler
 init_lr: 0.001 # From train.py (default)
@@ -135,7 +133,7 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 
 # CASTLESimplified
 # ----------------------
-lambda_sparsity: 0.001
+lambda_sparsity: 1.0
 relu_alpha: 0.3
 
 distribute_strategy: "mirrored" # mirrored or nothing for normal training
@@ -162,15 +160,15 @@ input_init_random_normal_std: 0.01
 
 
 # Hidden layers kernel initializer
-#kernel_initializer_hidden_layers: "RandomNormal"
-#hidden_init_random_normal_mean: 0.0
-#hidden_init_random_normal_std: 0.01
+kernel_initializer_hidden_layers: "RandomNormal"
+hidden_init_random_normal_mean: 0.0
+hidden_init_random_normal_std: 0.1
 
 #kernel_initializer_hidden_layers: "RandomUniform"
 #hidden_output_init_random_uniform_min_val: 0.0
 #hidden_output_init_random_uniform_max_val: 1.0
 #
-kernel_initializer_hidden_layers: "GlorotUniform"
+#kernel_initializer_hidden_layers: "GlorotUniform"
 #kernel_initializer_hidden_layers: "GlorotNormal"
 #
 #kernel_initializer_hidden_layers: "LecunNormal"
@@ -180,9 +178,9 @@ kernel_initializer_hidden_layers: "GlorotUniform"
 #kernel_initializer_hidden_layers: "HeUniform"
 
 # Output layers kernel initializer
-#kernel_initializer_output_layers: "RandomNormal"
-#output_init_random_normal_mean: 0.0
-#output_init_random_normal_std: 0.01
+kernel_initializer_output_layers: "RandomNormal"
+output_init_random_normal_mean: 0.0
+output_init_random_normal_std: 0.01
 
 #kernel_initializer_output_layers: "RandomUniform"
 #output_output_init_random_uniform_min_val: 0.0
@@ -195,7 +193,7 @@ kernel_initializer_hidden_layers: "GlorotUniform"
 #kernel_initializer_output_layers: "LecunUniform"
 #
 #kernel_initializer_output_layers: "HeNormal"
-kernel_initializer_output_layers: "HeUniform"
+#kernel_initializer_output_layers: "HeUniform"
 
 # Diagnostic configuration
 # ----------------------
@@ -210,7 +208,7 @@ test_data_folder: "test/test_data/" # "./SPCAM_tb_preproc"
 #                          Gener: 2022_02_07_TEST_For_Nando_m4K.nc; 2022_02_07_TEST_For_Nando_p4K.nc
 #                          ClInv: 2021_09_03_TEST_For_Nando_ClInv_shuffle.nc
 #                                 2021_09_03_TEST_For_Nando_ClInv.nc
-test_data_fn: 2021_09_02_TEST_For_Nando_shuffle_perc0-001.nc # 2021_09_02_VALID_For_Nando.nc #
+test_data_fn: 2021_09_02_TEST_For_Nando_shuffle_perc0-0001.nc # 2021_09_02_VALID_For_Nando.nc #
 # Diagnostics
 diagnostics: [ 'map' ]  # 'map'
 diagnostics_time: [ 'mean' ] # snapshot: int; time-mean: 'mean'

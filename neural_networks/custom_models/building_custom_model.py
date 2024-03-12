@@ -11,7 +11,7 @@ from tensorflow import keras
 
 from neural_networks.custom_models.castle_model_adapted import CASTLEAdapted
 from neural_networks.custom_models.castle_model_original import CASTLEOriginal
-from neural_networks.custom_models.castle_model_simplified import CASTLESimplified
+from neural_networks.custom_models.pre_mask_model import PreMaskNet
 from neural_networks.custom_models.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.custom_models.legacy.castle_model import CASTLE
 from neural_networks.custom_models.vector_mask_model import VectorMaskNet
@@ -87,13 +87,13 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                                    kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
                                    kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                    kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
-        elif setup.nn_type == "CASTLESimplified":
-            model_ = CASTLESimplified(num_x_inputs, setup.hidden_layers, setup.activation,
-                                      lambda_sparsity=setup.lambda_sparsity,
-                                      relu_alpha=relu_alpha, seed=seed,
-                                      kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
-                                      kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
-                                      kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+        elif setup.nn_type == "PreMaskNet":
+            model_ = PreMaskNet(num_x_inputs, setup.hidden_layers, setup.activation,
+                                lambda_sparsity=setup.lambda_sparsity,
+                                relu_alpha=relu_alpha, seed=seed,
+                                kernel_initializer_input_layers=setup.kernel_initializer_input_layers,
+                                kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                                kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
             if output_var is None:
                 raise ValueError("Must pass output variable of type Variable_Lev_Metadata to create GumbelSoftmaxSingleOutputModel.")
@@ -152,7 +152,7 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                             lambda_weight=setup.lambda_weight, relu_alpha=0.3, seed=seed)
         else:
             raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
-                             f"'CastleAdapted', 'CASTLESimplified', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
+                             f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
 
         model_.build(input_shape=(None, num_x_inputs))
         # Compile model
@@ -186,7 +186,7 @@ def _compile_castle(model, learning_rate, eager_execution):
 
 
 def _set_kernel_initializer(setup):
-    is_castle_version = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified"]
+    is_castle_version = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted"]
 
     if is_castle_version:
         if setup.kernel_initializer_input_layers is None:
@@ -203,6 +203,17 @@ def _set_kernel_initializer(setup):
             setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
                                                       "mean": 0.0,
                                                       "std": 0.01}
+    elif setup.nn_type == "PreMaskNet":
+        if setup.kernel_initializer_input_layers is None:
+            setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
+                                                     "mean": 0.0,
+                                                     "std": 0.01}
+
+        if setup.kernel_initializer_hidden_layers is None:
+            setup.kernel_initializer_hidden_layers = {"initializer": "GlorotUniform"}
+
+        if setup.kernel_initializer_output_layers is None:
+            setup.kernel_initializer_output_layers = {"initializer": "GlorotUniform"}
 
     elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
         if setup.kernel_initializer_input_layers is None:
@@ -226,7 +237,7 @@ def _set_kernel_initializer(setup):
 
     else:
         raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
-                         f"'CastleAdapted', 'CASTLESimplified', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
+                         f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
 
 
 def generate_ordered_input_vars(setup):

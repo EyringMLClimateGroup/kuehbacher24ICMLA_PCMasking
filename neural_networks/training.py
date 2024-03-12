@@ -97,9 +97,9 @@ def train_save_model(
         val_dataset = val_dataset.with_options(options)
 
     # Setup callbacks
-    training_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
+    training_custom = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
                                         "GumbelSoftmaxSingleOutputModel", "castleNN"]
-    if training_castle and setup.additional_val_datasets:
+    if training_custom and setup.additional_val_datasets:
         additional_validation_datasets = _load_additional_datasets(model_description.input_vars_dict,
                                                                    model_description.output_vars_dict, setup,
                                                                    num_replicas_in_sync, options=options)

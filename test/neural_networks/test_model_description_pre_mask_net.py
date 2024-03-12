@@ -18,8 +18,8 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_create_model_description_castle_simplified(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d", "setup_pre_mask_net_w3d"])
+def test_create_model_description_pre_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -38,9 +38,9 @@ def test_create_model_description_castle_simplified(setup_str, strategy, request
         assert (isinstance(m, ModelDescription))
 
 
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d", "setup_pre_mask_net_w3d"])
 @patch("neural_networks.models.tf.config.get_visible_devices")
-def test_create_model_description_castle_simplified_distributed_value_error(mocked_visible_devices, setup_str, request):
+def test_create_model_description_pre_mask_net_distributed_value_error(mocked_visible_devices, setup_str, request):
     setup = request.getfixturevalue(setup_str)
 
     # Mock that there aren't any visible devices
@@ -53,8 +53,8 @@ def test_create_model_description_castle_simplified_distributed_value_error(mock
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d"])
-def test_train_and_save_model_description_castle_simplified(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d"])
+def test_train_and_save_model_description_pre_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -73,8 +73,8 @@ def test_train_and_save_model_description_castle_simplified(setup_str, strategy,
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d"])
-def test_load_model_description_castle_simplified(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d"])
+def test_load_model_description_pre_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
 
     setup.distribute_strategy = strategy

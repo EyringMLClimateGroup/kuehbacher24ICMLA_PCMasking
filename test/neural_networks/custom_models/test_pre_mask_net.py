@@ -5,7 +5,7 @@ import pytest
 import tensorflow as tf
 
 from neural_networks.custom_models.building_custom_model import build_custom_model
-from neural_networks.custom_models.castle_model_simplified import CASTLESimplified
+from neural_networks.custom_models.pre_mask_model import PreMaskNet
 from test.neural_networks.custom_models.utils import assert_identical_attributes, train_castle, create_dataset, \
     print_plot_model_summary
 from test.testing_utils import set_memory_growth_gpu
@@ -13,7 +13,7 @@ from test.testing_utils import set_memory_growth_gpu
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 print(PROJECT_ROOT)
 
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "test", "output", "test_castle_simplified")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "test", "output", "test_pre_mask_net")
 print(OUTPUT_DIR)
 
 if not os.path.isdir(OUTPUT_DIR):
@@ -29,15 +29,15 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_create_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d", "setup_pre_mask_net_w3d"])
+def test_create_pre_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
     model = build_custom_model(setup, num_inputs, setup.init_lr,
                                eager_execution=True, strategy=strategy, seed=seed)
 
-    assert (isinstance(model, CASTLESimplified))
+    assert (isinstance(model, PreMaskNet))
     assert (isinstance(model.outputs, list))
     assert (len(model.outputs[0].shape) == 2)
     assert (model.outputs[0].shape[-1] == 1)
@@ -45,8 +45,8 @@ def test_create_castle_simplified(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_train_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d", "setup_pre_mask_net_w3d"])
+def test_train_pre_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -68,8 +68,8 @@ def test_train_castle_simplified(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d", "setup_castle_simplified_w3d"])
-def test_predict_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d", "setup_pre_mask_net_w3d"])
+def test_predict_pre_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -90,9 +90,9 @@ def test_predict_castle_simplified(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_castle_simplified_2d",
-                                       "setup_castle_simplified_w3d"])
-def test_save_load_castle_simplified(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_pre_mask_net_2d",
+                                       "setup_pre_mask_net_w3d"])
+def test_save_load_pre_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -107,7 +107,7 @@ def test_save_load_castle_simplified(setup_str, strategy, seed, request):
     model.save_weights(os.path.join(OUTPUT_DIR, weights_save_name))
 
     loaded_model = tf.keras.models.load_model(os.path.join(OUTPUT_DIR, model_save_name),
-                                              custom_objects={"CASTLESimplified": CASTLESimplified})
+                                              custom_objects={"PreMaskNet": PreMaskNet})
 
     assert (loaded_model.lambda_sparsity == model.lambda_sparsity)
     assert (loaded_model.relu_alpha == model.relu_alpha)

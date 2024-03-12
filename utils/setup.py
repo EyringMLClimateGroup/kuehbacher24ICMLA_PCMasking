@@ -231,7 +231,8 @@ class SetupNeuralNetworks(Setup):
 
             self._set_common_castle_attributes(yml_cfg)
 
-        elif self.nn_type == "CASTLESimplified":
+        elif self.nn_type == "PreMaskNet" or self.nn_type == "CASTLESimplified":
+            # CASTLESimplified is the legacy version of PreMaskNet
             self.lambda_sparsity = float(yml_cfg["lambda_sparsity"])
             self._set_common_castle_attributes(yml_cfg)
 

@@ -60,9 +60,9 @@ def test_create_setup_castle_adapted(config_name):
     _assert_identical_attributes(setup, yml_cfg)
 
 
-@pytest.mark.parametrize("config_name", ["cfg_castle_simplified_2d.yml",
-                                         "cfg_castle_simplified_w3d.yml"])
-def test_create_setup_castle_simplified(config_name):
+@pytest.mark.parametrize("config_name", ["cfg_pre_mask_net_2d.yml",
+                                         "cfg_pre_mask_net_w3d.yml"])
+def test_create_setup_pre_mask_net(config_name):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
     argv = ["-c", config_file]
 
@@ -72,7 +72,7 @@ def test_create_setup_castle_simplified(config_name):
     with open(config_file, "r") as f:
         yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-    assert (setup.nn_type == "CASTLESimplified")
+    assert (setup.nn_type == "PreMaskNet")
     assert (setup.lambda_sparsity == yml_cfg["lambda_sparsity"])
 
     _assert_identical_attributes(setup, yml_cfg)

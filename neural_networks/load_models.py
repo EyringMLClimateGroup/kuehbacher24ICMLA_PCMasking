@@ -6,11 +6,12 @@ import tensorflow as tf
 
 from neural_networks.custom_models.castle_model_adapted import CASTLEAdapted
 from neural_networks.custom_models.castle_model_original import CASTLEOriginal
-from neural_networks.custom_models.castle_model_simplified import CASTLESimplified
 from neural_networks.custom_models.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.custom_models.layers.gumbel_softmax_layer import StraightThroughGumbelSoftmaxMaskingLayer
 from neural_networks.custom_models.layers.masked_dense_layer import MaskedDenseLayer
 from neural_networks.custom_models.legacy.castle_model import CASTLE
+from neural_networks.custom_models.legacy.castle_model_simplified import CASTLESimplified
+from neural_networks.custom_models.pre_mask_model import PreMaskNet
 from neural_networks.custom_models.vector_mask_model import VectorMaskNet
 from utils.variable import Variable_Lev_Metadata
 
@@ -85,8 +86,8 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
 
         path = path / Path(cfg_str.format(threshold=setup.mask_threshold))
 
-    elif model_type == "CASTLESimplified":
-        # Legacy version of GumbelSoftmaxSingleOutputModel for backwards compatibility
+    elif model_type == "PreMaskNet" or model_type == "CASTLESimplified":
+        # CASTLESimplified is the legacy version of PreMaskNet
         cfg_str = "lspar{lambda_sparsity}"
         if setup.distribute_strategy == "mirrored":
             cfg_str += "-mirrored"
@@ -108,9 +109,9 @@ def get_path(setup, model_type, *, pc_alpha=None, threshold=None):
     str_hl = str_hl.replace("[", "").replace("]", "")
     str_act = str(setup.activation)
 
-    training_castle = model_type in ["CASTLEOriginal", "CASTLEAdapted", "CASTLESimplified",
-                                     "GumbelSoftmaxSingleOutputModel", "VectorMaskNet"]
-    if str_act.lower() == "leakyrelu" and training_castle:
+    is_custom_model = model_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
+                                     "GumbelSoftmaxSingleOutputModel", "VectorMaskNet", "CASTLESimplified"]
+    if str_act.lower() == "leakyrelu" and is_custom_model:
         str_act += f"_{setup.relu_alpha}"
 
     path = path / Path(
@@ -183,15 +184,15 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
 
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLEAdapted': CASTLEAdapted,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
-    elif setup.nn_type == "CASTLESimplified":
+    elif setup.nn_type == "PreMaskNet":
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
 
-        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified})
+        model = tf.keras.models.load_model(modelname, custom_objects={'PreMaskNet': PreMaskNet})
 
     elif setup.nn_type == "VectorMaskNet":
         # In case a mask threshold file was given, mask_threshold needs to be set for model loading to work
-        setup.mask_threshold = _get_vector_mask_net_threshold(setup, output)
+        setup.mask_threshold = get_vector_mask_net_threshold(setup, output)
         folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
 
         modelname = Path(folder, filename + '_model.keras')
@@ -215,6 +216,12 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
         model = tf.keras.models.load_model(modelname, custom_objects={'CASTLE': CASTLE,
                                                                       'MaskedDenseLayers': MaskedDenseLayer})
 
+    elif setup.nn_type == "CASTLESimplified":
+        modelname = Path(folder, filename + '_model.keras')
+        print(f"\nLoad model: {modelname}")
+
+        model = tf.keras.models.load_model(modelname, custom_objects={'CASTLESimplified': CASTLESimplified})
+
     else:
         modelname = Path(folder, filename + '_model.h5')
         print(f"\nLoad model: {modelname}")
@@ -228,7 +235,7 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
     return (model, input_indices)
 
 
-def _get_vector_mask_net_threshold(setup, output_var):
+def get_vector_mask_net_threshold(setup, output_var):
     # Get threshold for masking vector
     if setup.mask_threshold is not None:
         # Single float threshold given
@@ -239,7 +246,7 @@ def _get_vector_mask_net_threshold(setup, output_var):
 
         with open(setup.mask_threshold_file, "rb") as in_file:
             mask_threshold_file = pickle.load(in_file)
-            threshold = mask_threshold_file[str(output_var)]
+            threshold = mask_threshold_file[output_var]
     return threshold
 
 
@@ -261,10 +268,10 @@ def get_var_list(setup, target_vars):
 
 
 def load_single_model(setup, var_name):
-    loading_castle = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or \
-                     setup.nn_type == "CASTLESimplified" or setup.nn_type == "GumbelSoftmaxSingleOutputModel" or \
+    loading_custom = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or \
+                     setup.nn_type == "PreMaskNet" or setup.nn_type == "GumbelSoftmaxSingleOutputModel" or \
                      setup.nn_type == "VectorMaskNet" or setup.nn_type == "castleNN"
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or loading_castle:
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or loading_custom:
         var = Variable_Lev_Metadata.parse_var_name(var_name)
         return {var: get_model(setup, var, setup.nn_type, pc_alpha=None, threshold=None)}
 
@@ -290,9 +297,9 @@ def load_models(setup, skip_causal_phq=False):
     models = collections.defaultdict(dict)
 
     output_list = get_var_list(setup, setup.spcam_outputs)
-    model_is_castle = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
-                                        "CASTLESimplified", "VectorMaskNet", "castleNN"]
-    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or model_is_castle:
+    model_is_custom = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "GumbelSoftmaxSingleOutputModel",
+                                        "PreMaskNet", "VectorMaskNet", "castleNN"]
+    if setup.do_single_nn or setup.do_random_single_nn or setup.do_pca_nn or setup.do_sklasso_nn or model_is_custom:
         nn_type = setup.nn_type  # if setup.do_random_single_nn else 'SingleNN'
         for output in output_list:
             output = Variable_Lev_Metadata.parse_var_name(output)

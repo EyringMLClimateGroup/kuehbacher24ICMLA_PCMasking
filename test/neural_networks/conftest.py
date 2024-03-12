@@ -57,16 +57,16 @@ def setup_castle_original_w3d():
 
 
 @pytest.fixture()
-def setup_castle_simplified_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_2d.yml")
+def setup_pre_mask_net_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_pre_mask_net_2d.yml")
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)
 
 
 @pytest.fixture()
-def setup_castle_simplified_w3d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_castle_simplified_w3d.yml")
+def setup_pre_mask_net_w3d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_pre_mask_net_w3d.yml")
     argv = ["-c", config_file]
 
     return SetupNeuralNetworks(argv)
@@ -96,6 +96,7 @@ def setup_vector_mask_net_2d():
     setup = SetupNeuralNetworks(argv)
 
     num_inputs = len(setup.input_order_list)
+
     create_masking_vector(num_inputs, setup.masking_vector_file, outputs_list=generate_output_var_list(setup))
 
     return setup
