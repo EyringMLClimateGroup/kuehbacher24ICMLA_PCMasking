@@ -6,13 +6,13 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_73_vector_mask_net_prediction_thresholds"
-JOB_NAME="plot_profiles_73_vector_mask_net_prediction_thresholds_train"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_66_castle_simplified_spars0.001"
+JOB_NAME="plot_profiles_66_castle_simplified_spars0.001"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_vector_mask_net_thresholds_train.yml"
+CONFIG="${TRAINING_DIR}/cfg_castle_simplified.yml"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles_train"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"

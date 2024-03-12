@@ -6,16 +6,16 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_73_vector_mask_net_prediction_thresholds"
-JOB_NAME="shap_73_vector_mask_net_prediction_thresholds_train"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/eval_nando/causal_single_nn/models_arch-rasp_thrs-opt-r2max"
+JOB_NAME="shap_66_causal_arch-rasp_thrs-opt-r2max"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_vector_mask_net_thresholds_train.yml"
+CONFIG="${TRAINING_DIR}/cfg_causal_single_nn_diagnostics.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap_train"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
