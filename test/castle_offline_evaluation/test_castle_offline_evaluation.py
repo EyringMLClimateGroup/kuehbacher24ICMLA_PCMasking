@@ -36,7 +36,7 @@ except RuntimeError:
 @pytest.mark.parametrize("model_diagnostic", ["model_description_castle_adapted", "model_description_castle_original",
                                               "model_description_pre_mask_net",
                                               "model_description_gumbel_softmax_single_output",
-                                              "model_description_vector_mask_net"])
+                                              "model_description_mask_net"])
 def test_plot_plot_double_xy(i_time, diff, n_time, model_diagnostic, request):
     md = request.getfixturevalue(model_diagnostic)
 

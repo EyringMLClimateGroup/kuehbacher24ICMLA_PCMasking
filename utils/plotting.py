@@ -294,7 +294,7 @@ def plot_matrix(
         divider = make_axes_locatable(axes)
         axy = divider.append_axes("right", size="20%", pad=.5, sharey=axes)
 
-        colors = {"CausalSingleNN": "darkred", "VectorMaskNet": "darkblue"}
+        colors = {"CausalSingleNN": "darkred", "MaskNet": "darkblue"}
         for key, values in num_parents.items():
             axy.plot(
                 values,

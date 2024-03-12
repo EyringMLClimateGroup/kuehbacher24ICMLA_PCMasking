@@ -89,8 +89,8 @@ def setup_gumbel_softmax_single_output_model_w3d():
 
 
 @pytest.fixture()
-def setup_vector_mask_net_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_2d.yml")
+def setup_mask_net_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_mask_net_2d.yml")
     argv = ["-c", config_file]
 
     setup = SetupNeuralNetworks(argv)
@@ -103,8 +103,8 @@ def setup_vector_mask_net_2d():
 
 
 @pytest.fixture()
-def setup_vector_mask_net_2d_threshold_file():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_2d_threshold_file.yml")
+def setup_mask_net_2d_threshold_file():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_mask_net_2d_threshold_file.yml")
     argv = ["-c", config_file]
 
     setup = SetupNeuralNetworks(argv)
@@ -119,8 +119,8 @@ def setup_vector_mask_net_2d_threshold_file():
 
 
 @pytest.fixture()
-def setup_vector_mask_net_w3d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_w3d.yml")
+def setup_mask_net_w3d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_mask_net_w3d.yml")
     argv = ["-c", config_file]
 
     setup = SetupNeuralNetworks(argv)
@@ -132,8 +132,8 @@ def setup_vector_mask_net_w3d():
 
 
 @pytest.fixture()
-def setup_vector_mask_net_w3d_threshold_file():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_w3d_threshold_file.yml")
+def setup_mask_net_w3d_threshold_file():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_mask_net_w3d_threshold_file.yml")
     argv = ["-c", config_file]
 
     setup = SetupNeuralNetworks(argv)

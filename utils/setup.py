@@ -255,7 +255,8 @@ class SetupNeuralNetworks(Setup):
 
             self._set_common_castle_attributes(yml_cfg)
 
-        elif self.nn_type == "VectorMaskNet":
+        elif self.nn_type == "MaskNet" or self.nn_type == "VectorMaskNet":
+            # VectorMaskNet is the legacy version of MaskNet
             try:
                 self.mask_threshold = float(yml_cfg["mask_threshold"])
                 self.mask_threshold_file = None

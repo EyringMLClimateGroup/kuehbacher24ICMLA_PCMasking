@@ -6,7 +6,7 @@ import pytest
 import tensorflow as tf
 
 from neural_networks.custom_models.building_custom_model import build_custom_model
-from neural_networks.custom_models.vector_mask_model import VectorMaskNet
+from neural_networks.custom_models.mask_model import MaskNet
 from test.neural_networks.custom_models.utils import assert_identical_attributes, train_castle, create_dataset, \
     print_plot_model_summary
 from test.testing_utils import set_memory_growth_gpu, generate_output_var_list
@@ -14,7 +14,7 @@ from test.testing_utils import set_memory_growth_gpu, generate_output_var_list
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 print(PROJECT_ROOT)
 
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "test", "output", "test_vector_mask_net")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "test", "output", "test_mask_net")
 print(OUTPUT_DIR)
 
 if not os.path.isdir(OUTPUT_DIR):
@@ -30,10 +30,10 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
-def test_create_vector_mask_net(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
+def test_create_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -41,7 +41,7 @@ def test_create_vector_mask_net(setup_str, strategy, seed, request):
     model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
                                eager_execution=True, strategy=strategy, seed=seed)
 
-    assert (isinstance(model, VectorMaskNet))
+    assert (isinstance(model, MaskNet))
     assert (isinstance(model.outputs, list))
     assert (len(model.outputs[0].shape) == 2)
     assert (model.outputs[0].shape[-1] == 1)
@@ -49,10 +49,10 @@ def test_create_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
-def test_train_vector_mask_net(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
+def test_train_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -75,10 +75,10 @@ def test_train_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
-def test_predict_vector_mask_net(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
+def test_predict_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -100,10 +100,10 @@ def test_predict_vector_mask_net(setup_str, strategy, seed, request):
 
 
 @pytest.mark.parametrize("strategy", [None, tf.distribute.MirroredStrategy()])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
-def test_save_load_vector_mask_net(setup_str, strategy, seed, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
+def test_save_load_mask_net(setup_str, strategy, seed, request):
     setup = request.getfixturevalue(setup_str)
     num_inputs = len(setup.input_order_list)
 
@@ -119,7 +119,7 @@ def test_save_load_vector_mask_net(setup_str, strategy, seed, request):
     model.save_weights(os.path.join(OUTPUT_DIR, weights_save_name))
 
     loaded_model = tf.keras.models.load_model(os.path.join(OUTPUT_DIR, model_save_name),
-                                              custom_objects={"VectorMaskNet": VectorMaskNet})
+                                              custom_objects={"MaskNet": MaskNet})
 
     assert (loaded_model.threshold == model.threshold)
     assert (np.all(loaded_model.masking_vector.numpy() == model.masking_vector.numpy()))

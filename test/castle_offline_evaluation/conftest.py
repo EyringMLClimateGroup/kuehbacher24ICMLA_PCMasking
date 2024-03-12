@@ -46,8 +46,8 @@ def diagnostic_setup_gumbel_softmax_single_output_model_2d():
 
 
 @pytest.fixture()
-def diagnostic_setup_vector_mask_net_2d():
-    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_vector_mask_net_2d_eval_train.yml")
+def diagnostic_setup_mask_net_2d():
+    config_file = os.path.join(PROJECT_ROOT, "test", "config", "cfg_mask_net_2d_eval_train.yml")
     argv = ["-c", config_file]
 
     setup = SetupDiagnostics(argv)
@@ -83,9 +83,9 @@ def gumbel_softmax_single_output_model(diagnostic_setup_gumbel_softmax_single_ou
 
 
 @pytest.fixture()
-def vector_mask_net_model(diagnostic_setup_vector_mask_net_2d):
-    train_model_if_not_exists(diagnostic_setup_vector_mask_net_2d)
-    return load_models(diagnostic_setup_vector_mask_net_2d)
+def mask_net_model(diagnostic_setup_mask_net_2d):
+    train_model_if_not_exists(diagnostic_setup_mask_net_2d)
+    return load_models(diagnostic_setup_mask_net_2d)
 
 
 @pytest.fixture()
@@ -123,8 +123,8 @@ def model_description_gumbel_softmax_single_output(diagnostic_setup_gumbel_softm
 
 
 @pytest.fixture()
-def model_description_vector_mask_net(diagnostic_setup_vector_mask_net_2d, vector_mask_net_model):
-    diagnostic_setup_vector_mask_net_2d.model_type = diagnostic_setup_vector_mask_net_2d.nn_type
-    diagnostic_setup_vector_mask_net_2d.use_val_batch_size = False
-    return ModelDiagnostics(setup=diagnostic_setup_vector_mask_net_2d,
-                            models=vector_mask_net_model[diagnostic_setup_vector_mask_net_2d.nn_type])
+def model_description_mask_net(diagnostic_setup_mask_net_2d, mask_net_model):
+    diagnostic_setup_mask_net_2d.model_type = diagnostic_setup_mask_net_2d.nn_type
+    diagnostic_setup_mask_net_2d.use_val_batch_size = False
+    return ModelDiagnostics(setup=diagnostic_setup_mask_net_2d,
+                            models=mask_net_model[diagnostic_setup_mask_net_2d.nn_type])

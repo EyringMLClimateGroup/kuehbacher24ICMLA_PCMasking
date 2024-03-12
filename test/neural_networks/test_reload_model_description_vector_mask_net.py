@@ -17,8 +17,8 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_load_model_weights_from_checkpoint_model_description_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_load_model_weights_from_checkpoint_model_description_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -40,8 +40,8 @@ def test_load_model_weights_from_checkpoint_model_description_vector_mask_net(se
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_train_model_description_load_from_ckpt_true_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_train_model_description_load_from_ckpt_true_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -53,8 +53,8 @@ def test_train_model_description_load_from_ckpt_true_vector_mask_net(setup_str, 
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_load_model_from_previous_training_model_description_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_load_model_from_previous_training_model_description_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -76,8 +76,8 @@ def test_load_model_from_previous_training_model_description_vector_mask_net(set
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_train_model_description_continue_training_true_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_train_model_description_continue_training_true_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 

@@ -67,7 +67,7 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "VectorMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "MaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 nn_output_path: test/output/models
 
@@ -134,7 +134,7 @@ train_patience: 5 # TODO: This number was chosen arbitrarily
 
 # CASTLESimplified
 # ===================
-mask_threshold: 2.0
+mask_threshold_file: "test/output/bespoke_thresholds/thresholds_per_var_w3d.p"
 masking_vector_file: "test/output/masking_vectors/masking_vector_3d_{var}.npy"
 
 distribute_strategy: "mirrored" # mirrored, multi_worker_mirrored or nothing for normal training

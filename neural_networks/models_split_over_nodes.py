@@ -41,9 +41,10 @@ def generate_models(setup, inputs, outputs, continue_training=False, seed=None):
                                    f"because Tensorflow found no GPUs.")
         print(f"\n\nBuilding and compiling models with tf.distribute.MirroredStrategy.", flush=True)
 
-    generating_custom = setup.nn_type == "CASTLEOriginal" or setup.nn_type == "CASTLEAdapted" or \
-                        setup.nn_type == "PreMaskNet" or setup.nn_type == "GumbelSoftmaxSingleOutputModel" or \
-                        setup.nn_type == "VectorMaskNet" or setup.nn_type == "castleNN" or setup.nn_type == "CASTLESimplified"
+    generating_custom = setup.nn_type in ["CASTLEOriginal", "CASTLEAdapted", "PreMaskNet",
+                                          "GumbelSoftmaxSingleOutputModel", "MaskNet", "castleNN",
+                                          "CASTLESimplified", "VectorMaskNet"]
+
     if setup.do_single_nn or setup.do_pca_nn or generating_custom:
         model_descriptions.extend(
             generate_single_nn_for_output_list(setup, inputs, outputs, continue_training, seed=seed))
@@ -51,7 +52,7 @@ def generate_models(setup, inputs, outputs, continue_training=False, seed=None):
     else:
         raise NotImplementedError("Splitting training over SLURM nodes only implemented for single NN, PCA NN, "
                                   "CASTLEOriginal, CASTLEAdapted, PreMaskNet, GumbelSoftmaxSingleOutputModel, "
-                                  "VectorMaskNet.")
+                                  "MaskNet.")
     return model_descriptions
 
 

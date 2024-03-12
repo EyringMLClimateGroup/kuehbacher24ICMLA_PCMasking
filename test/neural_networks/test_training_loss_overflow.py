@@ -39,15 +39,15 @@ except RuntimeError:
                         "cfg_pre_mask_net_all_inputs_outputs_random_uniform.yml",
                         "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_normal.yml",
                         "cfg_gumbel_softmax_single_output_model_all_inputs_outputs_random_uniform.yml",
-                        "cfg_vector_mask_net_all_inputs_outputs_glorot_uniform.yml",
-                        "cfg_vector_mask_net_all_inputs_outputs_random_normal.yml"])
+                        "cfg_mask_net_all_inputs_outputs_glorot_uniform.yml",
+                        "cfg_mask_net_all_inputs_outputs_random_normal.yml"])
 def setup_castle_all_inputs_outputs(request):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", request.param)
     argv = ["-c", config_file]
 
     setup = SetupNeuralNetworks(argv)
 
-    if setup.nn_type == "VectorMaskNet" and not os.path.isfile(setup.masking_vector_file):
+    if setup.nn_type == "MaskNet" and not os.path.isfile(setup.masking_vector_file):
         num_inputs = len(setup.input_order_list)
         create_masking_vector(num_inputs, setup.masking_vector_file)
 

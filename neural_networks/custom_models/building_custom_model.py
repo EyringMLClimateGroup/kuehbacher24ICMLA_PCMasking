@@ -14,7 +14,7 @@ from neural_networks.custom_models.castle_model_original import CASTLEOriginal
 from neural_networks.custom_models.pre_mask_model import PreMaskNet
 from neural_networks.custom_models.gumbel_softmax_single_output_model import GumbelSoftmaxSingleOutputModel
 from neural_networks.custom_models.legacy.castle_model import CASTLE
-from neural_networks.custom_models.vector_mask_model import VectorMaskNet
+from neural_networks.custom_models.mask_model import MaskNet
 from utils.variable import Variable_Lev_Metadata
 
 
@@ -96,7 +96,8 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                                 kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
         elif setup.nn_type == "GumbelSoftmaxSingleOutputModel":
             if output_var is None:
-                raise ValueError("Must pass output variable of type Variable_Lev_Metadata to create GumbelSoftmaxSingleOutputModel.")
+                raise ValueError(
+                    "Must pass output variable of type Variable_Lev_Metadata to create GumbelSoftmaxSingleOutputModel.")
 
             model_ = GumbelSoftmaxSingleOutputModel(num_x_inputs, setup.hidden_layers, setup.activation,
                                                     lambda_prediction=setup.lambda_prediction,
@@ -113,7 +114,7 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                                                     kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
                                                     kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
-        elif setup.nn_type == "VectorMaskNet":
+        elif setup.nn_type == "MaskNet":
             # Get masking vector for output variable
             if output_var is not None:
                 setup.masking_vector_file = Path(str(setup.masking_vector_file).format(var=output_var))
@@ -129,7 +130,7 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                 # Make sure that the output variable is given
                 if output_var is None:
                     raise ValueError("Must pass output variable of type Variable_Lev_Metadata when providing "
-                                     "threshold in threshold file for VectorMaskNet.")
+                                     "threshold in threshold file for MaskNet.")
 
                 # Dictionary with threshold values per output variable given
                 print(f"\nLoading threshold file {(Path(*Path(setup.mask_threshold_file).parts[-4:]))}\n")
@@ -141,10 +142,10 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                 raise ValueError(f"Neither mask threshold float value or threshold file has been given.")
 
             print(f"\nUsing threshold {threshold}\n")
-            model_ = VectorMaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
-                                   threshold=threshold, relu_alpha=relu_alpha, seed=seed,
-                                   kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
-                                   kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
+            model_ = MaskNet(num_x_inputs, setup.hidden_layers, setup.activation, masking_vector,
+                             threshold=threshold, relu_alpha=relu_alpha, seed=seed,
+                             kernel_initializer_hidden_layers=setup.kernel_initializer_hidden_layers,
+                             kernel_initializer_output_layers=setup.kernel_initializer_output_layers)
 
         elif setup.nn_type == "CastleNN":
             # Backwards compatibility for older CASTLE version
@@ -152,7 +153,7 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
                             lambda_weight=setup.lambda_weight, relu_alpha=0.3, seed=seed)
         else:
             raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
-                             f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
+                             f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'MaskNet'].")
 
         model_.build(input_shape=(None, num_x_inputs))
         # Compile model
@@ -203,7 +204,8 @@ def _set_kernel_initializer(setup):
             setup.kernel_initializer_output_layers = {"initializer": "RandomNormal",
                                                       "mean": 0.0,
                                                       "std": 0.01}
-    elif setup.nn_type == "PreMaskNet":
+    elif setup.nn_type == "PreMaskNet" or setup.nn_type == "CASTLESimplified":
+        # CASTLESimplified is the legacy version of PreMaskNet
         if setup.kernel_initializer_input_layers is None:
             setup.kernel_initializer_input_layers = {"initializer": "RandomNormal",
                                                      "mean": 0.0,
@@ -226,9 +228,9 @@ def _set_kernel_initializer(setup):
         if setup.kernel_initializer_output_layers is None:
             setup.kernel_initializer_output_layers = {"initializer": "GlorotUniform"}
 
-    elif setup.nn_type == "VectorMaskNet":
+    elif setup.nn_type == "MaskNet" or setup.nn_type == "VectorMaskNet":
+        # VectorMaskNet is the legacy version of MaskNet
         # No input layer kernel Initializer
-
         if setup.kernel_initializer_hidden_layers is None:
             setup.kernel_initializer_hidden_layers = {"initializer": "GlorotUniform"}
 
@@ -237,7 +239,7 @@ def _set_kernel_initializer(setup):
 
     else:
         raise ValueError(f"Unknown custom model type {setup.nn_type}. Must be one of ['CastleOriginal', "
-                         f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'VectorMaskNet'].")
+                         f"'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'MaskNet'].")
 
 
 def generate_ordered_input_vars(setup):

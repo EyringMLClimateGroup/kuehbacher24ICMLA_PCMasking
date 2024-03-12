@@ -18,10 +18,10 @@ except RuntimeError:
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
-def test_create_model_description_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
+def test_create_model_description_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -40,11 +40,11 @@ def test_create_model_description_vector_mask_net(setup_str, strategy, request):
         assert (isinstance(m, ModelDescription))
 
 
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_w3d",
-                                       "setup_vector_mask_net_2d_threshold_file",
-                                       "setup_vector_mask_net_w3d_threshold_file"])
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_w3d",
+                                       "setup_mask_net_2d_threshold_file",
+                                       "setup_mask_net_w3d_threshold_file"])
 @patch("neural_networks.models.tf.config.get_visible_devices")
-def test_create_model_description_distributed_value_error_vector_mask_net(mocked_visible_devices, setup_str, request):
+def test_create_model_description_distributed_value_error_mask_net(mocked_visible_devices, setup_str, request):
     setup = request.getfixturevalue(setup_str)
 
     # Mock that there aren't any visible devices
@@ -57,8 +57,8 @@ def test_create_model_description_distributed_value_error_vector_mask_net(mocked
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_train_and_save_model_description_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_train_and_save_model_description_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup = set_strategy(setup, strategy)
 
@@ -77,8 +77,8 @@ def test_train_and_save_model_description_vector_mask_net(setup_str, strategy, r
 
 
 @pytest.mark.parametrize("strategy", ["", "mirrored"])
-@pytest.mark.parametrize("setup_str", ["setup_vector_mask_net_2d", "setup_vector_mask_net_2d_threshold_file"])
-def test_load_model_description_vector_mask_net(setup_str, strategy, request):
+@pytest.mark.parametrize("setup_str", ["setup_mask_net_2d", "setup_mask_net_2d_threshold_file"])
+def test_load_model_description_mask_net(setup_str, strategy, request):
     setup = request.getfixturevalue(setup_str)
     setup.distribute_strategy = strategy
 

@@ -79,10 +79,10 @@ def test_create_setup_pre_mask_net(config_name):
 
 
 
-@pytest.mark.parametrize("config_name", ["cfg_vector_mask_net_2d.yml", "cfg_vector_mask_net_w3d.yml",
-                                         "cfg_vector_mask_net_2d_threshold_file.yml",
-                                         "cfg_vector_mask_net_w3d_threshold_file.yml"])
-def test_create_setup_vector_mask_net(config_name):
+@pytest.mark.parametrize("config_name", ["cfg_mask_net_2d.yml", "cfg_mask_net_w3d.yml",
+                                         "cfg_mask_net_2d_threshold_file.yml",
+                                         "cfg_mask_net_w3d_threshold_file.yml"])
+def test_create_setup_mask_net(config_name):
     config_file = os.path.join(PROJECT_ROOT, "test", "config", config_name)
     argv = ["-c", config_file]
 
@@ -92,7 +92,7 @@ def test_create_setup_vector_mask_net(config_name):
     with open(config_file, "r") as f:
         yml_cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-    assert (setup.nn_type == "VectorMaskNet")
+    assert (setup.nn_type == "MaskNet")
     assert ((Path(*Path(setup.masking_vector_file).parts[-4:])) == Path(yml_cfg["masking_vector_file"]))
 
     if "threshold_file" in config_name:

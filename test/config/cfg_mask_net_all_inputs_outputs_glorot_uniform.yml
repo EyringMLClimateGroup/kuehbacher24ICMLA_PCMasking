@@ -67,7 +67,7 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "VectorMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "MaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
 
 # Paths are relative to project root
 nn_output_path: test/output/models
@@ -131,7 +131,7 @@ divide_lr: 5 # From train.py (default)
 train_patience: 5 # TODO: This number was chosen arbitrarily
 
 
-# VectorMaskNet
+# MaskNet
 # ----------------------
 mask_threshold: 2.0
 masking_vector_file: "test/output/masking_vectors/{var}.npy"
