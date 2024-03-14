@@ -1,12 +1,12 @@
 import argparse
 import datetime
 import gc
+import os
+import pickle
 import time
 from pathlib import Path
 
 import numpy as np
-import pickle
-import os
 
 from neural_networks.models_split_over_nodes import generate_models
 from neural_networks.training import train_all_models
@@ -15,7 +15,7 @@ from utils.tf_gpu_management import manage_gpu, set_tf_random_seed, set_gpu
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, percentile, load_weights_from_ckpt,
-                 continue_previous_training, seed):
+                 continue_previous_training, config_fine_tune, seed):
     base_dir = Path(config_file).parent
 
     argv = ["-c", config_file]
@@ -32,7 +32,7 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, perc
     masking_vector = np.load(masking_vector_file)
 
     print(f"\nUsing thresholds between {1e-4} and {np.percentile(masking_vector, percentile)}.")
-    thresholds = np.linspace(start=1e-4, stop=np.percentile(masking_vector, percentile), num=15, endpoint=False)
+    thresholds = np.linspace(start=1e-4, stop=np.percentile(masking_vector, percentile), num=20, endpoint=False)
 
     # Run training for each threshold
     history_per_threshold = dict()
@@ -45,6 +45,10 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, perc
         model_descriptions = generate_models(setup, inputs, [selected_output],
                                              continue_training=continue_previous_training,
                                              seed=seed)
+
+        # If we are doing fine-tuning, we need to load the weights from trained PreMaskNet
+        if setup.nn_type == "MaskNet" and config_fine_tune is not None:
+            load_fine_tune_weights(config_fine_tune, inputs, selected_output, model_descriptions, seed)
 
         h = train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
                              continue_training=continue_previous_training)
@@ -60,12 +64,41 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, perc
     print("\n---")
 
     # Save history
+    save_threshold_histories(base_dir, history_per_threshold, model_descriptions)
+
+
+def save_threshold_histories(base_dir, history_per_threshold, model_descriptions):
     f_name = model_descriptions[0].get_filename() + '_history.p'
     out_path = os.path.join(base_dir, "threshold_histories")
     Path(out_path).mkdir(parents=True, exist_ok=True)
+
     with open(os.path.join(out_path, f_name), 'wb') as out_f:
         pickle.dump(history_per_threshold, out_f)
+
     print(f"\n\nSaving history per threshold file {Path(*Path(os.path.join(out_path, f_name)).parts[-4:])}")
+
+
+def load_fine_tune_weights(config_fine_tune, inputs, selected_output, model_descriptions, seed):
+    argv = ["-c", config_fine_tune]
+    pre_mask_net_setup = SetupNeuralNetworks(argv)
+
+    pre_mask_net_md = generate_models(pre_mask_net_setup, inputs, [selected_output], seed=seed)
+
+    pre_mask_net = pre_mask_net_md[0].model
+
+    weights_path = pre_mask_net_md[0].get_path(pre_mask_net_setup.nn_output_path)
+    filename = pre_mask_net_md[0].get_filename() + "_weights.h5"
+
+    print(f"\nLoading model weights from file {os.path.join(weights_path, filename)}")
+    pre_mask_net.load_weights(os.path.join(weights_path, filename))
+
+    for jdx, layer in enumerate(pre_mask_net.shared_hidden_layers):
+        model_descriptions[0].model.shared_hidden_layers[jdx].set_weights(layer.get_weights())
+
+    model_descriptions[0].model.output_layer.set_weights(pre_mask_net.output_layer.get_weights())
+
+    del pre_mask_net_md
+    del pre_mask_net_setup
 
 
 def get_min_threshold_last_metric_element(d, metric):
@@ -120,6 +153,9 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--gpu_index",
                         help="GPU index. If given, only the GPU specified by index will be used for training.",
                         required=False, default=False, type=int, nargs='?')
+    parser.add_argument("-f", "--fine_tune_config",
+                        help="Config for trained PreMaskNet to load weights for fine-tuning.",
+                        required=False, default=None, type=str, nargs='?')
 
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
@@ -151,6 +187,7 @@ if __name__ == "__main__":
     continue_training = args.continue_training
     random_seed_parsed = args.seed
     gpu_index = args.gpu_index
+    fine_tune_cfg = None if args.fine_tune_config == "" else args.fine_tune_config
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -158,6 +195,12 @@ if __name__ == "__main__":
         parser.error(f"File with neural network inputs must be .txt file. Got {inputs_file}")
     if not outputs_file.suffix == ".txt":
         parser.error(f"File with neural network outputs must be .txt file. Got {outputs_file}")
+
+    if fine_tune_cfg is not None:
+        if not fine_tune_cfg.endswith(".yml"):
+            parser.error(f"Fine-tuning configuration file must be YAML file (.yml). Got {fine_tune_cfg}")
+        else:
+            fine_tune_cfg = Path(fine_tune_cfg)
 
     # GPU management: Allow memory growth if training is done on multiple GPUs, otherwise limit GPUs to single GPU
     if gpu_index is None:
@@ -183,13 +226,14 @@ if __name__ == "__main__":
     print(f"Input list .txt file:  {inputs_file}")
     print(f"Output list .txt file: {outputs_file}")
     print(f"Train index:           {train_idx}")
-    print(f"Percentile:            {percentile}\n")
+    print(f"Percentile:            {percentile}")
+    print(f"Fine-tuning config:    {fine_tune_cfg}\n")
 
     print(f"\n\n{datetime.datetime.now()} --- Start model training.", flush=True)
     t_init = time.time()
 
     train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, percentile, load_ckpt, continue_training,
-                 random_seed)
+                 fine_tune_cfg, random_seed)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")

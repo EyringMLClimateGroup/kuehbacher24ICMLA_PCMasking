@@ -1,7 +1,11 @@
 import argparse
 import datetime
+import os
+import pickle
 import time
 from pathlib import Path
+
+import numpy as np
 
 from neural_networks.models_split_over_nodes import generate_models
 from neural_networks.training import train_all_models
@@ -10,7 +14,7 @@ from utils.tf_gpu_management import manage_gpu, set_tf_random_seed, set_gpu
 
 
 def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, load_weights_from_ckpt,
-                 continue_previous_training, seed):
+                 continue_previous_training, config_fine_tune, seed):
     argv = ["-c", config_file]
     setup = SetupNeuralNetworks(argv)
 
@@ -21,8 +25,77 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_indices, lo
     model_descriptions = generate_models(setup, inputs, selected_outputs, continue_training=continue_previous_training,
                                          seed=seed)
 
-    train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
-                     continue_training=continue_previous_training)
+    # If we are doing fine-tuning, we need to load the weights from trained PreMaskNet
+    if setup.nn_type == "MaskNet" and config_fine_tune is not None:
+        load_fine_tune_weights(config_fine_tune, inputs, selected_outputs, model_descriptions, seed)
+
+    history = train_all_models(model_descriptions, setup, from_checkpoint=load_weights_from_ckpt,
+                               continue_training=continue_previous_training)
+
+    # Save histories
+    base_dir = Path(config_file).parent
+    _save_history(history, model_descriptions, selected_outputs, base_dir)
+
+    # In case of PreMaskNet, save the masking vector for each variable
+    if setup.nn_type == "PreMaskNet":
+        _save_masking_vector(model_descriptions, selected_outputs, base_dir)
+
+
+def load_fine_tune_weights(config_fine_tune, inputs, selected_outputs, model_descriptions, seed):
+    argv = ["-c", config_fine_tune]
+    pre_mask_net_setup = SetupNeuralNetworks(argv)
+
+    pre_mask_net_md = generate_models(pre_mask_net_setup, inputs, selected_outputs, seed=seed)
+
+    for idx, md in enumerate(pre_mask_net_md):
+        pre_mask_net = md.model
+
+        weights_path = md.get_path(pre_mask_net_setup.nn_output_path)
+        filename = md.get_filename() + "_weights.h5"
+
+        print(f"\nLoading model weights from file {os.path.join(weights_path, filename)}")
+
+        pre_mask_net.load_weights(os.path.join(weights_path, filename))
+
+        for jdx, layer in enumerate(pre_mask_net.shared_hidden_layers):
+            model_descriptions[idx].model.shared_hidden_layers[jdx].set_weights(layer.get_weights())
+
+        model_descriptions[idx].model.output_layer.set_weights(pre_mask_net.output_layer.get_weights())
+
+    del pre_mask_net_md
+    del pre_mask_net_setup
+
+
+def _save_masking_vector(model_descriptions, selected_outputs, base_dir):
+    mv_dir = os.path.join(base_dir, "masking_vectors")
+    Path(mv_dir).mkdir(parents=True, exist_ok=True)
+
+    for i in range(len(model_descriptions)):
+        var = selected_outputs[i]
+        model = model_descriptions[i].model
+
+        input_layer_weight = model.input_layer.trainable_variables[0].numpy()
+        masking_vector = np.linalg.norm(input_layer_weight, ord=2, axis=1)
+
+        fn = f"masking_vector_{var}.npy"
+        np.save(os.path.join(mv_dir, fn), masking_vector)
+
+        print(f'\nSaving masking vector {Path(*Path(os.path.join(mv_dir, fn)).parts[-3:])}.')
+
+
+def _save_history(history, model_descriptions, selected_outputs, base_dir):
+    for i in range(len(model_descriptions)):
+        h = history[selected_outputs[i]].history
+
+        # Save history
+        f_name = model_descriptions[i].get_filename() + '_history.p'
+
+        out_path = os.path.join(base_dir, "history")
+        Path(out_path).mkdir(parents=True, exist_ok=True)
+
+        with open(os.path.join(out_path, f_name), 'wb') as out_f:
+            pickle.dump(h, out_f)
+        print(f"\n\nSaving history file {Path(*Path(os.path.join(out_path, f_name)).parts[-4:])}")
 
 
 def _read_txt_to_list(txt_file):
@@ -64,8 +137,12 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--seed", help="Integer value for random seed. "
                                              "Use 'False' or leave out this option to not set a random seed.",
                         default=False, type=parse_str_to_bool_or_int, nargs='?', const=True)
-    parser.add_argument("-g", "--gpu_index", help="GPU index. If given, only the GPU specified by index will be used for training.",
+    parser.add_argument("-g", "--gpu_index",
+                        help="GPU index. If given, only the GPU specified by index will be used for training.",
                         required=False, default=False, type=int, nargs='?')
+    parser.add_argument("-f", "--fine_tune_config",
+                        help="Config for trained PreMaskNet to load weights for fine-tuning.",
+                        required=False, default=None, type=str, nargs='?')
 
     required_args = parser.add_argument_group("required arguments")
     required_args.add_argument("-c", "--config_file", help="YAML configuration file for neural network creation.",
@@ -95,6 +172,7 @@ if __name__ == "__main__":
     continue_training = args.continue_training
     random_seed_parsed = args.seed
     gpu_index = args.gpu_index
+    fine_tune_cfg = None if args.fine_tune_config == "" else args.fine_tune_config
 
     if not yaml_config_file.suffix == ".yml":
         parser.error(f"Configuration file must be YAML file (.yml). Got {yaml_config_file}")
@@ -102,6 +180,12 @@ if __name__ == "__main__":
         parser.error(f"File with neural network inputs must be .txt file. Got {inputs_file}")
     if not outputs_file.suffix == ".txt":
         parser.error(f"File with neural network outputs must be .txt file. Got {outputs_file}")
+
+    if fine_tune_cfg is not None:
+        if not fine_tune_cfg.endswith(".yml"):
+            parser.error(f"Fine-tuning configuration file must be YAML file (.yml). Got {fine_tune_cfg}")
+        else:
+            fine_tune_cfg = Path(fine_tune_cfg)
 
     # GPU management: Allow memory growth if training is done on multiple GPUs, otherwise limit GPUs to single GPU
     if gpu_index is None:
@@ -128,12 +212,14 @@ if __name__ == "__main__":
     print(f"\nYAML config file:      {yaml_config_file}")
     print(f"Input list .txt file:  {inputs_file}")
     print(f"Output list .txt file: {outputs_file}")
-    print(f"Train indices:         {train_idx}\n")
+    print(f"Train indices:         {train_idx}")
+    print(f"Fine-tuning config:    {fine_tune_cfg}\n")
 
     print(f"\n\n{datetime.datetime.now()} --- Start CASTLE training over multiple SLURM nodes.", flush=True)
     t_init = time.time()
 
-    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, random_seed)
+    train_castle(yaml_config_file, inputs_file, outputs_file, train_idx, load_ckpt, continue_training, fine_tune_cfg,
+                 random_seed)
 
     t_total = datetime.timedelta(seconds=time.time() - t_init)
     print(f"\n{datetime.datetime.now()} --- Finished. Elapsed time: {t_total}")
