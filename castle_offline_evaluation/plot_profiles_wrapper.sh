@@ -6,11 +6,11 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_66_castle_simplified_spars0.001"
-JOB_NAME="plot_profiles_66_castle_simplified_spars0.001"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
+JOB_NAME="plot_profiles_75_mask_net_bespoke_thresholds"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_castle_simplified.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 
 PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles"
 mkdir -p "$PLOT_DIR"

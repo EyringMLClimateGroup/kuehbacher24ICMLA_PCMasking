@@ -6,11 +6,11 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/eval_nando/causal_single_nn/models_arch-rasp_thrs-opt-r2max"
-JOB_NAME="shap_66_causal_arch-rasp_thrs-opt-r2max"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
+JOB_NAME="shap_75_mask_net_bespoke_thresholds"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_causal_single_nn_diagnostics.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"

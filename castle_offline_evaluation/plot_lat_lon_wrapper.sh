@@ -6,11 +6,11 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_71_gumbel_softmax_single_output_crf"
-JOB_NAME="plots_lat_lon_71_gumbel_softmax_single_output_crf"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
+JOB_NAME="plots_lat_lon_75_mask_net_bespoke_thresholds"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_gumbel_softmax_single_output.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 
 PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_lat_lon"
 mkdir -p "$PLOT_DIR"

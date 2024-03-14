@@ -6,14 +6,14 @@
 
 PROJECT_ROOT="$(dirname "${PWD}")"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_73_vector_mask_net_prediction_thresholds"
-JOB_NAME="plots_cross_section_73_vector_mask_net_prediction_thresholds_train"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
+JOB_NAME="plots_cross_section_75_mask_net_bespoke_thresholds"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_vector_mask_net_thresholds_train.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section_train"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
