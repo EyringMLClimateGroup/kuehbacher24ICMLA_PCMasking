@@ -261,8 +261,14 @@ class ModelDescription:
             if self.setup.distribute_strategy == "mirrored":
                 cfg_str += "-mirrored"
 
-            self.setup.mask_threshold = get_vector_mask_net_threshold(self.setup, self.output)
-            path = path / Path(cfg_str.format(threshold=self.setup.mask_threshold))
+            if self.setup.mask_threshold is None:
+                self.setup.mask_threshold = get_vector_mask_net_threshold(self.setup, self.output)
+                path = path / Path(cfg_str.format(threshold=self.setup.mask_threshold))
+
+                # Reset threshold
+                self.setup.mask_threshold = None
+            else:
+                path = path / Path(cfg_str.format(threshold=self.setup.mask_threshold))
 
 
         elif self.model_type == "PreMaskNet" or self.model_type == "CASTLESimplified":

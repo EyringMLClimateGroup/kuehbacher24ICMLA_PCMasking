@@ -193,8 +193,12 @@ def get_model(setup, output, model_type, *, pc_alpha=None, threshold=None):
 
     elif setup.nn_type == "MaskNet":
         # In case a mask threshold file was given, mask_threshold needs to be set for model loading to work
-        setup.mask_threshold = get_vector_mask_net_threshold(setup, output)
-        folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
+        if setup.mask_threshold is None:
+            setup.mask_threshold = get_vector_mask_net_threshold(setup, output)
+            folder = get_path(setup, model_type, pc_alpha=pc_alpha, threshold=threshold)
+
+            # Reset threshold
+            setup.mask_threshold = None
 
         modelname = Path(folder, filename + '_model.keras')
         print(f"\nLoad model: {modelname}")
