@@ -18,6 +18,7 @@ NUM_NODES=65
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
+FINE_TUNE_CONFIG=""
 
 MAX_RUNNING_JOBS_DKRZ=20
 
@@ -33,7 +34,7 @@ display_help() {
   echo "Bash script wrapper for CASTLE training that splits training of model description list across multiple SLURM nodes."
   echo "Training configuration parameters can either be specified in the script directly or via command line arguments."
   echo ""
-  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-p HPC] [-s seed]"
+  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt] [-n nodes] [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-p HPC] [-s seed]"
   echo ""
   echo " Options:"
   echo " -i    txt file with input list for CASTLE networks."
@@ -62,6 +63,11 @@ display_help() {
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo "       Current value: $CONTINUE_TRAINING"
   echo ""
+  echo " -f    Config file for trained PreMaskNet to load weights for fine-tuning of MaskNet. "
+  echo "       Hidden and output layer weights of PreMaskNet are reloaded for MaskNet training."
+  echo "       If no config file is provided, MaskNet is trained from scratch."
+  echo "       Current value: $FINE_TUNE_CONFIG"
+  echo ""
   echo " -p    Which HPC one is working on ('dkrz' or 'jsc')."
   echo "       Current value: $HPC"
   echo ""
@@ -83,6 +89,7 @@ print_variables() {
   echo "  Number of training nodes/jobs:  $NUM_NODES"
   echo "  Load weights from checkpoint:   $LOAD_CKPT"
   echo "  Continue training:              $CONTINUE_TRAINING"
+  echo "  Fine-tuning config:             $FINE_TUNE_CONFIG"
   echo "  Random seed:                    $SEED"
   echo ""
   echo -e "=================================================================\n\n"
@@ -98,6 +105,7 @@ print_computed_variables() {
   echo "  Distributed training:           $DISTRIBUTED"
   echo "  Load weights from checkpoint:   $LOAD_CKPT"
   echo "  Continue training:              $CONTINUE_TRAINING"
+  echo "  Fine-tuning config:             $FINE_TUNE_CONFIG"
   echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
@@ -297,10 +305,11 @@ else
   found_s=0
   found_l=0
   found_t=0
+  found_f=0
   found_p=0
 
   # Parse options
-  while getopts "i:o:m:n:c:l:t:p:s:h" opt; do
+  while getopts "i:o:m:n:c:l:t:f:p:s:h" opt; do
     case ${opt} in
     h)
       display_help
@@ -372,6 +381,15 @@ else
         CONTINUE_TRAINING="False"
       else
         echo -e "\nError: Invalid value for option -t (continue training). Must be a boolean ('True', 't', 'False', 'f')."
+        error_exit
+      fi
+      ;;
+    f)
+      found_f=1
+      if [[ $OPTARG == *.yml ]]; then
+        FINE_TUNE_CONFIG=$OPTARG
+      else
+        echo -e "\nError: Invalid value for option -f (fine-tuning config). Must be YAML file."
         error_exit
       fi
       ;;
@@ -756,6 +774,54 @@ else
     done
   fi
 
+  # fine-tuning yaml config file
+  if [[ $found_f == 0 ]]; then
+    echo -e "\nNo PreMaskNet config file given for fine-tuning of MaskNet. Do you wish to use default value FINE_TUNE_CONFIG=$FINE_TUNE_CONFIG?"
+    outer_counter=0
+    while [ $outer_counter -lt 3 ]; do
+      read -r -e -p "Enter [y]/n: " input
+      answer=${input:-"y"}
+      echo ""
+
+      if [[ $answer == "y" ]]; then
+        break
+
+      elif [[ $answer == "n" ]]; then
+        inner_counter=0
+        while [ $inner_counter -lt 3 ]; do
+          read -r -e -p "Please supply config .yml file or press Enter to exit: " input
+          if [[ $input == "" ]]; then
+            graceful_exit
+          else
+            if [[ $input == *.yml ]]; then
+              FINE_TUNE_CONFIG=$input
+              break 2
+            else
+              case $inner_counter in
+              0)
+                echo -e "\nError: Invalid value for YAML config. Must be YAML file. Try again (2 tries left).\n"
+                ;;
+              1)
+                echo -e "\nError: Invalid value for YAML config. Must be YAML file. Try again (1 try left).\n"
+                ;;
+              2)
+                echo -e "\nError: Invalid value for YAML config.\n"
+                error_exit
+                ;;
+              esac
+            fi
+          fi
+
+          inner_counter=$(($inner_counter + 1))
+        done
+      else
+        #Unknown input
+        case_counter $outer_counter
+      fi
+      outer_counter=$(($outer_counter + 1))
+    done
+  fi
+
   # which HPC
   if [[ $found_p == 0 ]]; then
     echo -e "\nHPC not specified. Do you wish to use default value HPC=$HPC?."
@@ -932,7 +998,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
+  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

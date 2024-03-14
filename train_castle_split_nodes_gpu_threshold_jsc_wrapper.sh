@@ -4,15 +4,15 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_73_vector_mask_net_prediction_thresholds"
+base_dir="output_castle/training_76_mask_net_prediction_thresholds"
 HPC="gpu_threshold_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_73_vector_mask_net_prediction_thresholds"
+job_name_base="training_76_mask_net_prediction_thresholds"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
 NN_OUTPUTS="${base_dir}/outputs_list.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
-NN_CONFIG="${base_dir}/cfg_vector_mask_net.yml"
+NN_CONFIG="${base_dir}/cfg_mask_net.yml"
 
 PERCENTILE=70
 
@@ -21,6 +21,7 @@ NN_PER_NODE=4
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
+FINE_TUNE_CONFIG="output_castle/training_74_pre_mask_net_spars0.001/cfg_pre_mask_net.yml"
 
 MAX_RUNNING_JOBS_DKRZ=20
 
@@ -36,7 +37,7 @@ display_help() {
   echo "Bash script wrapper for CASTLE training that splits training of model description list across multiple SLURM nodes."
   echo "Training configuration parameters can either be specified in the script directly or via command line arguments."
   echo ""
-  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt]  [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-p HPC] [-s seed]"
+  echo "Usage: $0 [-h] [-i inputs_list.txt] [-o outputs_list.txt] [-m outputs_map.txt]  [-c config.yml] [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-p HPC] [-s seed]"
   echo ""
   echo " Options:"
   echo " -i    txt file with input list for CASTLE networks."
@@ -57,6 +58,11 @@ display_help() {
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
   echo "       Current value: $CONTINUE_TRAINING"
+  echo ""
+  echo " -f    Config file for trained PreMaskNet to load weights for fine-tuning of MaskNet. "
+  echo "       Hidden and output layer weights of PreMaskNet are reloaded for MaskNet training."
+  echo "       If no config file is provided, MaskNet is trained from scratch."
+  echo "       Current value: $FINE_TUNE_CONFIG"
   echo ""
   echo " -p    Which HPC one is working on ('dkrz' or 'jsc')."
   echo "       Current value: $HPC"
@@ -79,6 +85,7 @@ print_variables() {
   echo "  Distributed training:           $DISTRIBUTED"
   echo "  Load weights from checkpoint:   $LOAD_CKPT"
   echo "  Continue training:              $CONTINUE_TRAINING"
+  echo "  Fine-tuning config:             $FINE_TUNE_CONFIG"
   echo "  Random Seed:                    $SEED"
   echo ""
   echo "  Number of NNs:                  $NUM_OUTPUTS"
@@ -143,7 +150,6 @@ want_to_continue() {
     counter=$(($counter + 1))
   done
 }
-
 
 read_distributed() {
   if [ -f "$NN_CONFIG" ]; then
@@ -238,7 +244,6 @@ print_variables
 ###################################
 want_to_continue
 
-
 ################
 # Batch script #
 ################
@@ -282,7 +287,7 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
+  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

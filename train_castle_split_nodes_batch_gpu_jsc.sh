@@ -25,7 +25,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_jsc.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_gpu_jsc.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -35,6 +35,7 @@ display_help() {
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
+  echo " -f    Config file for trained PreMaskNet to load weights for fine-tuning."
   echo " -s    Random seed. Leave out this option to not set a random seed or set value to 'NULL' or 'False'."
   echo " -p    Output directory for Python logs."
   echo " -j    SLURM job name."
@@ -59,10 +60,11 @@ found_s=0
 found_j=0
 found_l=0
 found_t=0
+found_f=0
 found_p=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:l:t:p:h" opt; do
+while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -139,6 +141,15 @@ while getopts "c:i:o:x:s:j:l:t:p:h" opt; do
       error_exit
     fi
     ;;
+  f)
+    found_f=1
+    if [[ $OPTARG == *.yml ]]; then
+      FINE_TUNE_CONFIG=$OPTARG
+    else
+      echo -e "\nError: Invalid value for option -f (fine-tuning config). Must be YAML file."
+      error_exit
+    fi
+    ;;
   p)
     found_p=1
     PYTHON_DIR=$OPTARG
@@ -185,6 +196,9 @@ fi
 if ((found_t == 0)); then
   CONTINUE_TRAINING="False"
 fi
+if ((found_f == 0)); then
+  FINE_TUNE_CONFIG=""
+fi
 
 ##################
 # Start training #
@@ -205,7 +219,7 @@ for gpu_index in {0..3}; do
   echo -e "\nRun with GPU: ${gpu_index}\n"
   new_start_end_idx="${var_index}-${var_index}"
 
-  conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$new_start_end_idx" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${var_index}_${SLURM_JOB_ID}.out" 2>&1 &
+  conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$new_start_end_idx" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${var_index}_${SLURM_JOB_ID}.out" 2>&1 &
 done
 
 wait
