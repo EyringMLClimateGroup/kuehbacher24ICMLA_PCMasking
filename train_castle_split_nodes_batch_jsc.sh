@@ -143,12 +143,7 @@ while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
     ;;
   f)
     found_f=1
-    if [[ $OPTARG == *.yml ]]; then
-      FINE_TUNE_CONFIG=$OPTARG
-    else
-      echo -e "\nError: Invalid value for option -f (fine-tuning config). Must be YAML file."
-      error_exit
-    fi
+    FINE_TUNE_CONFIG=$OPTARG
     ;;
   p)
     found_p=1
