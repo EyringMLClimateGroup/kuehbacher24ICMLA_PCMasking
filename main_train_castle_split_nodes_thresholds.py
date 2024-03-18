@@ -38,6 +38,8 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, perc
     history_per_threshold = dict()
 
     for t in thresholds:
+        t = round(t, 4)
+
         print(f"\n\n\n--- Training with threshold {t}.\n\n")
 
         setup.mask_threshold = t
