@@ -25,13 +25,14 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_gpu_threshold_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_index -r percentile -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
   echo " -i    Text file with input list for CASTLE networks (.txt)."
   echo " -o    Text file with output list for CASTLE networks (.txt)."
-  echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
+  echo " -x    Train indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end' and end-start=4."
+  echo " -r    Percentile of masking vector values used as upper threshold bound. Integer value between 50-100."
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
@@ -56,6 +57,7 @@ found_c=0
 found_i=0
 found_o=0
 found_x=0
+found_r=0
 found_s=0
 found_j=0
 found_l=0
@@ -64,7 +66,7 @@ found_f=0
 found_p=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
+while getopts "c:i:o:x:r:s:j:l:t:f:p:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -100,6 +102,17 @@ while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
   x)
     found_x=1
     START_END_IDX=$OPTARG
+    ;;
+
+  r)
+    found_r=1
+    re='^[+-]?[0-9]+$'
+    if [[ $OPTARG =~ $re ]]; then
+      PERCENTILE=$OPTARG
+    else
+      echo -e "\nError: Invalid value for option -r (percentile). Must be an integer"
+      error_exit
+    fi
     ;;
   s)
     found_s=1
@@ -172,7 +185,10 @@ elif ((found_o == 0)); then
   echo -e "\nError: Failed to provide CASTLE outputs list .txt file.\n"
   error_exit
 elif ((found_x == 0)); then
-  echo -e "\nError: Failed to provide training indices.\n"
+  echo -e "\nError: Failed to provide training index.\n"
+  error_exit
+elif ((found_r == 0)); then
+  echo -e "\nError: Failed to provide percentile.\n"
   error_exit
 elif ((found_p == 0)); then
   echo -e "\nError: Failed to provide output directory for Python logs.\n"
@@ -201,4 +217,19 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+start_idx=$(echo $START_END_IDX | sed 's@^[^0-9]*\([0-9]\+\).*@\1@')
+
+for gpu_index in {0..3}; do
+
+  var_index=$((start_idx + gpu_index))
+
+  if [ $var_index -ge 65 ]; then
+    break 2
+  fi
+
+  echo -e "\nRun for output variable index ${var_index} with GPU: ${gpu_index}\n"
+
+  conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes_thresholds.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$var_index" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${var_index}_${SLURM_JOB_ID}.out" 2>&1 &
+done
+
+wait

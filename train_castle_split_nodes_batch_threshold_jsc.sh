@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --partition=gpu
+#SBATCH --partition=booster
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=36
-#SBATCH --gpus=4
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
 #SBATCH --mem=0
-#SBATCH --prefer=a100_80
 #SBATCH --exclusive
-#SBATCH --time=12:00:00
-#SBATCH --account=bd1179
-#SBATCH --mail-type=FAIL
+#SBATCH --time=24:00:00
+#SBATCH --account=icon-a-ml
+#SBATCH --mail-user=birgit.kuehbacher@dlr.de
+#SBATCH --mail-type=END
 
 # Job name is passed with option -J and as command line argument $6
 # If you don't use option -J, set #SBATCH --job-name=castle_training
@@ -25,13 +25,14 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_threshold_jsc.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x var_index -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
   echo " -i    Text file with input list for CASTLE networks (.txt)."
   echo " -o    Text file with output list for CASTLE networks (.txt)."
-  echo " -x    Indices of outputs to be trained in 'outputs_list.txt'. Must be a string of the form 'start-end'."
+  echo " -x    Index of output variable to be trained in 'outputs_list.txt'. Must be a single integer string."
+  echo " -r    Percentile of masking vector values used as upper threshold bound. Integer value between 50-100."
   echo " -l    Boolean ('False' 'f', 'True', 't') indicating whether to load weights from checkpoint from previous training."
   echo " -t    Boolean ('False' 'f', 'True', 't') indicating whether to continue with previous training. "
   echo "       The model (including optimizer) is loaded and the learning rate is initialized with the last learning rate from previous training."
@@ -56,6 +57,7 @@ found_c=0
 found_i=0
 found_o=0
 found_x=0
+found_r=0
 found_s=0
 found_j=0
 found_l=0
@@ -64,7 +66,7 @@ found_f=0
 found_p=0
 
 # Parse options
-while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
+while getopts "c:i:o:x:r:s:j:l:t:f:p:h" opt; do
   case ${opt} in
   h)
     display_help
@@ -99,7 +101,17 @@ while getopts "c:i:o:x:s:j:l:t:f:p:h" opt; do
     ;;
   x)
     found_x=1
-    START_END_IDX=$OPTARG
+    VAR_INDEX=$OPTARG
+    ;;
+  r)
+    found_r=1
+    re='^[+-]?[0-9]+$'
+    if [[ $OPTARG =~ $re ]]; then
+      PERCENTILE=$OPTARG
+    else
+      echo -e "\nError: Invalid value for option -r (percentile). Must be an integer"
+      error_exit
+    fi
     ;;
   s)
     found_s=1
@@ -174,6 +186,9 @@ elif ((found_o == 0)); then
 elif ((found_x == 0)); then
   echo -e "\nError: Failed to provide training indices.\n"
   error_exit
+elif ((found_r == 0)); then
+  echo -e "\nError: Failed to provide percentile.\n"
+  error_exit
 elif ((found_p == 0)); then
   echo -e "\nError: Failed to provide output directory for Python logs.\n"
   error_exit
@@ -183,7 +198,7 @@ if ((found_s == 0)); then
   SEED="False"
 fi
 if ((found_j == 0)); then
-  JOB_NAME="castle_training_${START_END_IDX}"
+  JOB_NAME="training_${VAR_INDEX}"
 fi
 if ((found_l == 0)); then
   LOAD_CKPT="False"
@@ -201,4 +216,4 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --no-capture-output -n kuehbacher1_py3.9_tf python -u main_train_castle_split_nodes_thresholds.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$VAR_INDEX" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

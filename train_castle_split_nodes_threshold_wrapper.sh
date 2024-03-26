@@ -4,24 +4,24 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_76_mask_net_prediction_thresholds"
-HPC="gpu_threshold_jsc" # jsc, dkrz, gpu_jsc
+base_dir="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_99_mask_net_prediction_thresholds_spars1e-4"
+HPC="threshold_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_76_mask_net_prediction_thresholds"
+job_name_base="training_99_mask_net_prediction_thresholds_spars1e-4"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
-NN_OUTPUTS="${base_dir}/outputs_list.txt"
+NN_OUTPUTS="${base_dir}/outputs_restart.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
 NN_CONFIG="${base_dir}/cfg_mask_net.yml"
 
 PERCENTILE=70
 
-NUM_NODES=17
-NN_PER_NODE=4
+NUM_NODES=65
+NN_PER_NODE=1
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
-FINE_TUNE_CONFIG="output_castle/training_74_pre_mask_net_spars0.001/cfg_pre_mask_net.yml"
+FINE_TUNE_CONFIG="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_80_pre_mask_net_spars1e-4/cfg_pre_mask_net.yml"
 
 MAX_RUNNING_JOBS_DKRZ=20
 
@@ -206,16 +206,12 @@ set_var_ident() {
 
 set_var_ident_str() {
   # Watch out: head starts at index 1
-  start=$(($1 + 1))
-  end=$(($2 + 1))
+  index=$(($1 + 1))
 
-  set_var_ident $start
-  var_ident_str="${var_ident}"
-  set_var_ident $end
-  var_ident_str="${var_ident_str}-${var_ident}"
+  set_var_ident $index
 
   # set variable
-  VAR_IDENT_STR=$var_ident_str
+  VAR_IDENT_STR=$var_ident
 }
 
 #######################
@@ -230,12 +226,7 @@ check_map_file_exists
 #######################################
 read_distributed
 
-NUM_NODES=$((NUM_OUTPUTS / 4))
-remainder=$((NUM_OUTPUTS % 4))
-
-if [[ $remainder -gt 0 ]]; then
-  NUM_NODES=$((NUM_NODES + 1))
-fi
+NUM_NODES=$NUM_OUTPUTS
 
 echo -e "\n\nRunning script with the following variables:"
 print_variables
@@ -247,14 +238,12 @@ want_to_continue
 ################
 # Batch script #
 ################
-if [[ $HPC == "gpu_jsc" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_gpu_jsc.sh"
-elif [[ $HPC == "gpu_threshold_jsc" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_gpu_threshold_jsc.sh"
-elif [[ $HPC == "jsc" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_jsc.sh"
-elif [[ $HPC == "dkrz" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_dkrz.sh"
+
+if [[ $HPC == "threshold_jsc" ]]; then
+  BATCH_SCRIPT="train_castle_split_nodes_batch_threshold_jsc.sh"
+elif [[ $HPC == "threshold_dkrz" ]]; then
+  echo -e "\nNot yet implemented for DKRZ."
+  error_exit
 else
   echo -e "\nUnknown HPC batch script option ${HPC}."
   error_exit
@@ -267,13 +256,10 @@ echo -e "\n\n$(timestamp) --- Starting SLURM jobs.\n"
 #####################
 
 for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
-  END_INDEX=$(($i + $NN_PER_NODE - 1))
-  # Test if we've gone too far
-  END_INDEX=$(($((($NUM_OUTPUTS - 1) < $END_INDEX)) ? $(($NUM_OUTPUTS - 1)) : $END_INDEX))
-  TRAIN_INDICES="$i-$END_INDEX"
+  VAR_INDEX="$i"
 
   # Set variable VAR_IDENT_STR
-  set_var_ident_str "$i" "$END_INDEX"
+  set_var_ident_str "$i"
   JOB_NAME="${job_name_base}_${VAR_IDENT_STR}"
 
   # Check size of string (otherwise this may cause problems saving files
@@ -284,10 +270,10 @@ for ((i = 0; i < $NUM_OUTPUTS; i += $NN_PER_NODE)); do
   slurm_o="${log_dir}/%x_slurm_%j.out"
   slurm_e="${log_dir}/%x_error_slurm_%j.out"
 
-  echo -e "\nStarting batch script with output indices $TRAIN_INDICES"
+  echo -e "\nStarting batch script with output indices $VAR_INDEX"
   echo "Job name: ${JOB_NAME}"
 
-  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$TRAIN_INDICES" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
+  sbatch -J "$JOB_NAME" --output "$slurm_o" --error "$slurm_e" "$BATCH_SCRIPT" -c "$NN_CONFIG" -i "$NN_INPUTS" -o "$NN_OUTPUTS" -x "$VAR_INDEX" -r "$PERCENTILE" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -j "$JOB_NAME" -p "$log_dir"
 done
 
 echo -e "\n$(timestamp) --- Finished starting batch scripts.\n\n"

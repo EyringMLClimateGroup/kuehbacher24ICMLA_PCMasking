@@ -25,7 +25,7 @@ display_help() {
   echo ""
   echo "SLURM batch script for training CASTLE model for specified outputs."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs train_castle_split_nodes_batch_gpu_dkrz.sh -c config.yml -i inputs_list.txt -o outputs_list.txt -x output_indices -p python_output_dir [-l load_ckp_weight] [-t continue_training] [-f fine_tune_config] [-s seed] [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -201,4 +201,20 @@ fi
 
 echo "Starting job ${JOB_NAME}: $(date)"
 
-conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$START_END_IDX" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+start_idx=$(echo $START_END_IDX | sed 's@^[^0-9]*\([0-9]\+\).*@\1@')
+
+for gpu_index in {0..3}; do
+
+  var_index=$((start_idx + gpu_index))
+
+  if [ $var_index -ge 65 ]; then
+    break 2
+  fi
+
+  echo -e "\nRun with GPU: ${gpu_index}\n"
+  new_start_end_idx="${var_index}-${var_index}"
+
+  conda run --no-capture-output -n tensorflow_env python -u main_train_castle_split_nodes.py -c "$CONFIG" -i "$INPUTS" -o "$OUTPUTS" -x "$new_start_end_idx" -l "$LOAD_CKPT" -t "$CONTINUE_TRAINING" -f "$FINE_TUNE_CONFIG" -s "$SEED" -g "$gpu_index" >"${PYTHON_DIR}/${JOB_NAME}_python_${var_index}_${SLURM_JOB_ID}.out" 2>&1 &
+done
+
+wait

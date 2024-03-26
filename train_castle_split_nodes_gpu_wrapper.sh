@@ -4,22 +4,22 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="output_castle/training_75_mask_net_bespoke_thresholds"
+base_dir="output_castle/training_94_single_nn"
 HPC="gpu_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_75_mask_net_bespoke_thresholds"
+job_name_base="training_94_single_nn"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
-NN_OUTPUTS="${base_dir}/outputs_list.txt"
+NN_OUTPUTS="${base_dir}/outputs_restart.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
-NN_CONFIG="${base_dir}/cfg_mask_net.yml"
+NN_CONFIG="${base_dir}/cfg_single_nn.yml"
 
 NUM_NODES=17
 NN_PER_NODE=4
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
-FINE_TUNE_CONFIG="output_castle/training_74_pre_mask_net_spars0.001/cfg_pre_mask_net.yml"
+FINE_TUNE_CONFIG=""
 
 MAX_RUNNING_JOBS_DKRZ=20
 
@@ -841,10 +841,8 @@ fi
 ################
 if [[ $HPC == "gpu_jsc" ]]; then
   BATCH_SCRIPT="train_castle_split_nodes_batch_gpu_jsc.sh"
-elif [[ $HPC == "jsc" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_jsc.sh"
-elif [[ $HPC == "dkrz" ]]; then
-  BATCH_SCRIPT="train_castle_split_nodes_batch_dkrz.sh"
+elif [[ $HPC == "gpu_dkrz" ]]; then
+  BATCH_SCRIPT="train_castle_split_nodes_batch_gpu_dkrz.sh"
 else
   echo -e "\nUnknown HPC batch script option ${HPC}."
   error_exit
