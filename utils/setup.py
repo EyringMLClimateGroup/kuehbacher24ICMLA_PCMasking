@@ -84,9 +84,9 @@ class Setup:
 
     def _evaluate_data_path(self, path):
         if os.path.isabs(path):
-            return path
+            return Path(path)
         elif Path(path).is_symlink():
-            return os.path.realpath(path)
+            return Path(os.path.realpath(path))
         else:
             return Path(self.project_root, path)
 
