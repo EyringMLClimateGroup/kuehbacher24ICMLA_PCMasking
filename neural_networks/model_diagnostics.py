@@ -647,10 +647,31 @@ class ModelDiagnostics():
             diff = "_diff" if diff else ""
             stats_str = f"_stats-{stats[0]}" if stats else ""
             t_steps = "-{}steps".format(nTime) if nTime else ""
+
             save_str = f"{varname}" + level + f"_map_time-{itime}" + t_steps + diff + stats_str + ".png"
             save_path = Path(save_dir, save_str)
             fig.savefig(save_path)
+
             print(f"\nSaved plot {save_path.name}.")
+
+            # save prediction and truth
+            pred_file = f"{varname}_cross_section_pred.p"
+            with open(os.path.join(save_dir, pred_file), "wb") as f:
+                pickle.dump(pred, f)
+            print(f"\nSaved cross section prediction {pred_file}.")
+
+            truth_file = f"{varname}_cross_section_truth.p"
+            with open(os.path.join(save_dir, truth_file), "wb") as f:
+                pickle.dump(t, f)
+            print(f"\nSaved cross section truth {truth_file}.")
+
+            # save stats
+            if stats:
+                stats_file = f"{varname}_cross_section_stats-{stats[0]}.p"
+                with open(os.path.join(save_dir, stats_file), 'wb') as f:
+                    pickle.dump(stats[1], f)
+                print(f"\nSaved cross section stats {stats_file}.")
+
         return fig, axes
 
     def get_profiles(
