@@ -3,12 +3,11 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=90
+#SBATCH --cpus-per-task=20
 #SBATCH --gpus=1
 #SBATCH --mem=0
-#SBATCH --prefer=a100_80
 #SBATCH --exclusive
-#SBATCH --time=5:00:00
+#SBATCH --time=3:00:00
 #SBATCH --account=bd1179
 #SBATCH --mail-type=END
 

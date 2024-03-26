@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --partition=booster
+#SBATCH --partition=develbooster
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=3:00:00
+#SBATCH --time=2:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=END

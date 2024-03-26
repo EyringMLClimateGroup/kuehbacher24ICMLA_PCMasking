@@ -4,16 +4,17 @@
 # Set parameters #
 ##################
 
-PROJECT_ROOT="$(dirname "${PWD}")"
+#PROJECT_ROOT="$(dirname "${PWD}")"
+PROJECT_ROOT="/p/scratch/icon-a-ml/kuehbacher1"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
-JOB_NAME="plots_cross_section_75_mask_net_bespoke_thresholds"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_95_mask_net_prediction_thresholds_spars1.0"
+JOB_NAME="plots_cross_section_95_mask_net_prediction_thresholds_spars1.0_val"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net_thresholds_val.yml"
 
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_cross_section_val"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"
@@ -85,8 +86,7 @@ shift "$(($OPTIND - 1))"
 if [[ $HPC == "jsc" ]]; then
   BATCH_SCRIPT="plot_double_yz_sbatch_jsc.sh"
 elif [[ $HPC == "dkrz" ]]; then
-  echo -e "\nNo batch script yet for DKRZ."
-  error_exit
+  BATCH_SCRIPT="plot_double_yz_sbatch_dkrz.sh"
 else
   echo -e "\nUnknown HPC ${HPC}."
   error_exit

@@ -1,15 +1,13 @@
 #!/bin/bash
-#SBATCH --partition=booster
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=20
+#SBATCH --gpus=1
 #SBATCH --mem=0
 #SBATCH --exclusive
 #SBATCH --time=3:00:00
-#SBATCH --account=icon-a-ml
-#SBATCH --mail-user=birgit.kuehbacher@dlr.de
+#SBATCH --account=bd1179
 #SBATCH --mail-type=END
 
 # Job name is passed with option -J and as command line argument $6
@@ -20,9 +18,9 @@
 
 display_help() {
   echo ""
-  echo "SLURM batch script plotting profiles."
+  echo "SLURM batch script for plotting cross sections."
   echo ""
-  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs plot_profiles_sbatch_jsc.sh -c config.yml -p plot_dir -l log_dir [-j job_name]"
+  echo "Usage: sbatch -J job_name --output slurm_output_logs --error slurm_error_logs plot_double_yz_sbatch_dkrz.sh -c config.yml -p plot_dir -l log_dir [-j job_name]"
   echo ""
   echo " Options:"
   echo " -c    YAML configuration file for CASTLE network."
@@ -109,4 +107,4 @@ PROJECT_ROOT="$(dirname "${PWD}")"
 
 echo "Start time: "$(date)
 
-conda run --cwd "$PROJECT_ROOT" --no-capture-output -n kuehbacher1_py3.9_tf python -u -m castle_offline_evaluation.main_castle_plot_profiles -c "$CONFIG" -p "$PLOT_DIR" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"
+conda run --cwd "$PROJECT_ROOT" --no-capture-output -n tensorflow_env python -u -m castle_offline_evaluation.main_castle_plot_double_yz -c "$CONFIG" -p "$PLOT_DIR" >"${PYTHON_DIR}/${JOB_NAME}_python_${SLURM_JOB_ID}.out"

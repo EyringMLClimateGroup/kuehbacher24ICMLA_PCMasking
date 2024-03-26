@@ -4,18 +4,19 @@
 # Set parameters #
 ##################
 
-PROJECT_ROOT="$(dirname "${PWD}")"
+#PROJECT_ROOT="$(dirname "${PWD}")"
+PROJECT_ROOT="/p/scratch/icon-a-ml/kuehbacher1"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
-JOB_NAME="shap_75_mask_net_bespoke_thresholds"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_100_mask_net_prediction_thresholds_spars1e-5"
+JOB_NAME="shap_100_mask_net_prediction_thresholds_spars1e-5_train"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net_thresholds_train.yml"
 INPUTS="${TRAINING_DIR}/inputs_list.txt"
 OUTPUTS="${TRAINING_DIR}/outputs_list.txt"
 MAP="${TRAINING_DIR}/outputs_map.txt"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/shap_train"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"

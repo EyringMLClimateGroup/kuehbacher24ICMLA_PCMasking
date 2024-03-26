@@ -4,11 +4,12 @@
 # Set parameters #
 ##################
 
-PROJECT_ROOT="$(dirname "${PWD}")"
+#PROJECT_ROOT="$(dirname "${PWD}")"
+PROJECT_ROOT="/p/scratch/icon-a-ml/kuehbacher1"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_75_mask_net_bespoke_thresholds"
-JOB_NAME="plots_lat_lon_75_mask_net_bespoke_thresholds"
-HPC="jsc" # jsc, dkrz
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_82_mask_net_bespoke_thresholds_spars1.0"
+JOB_NAME="plots_lat_lon_82_mask_net_bespoke_thresholds_spars1.0"
+HPC="dkrz" # jsc, dkrz
 
 CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 
@@ -84,8 +85,7 @@ shift "$(($OPTIND - 1))"
 if [[ $HPC == "jsc" ]]; then
   BATCH_SCRIPT="plot_double_xy_sbatch_jsc.sh"
 elif [[ $HPC == "dkrz" ]]; then
-  echo -e "\nNo batch script yet for DKRZ."
-  error_exit
+  BATCH_SCRIPT="plot_double_xy_sbatch_dkrz.sh"
 else
   echo -e "\nUnknown HPC ${HPC}."
   error_exit
