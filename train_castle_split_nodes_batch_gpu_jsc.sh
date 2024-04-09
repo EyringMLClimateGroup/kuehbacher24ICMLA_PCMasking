@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:4
 #SBATCH --mem=0
 #SBATCH --exclusive
-#SBATCH --time=24:00:00
+#SBATCH --time=6:00:00
 #SBATCH --account=icon-a-ml
 #SBATCH --mail-user=birgit.kuehbacher@dlr.de
 #SBATCH --mail-type=FAIL
