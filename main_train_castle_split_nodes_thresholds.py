@@ -31,24 +31,25 @@ def train_castle(config_file, nn_inputs_file, nn_outputs_file, train_index, perc
     print(f"\nLoading masking vector {(Path(*Path(masking_vector_file).parts[-4:]))}\n to get threshold bounds.")
     masking_vector = np.load(masking_vector_file)
 
-    lower_bound = np.percentile(masking_vector, 10)  # np.percentile(masking_vector, 20), 1e-4
+    lower_bound = 1e-4  # np.percentile(masking_vector, 20), 1e-4
     upper_bound = np.percentile(masking_vector, percentile)
     print(f"\nUsing thresholds between {lower_bound} and {upper_bound}.")
     thresholds = np.linspace(start=lower_bound, stop=upper_bound, num=20, endpoint=False)
 
     # Run training for each threshold
     history_per_threshold = dict()
-    min_threshold = 1e-6
+    min_threshold = lower_bound
 
     for idx, t in enumerate(thresholds):
-        t = round(t, 6)
+        t = round(t, 4)
+
+        if t == 0.:
+            print(f"\n\n--- Using minimum threshold t={min_threshold}.\n\n")
+            t = min_threshold
+
         if t in history_per_threshold.keys():
             print(f"\n\n\n--- Skipping threshold number {idx + 1} because value already occurred (t={t}).\n\n")
             continue
-
-        if t == 0.0:
-            print(f"\n\nUsing minimum threshold t={min_threshold}.\n\n")
-            t = min_threshold
 
         print(f"\n\n\n--- Training with threshold number {idx + 1} with value {t}.\n\n")
 
