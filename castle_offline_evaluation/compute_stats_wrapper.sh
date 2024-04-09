@@ -7,13 +7,13 @@
 #PROJECT_ROOT="$(dirname "${PWD}")"
 PROJECT_ROOT="/p/scratch/icon-a-ml/kuehbacher1"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_100_mask_net_prediction_thresholds_spars1e-5"
-JOB_NAME="compute_stats_100_mask_net_prediction_thresholds_spars1e-5_train"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_112_mask_net_prediction_thresholds_spars0.001_minus4k_ref2_val"
+JOB_NAME="compute_stats_112_mask_net_prediction_thresholds_spars0.001_minus4k_ref2_val"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_mask_net_thresholds_train.yml"
+CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
 
-PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/stats_train"
+PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/stats"
 mkdir -p "$PLOT_DIR"
 SLURM_LOG_DIR="${PLOT_DIR}/slurm_logs"
 mkdir -p "$SLURM_LOG_DIR"

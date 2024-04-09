@@ -4,13 +4,13 @@
 # Default argument values #
 ###########################
 # todo: extract base dir from config?
-base_dir="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_98_mask_net_prediction_thresholds_spars0.001"
+base_dir="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_106_mask_net_prediction_thresholds_spars0.001_minus4k_ref"
 HPC="gpu_threshold_jsc" # jsc, dkrz, gpu_jsc
 
-job_name_base="training_98_mask_net_prediction_thresholds_spars0.001"
+job_name_base="train_106_mask_net_pred_thresh_spars0.001_minus4k_ref"
 
 NN_INPUTS="${base_dir}/inputs_list.txt"
-NN_OUTPUTS="${base_dir}/outputs_restart.txt"
+NN_OUTPUTS="${base_dir}/outputs_list.txt"
 OUTPUTS_MAP="${base_dir}/outputs_map.txt"
 NN_CONFIG="${base_dir}/cfg_mask_net.yml"
 
@@ -21,7 +21,7 @@ NN_PER_NODE=4
 SEED=42
 LOAD_CKPT="False"
 CONTINUE_TRAINING="False"
-FINE_TUNE_CONFIG="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_74_pre_mask_net_spars0.001/cfg_pre_mask_net.yml"
+FINE_TUNE_CONFIG="/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_102_pre_mask_net_spars0.001_minus4k/cfg_pre_mask_net.yml"
 
 MAX_RUNNING_JOBS_DKRZ=20
 
