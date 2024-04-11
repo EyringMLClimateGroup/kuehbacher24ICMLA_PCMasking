@@ -28,12 +28,17 @@ def plot_profiles(i_time, n_time, lats, lons, stats, config, plot_dir):
     models = load_models(setup, skip_causal_phq=True)
     model_key = setup.nn_type
 
-    md = ModelDiagnostics(setup=setup, models=models[model_key])
+    if setup.nn_type == "CausalSingleNN":
+        dict_keys = models[model_key][setup.pc_alphas[0]][setup.thresholds[0]].keys()
+        models = models[model_key][setup.pc_alphas[0]][setup.thresholds[0]]
+    else:
+        dict_keys = models[model_key].keys()
+        models =  models[model_key]
+
+    md = ModelDiagnostics(setup=setup, models=models)
 
     var_unit_str_three_d = [("tphystnd-3.64", "K/s"), ("phq-14.35", "kg/(kg*s)")]  # "phq-14.35", "phq-3.64"
     three_d_keys = [(Variable_Lev_Metadata.parse_var_name(var_str), unit) for var_str, unit in var_unit_str_three_d]
-
-    dict_keys = models[model_key].keys()
 
     print("\nComputing profile plots ...\n")
     for var, unit in three_d_keys:
