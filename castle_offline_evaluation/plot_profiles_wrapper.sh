@@ -7,11 +7,11 @@
 #PROJECT_ROOT="$(dirname "${PWD}")"
 PROJECT_ROOT="/p/scratch/icon-a-ml/kuehbacher1"
 
-TRAINING_DIR="${PROJECT_ROOT}/output_castle/training_112_mask_net_prediction_thresholds_spars0.001_minus4k_ref2_val"
-JOB_NAME="plot_profiles_112_mask_net_prediction_thresholds_spars0.001_minus4k_ref2_val"
+TRAINING_DIR="${PROJECT_ROOT}/output_castle/eval_nando/causal_single_nn/models_arch-rasp_thrs-opt-mse6"
+JOB_NAME="plot_profiles_causal_single_nn"
 HPC="jsc" # jsc, dkrz
 
-CONFIG="${TRAINING_DIR}/cfg_mask_net.yml"
+CONFIG="${TRAINING_DIR}/cfg_causal_single_nn_diagnostics.yml"
 
 PLOT_DIR="${TRAINING_DIR}/plots_offline_evaluation/plots_profiles"
 mkdir -p "$PLOT_DIR"
