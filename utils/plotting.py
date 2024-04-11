@@ -345,7 +345,7 @@ def plot_matrix(
         #         axy.spines['left'].set_visible(False)
         axy.set_xlim(-1., 100.)
         # font size 12, bbox_to_anchor=(1.8, -0.15)
-        axy.legend(prop={'size': 11}, bbox_to_anchor=(1.15, -0.15))
+        axy.legend(prop={'size': 11}, loc="upper left")#bbox_to_anchor=(1.15, -0.15))
         # axy.legend(loc="upper left", prop={'size': 8})
 
     # fig.suptitle(pc_alpha)
