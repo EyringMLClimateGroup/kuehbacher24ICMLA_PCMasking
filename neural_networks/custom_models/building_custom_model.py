@@ -17,19 +17,10 @@ from neural_networks.custom_models.legacy.castle_model import CASTLE
 from neural_networks.custom_models.mask_model import MaskNet
 from utils.variable import Variable_Lev_Metadata
 
-
-# Todo:
-#  - Implement partial training
 def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None, eager_execution=False, strategy=None,
                        seed=None):
     """
-    Builds and compiles a neural network with CASTLE (Causal Structure Learning) regularization
-    from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
-    https://doi.org/10/grw6pt.
-
-    The output of the model is an array of shape [batch_size, num_x_inputs + 1].
-    The first element of the output (output[:, 0]) contains the prediction for the target variable y, while
-    the other outputs are reconstructions of the regressors x.
+    Builds and compiles a custom neural network model.
 
     Args:
         setup (utils.setup.SetupNeuralNetworks): A utils.setup.SetupNeuralNetworks instance containing
@@ -44,11 +35,11 @@ def build_custom_model(setup, num_x_inputs, learning_rate=0.001, output_var=None
             Note that a seeded initializer will produce the same random values across multiple calls.
 
     Returns:
-        tf.keras.Model: A tf.keras model designed with CASTLE regularization.
+        tf.keras.Model: A tf.keras model.
 
     Raises:
         ValueError: If the `setup.nn_type` is not one
-                    `['CastleOriginal', 'CastleAdapted', 'GumbelSoftmaxSingleOutputModel', 'castleNN]`.
+                    `['CastleOriginal', 'CastleAdapted', 'PreMaskNet', 'GumbelSoftmaxSingleOutputModel', 'MaskNet']`.
     """
     # Enable eager execution for debugging
     tf.config.run_functions_eagerly(eager_execution)

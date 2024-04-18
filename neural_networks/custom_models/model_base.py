@@ -11,13 +11,7 @@ from tensorflow import keras
 
 @tf.keras.utils.register_keras_serializable()
 class ModelBase(tf.keras.Model, ABC):
-    """Abstract base class for a neural network model with CASTLE (Causal Structure Learning) regularization
-    adapted from Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery.
-    https://doi.org/10/grw6pt.
-
-    The output of the model is an array of shape `[batch_size, num_x_inputs + 1]`.
-    The first element of the output (`output[:, 0]`) contains the prediction for the target variable `y`, while
-    the other outputs are reconstructions of the regressors `x`.
+    """Abstract base class for custom neural network model.
 
     Args:
         num_x_inputs (int): The number of regressors, i.e. the x-variables.

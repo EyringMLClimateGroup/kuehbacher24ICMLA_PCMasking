@@ -14,7 +14,7 @@ from neural_networks.load_models import get_vector_mask_net_threshold
 
 
 class ModelDescription:
-    """ Object that stores a Keras model and metainformation about it.
+    """ Object that stores a Keras model and meta information about it.
     
     Attributes
     ----------
