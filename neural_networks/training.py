@@ -26,8 +26,7 @@ def train_all_models(model_descriptions, setup, from_checkpoint=False, continue_
     histories = dict()
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     for model_description in model_descriptions:
-        # todo: include CASTLE models?
-        # This will not affect CASTLE models which are saved as .keras files
+        # This will not affect custom models which are saved as .keras files
         out_model_name = model_description.get_filename() + '_model.h5'
         out_path = str(model_description.get_path(setup.nn_output_path))
 

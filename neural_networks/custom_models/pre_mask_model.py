@@ -1,7 +1,3 @@
-# Implementation for CASTLE neural network
-# Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
-# Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
-# https://github.com/trentkyono/CASTLE
 import tensorflow as tf
 from tensorflow import keras
 
@@ -10,6 +6,53 @@ from neural_networks.custom_models.model_base import ModelBase, get_kernel_initi
 
 @tf.keras.utils.register_keras_serializable()
 class PreMaskNet(ModelBase):
+    """Tensorflow model for training a PCMasking framework network in pre-masking mode.
+
+    Args:
+        num_x_inputs (int): The number inputs (the observed variables x).
+        hidden_layers (list of int): A list containing the hidden units for all hidden layers.
+            ``len(hidden_layers)`` gives the number of hidden layers.
+        activation (str, case insensitive): A string specifying the activation function,
+            e.g. `relu`, `linear`, `sigmoid`, `tanh`. In addition to tf.keras specific strings for
+            built-in activation functions, `LeakyReLU` can be used to specify leaky ReLU activation function.
+            See also https://www.tensorflow.org/api_docs/python/tf/keras/layers/Activation.
+        lambda_sparsity (float): Weighting coefficient for sparsity regularization loss.
+        relu_alpha (float): Negative slope coefficient for leaky ReLU activation function. Default: 0.3.
+        seed (int): Random seed.
+        kernel_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the
+            weight matrix of the dense input layer.
+        kernel_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the
+            weight matrix of the dense hidden layers.
+        kernel_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the
+            weight matrix of the dense output layer.
+        bias_initializer_input_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense input layer.
+        bias_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense hidden layers.
+        bias_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense output layer.
+        kernel_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the weight matrix of the dense input layers.
+        kernel_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the weight matrix of the dense hidden layers.
+        kernel_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the weight matrix of the dense output layer.
+        bias_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense input layer.
+        bias_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense hidden layers.
+        bias_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense output layer.
+        activity_regularizer_input_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense input layer (its "activation").
+        activity_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense hidden layers (its "activation").
+        activity_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense output layer (its "activation").
+        name (string): Name of the model. Default: "pre_mask_net".
+        **kwargs: Keyword arguments
+    """
+
     def __init__(self,
                  num_x_inputs,
                  hidden_layers,
@@ -85,6 +128,8 @@ class PreMaskNet(ModelBase):
 
         outputs = output_layer(hidden_outputs)
 
+        # We have to initialize this way in order for Tensorflow to treat the model as subclassed
+        # function model (which it only realizes when super.__init__ is called with input and output tensor)
         super(PreMaskNet, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
                                          activation=activation, seed=seed,
                                          kernel_initializer_input_layers=kernel_initializer_input_layers,
@@ -174,17 +219,12 @@ class PreMaskNet(ModelBase):
         """Returns the config of `PreMaskNet`.
         Overrides base method.
 
-       Config is a Python dictionary (serializable) containing the
-       configuration of a `CASTLE` model. This allows
-       the model to be re-instantiated later (without its trained weights)
+       Config is a Python dictionary (serializable) containing the configuration of a `PreMaskNet` model.
+       This allows the model to be re-instantiated later (without its trained weights)
        from this configuration.
 
-       Note that `get_config()` does not guarantee to return a fresh copy of
-       dict every time it is called. The callers should make a copy of the
-       returned dict if they want to modify it.
-
        Returns:
-           Python dictionary containing the configuration of `CASTLE`.
+           Python dictionary containing the configuration of `PreMaskNet`.
        """
         config = super(PreMaskNet, self).get_config()
         # These are the constructor arguments

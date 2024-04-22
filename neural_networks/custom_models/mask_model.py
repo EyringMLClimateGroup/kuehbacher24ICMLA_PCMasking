@@ -1,11 +1,49 @@
-import tensorflow as tf
 import keras.saving.serialization_lib
+import tensorflow as tf
 
 from neural_networks.custom_models.model_base import ModelBase, get_kernel_initializer
 
 
 @tf.keras.utils.register_keras_serializable()
 class MaskNet(ModelBase):
+    """Tensorflow model for training a PCMasking framework network in masking mode.
+
+    Args:
+        num_x_inputs (int): The number inputs (the observed variables x).
+        hidden_layers (list of int): A list containing the hidden units for all hidden layers.
+            ``len(hidden_layers)`` gives the number of hidden layers.
+        activation (str, case insensitive): A string specifying the activation function,
+            e.g. `relu`, `linear`, `sigmoid`, `tanh`. In addition to tf.keras specific strings for
+            built-in activation functions, `LeakyReLU` can be used to specify leaky ReLU activation function.
+            See also https://www.tensorflow.org/api_docs/python/tf/keras/layers/Activation.
+        masking_vector (tf.Tensor or np.array): Masking vector.
+        threshold (float): Threshold for masking vector.
+        relu_alpha (float): Negative slope coefficient for leaky ReLU activation function. Default: 0.3.
+        seed (int): Random seed.
+        kernel_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the
+            weight matrix of the dense hidden layers.
+        kernel_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the
+            weight matrix of the dense output layer.
+        bias_initializer_hidden_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense hidden layers.
+        bias_initializer_output_layers (tf.keras.initializers.Initializer): Initializer for the bias vector
+            of the dense output layer.
+        kernel_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the weight matrix of the dense hidden layers.
+        kernel_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the weight matrix of the dense output layer.
+        bias_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense hidden layers.
+        bias_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+            to the bias vector of the dense output layer.
+        activity_regularizer_hidden_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense hidden layers (its "activation").
+        activity_regularizer_output_layers (tf.keras.regularizers.Regularizer): Regularizer function applied
+             to the output of the dense output layer (its "activation").
+        name (string): Name of the model. Default: "mask_net".
+        **kwargs: Keyword arguments
+    """
+
     def __init__(self,
                  num_x_inputs,
                  hidden_layers,
@@ -25,19 +63,12 @@ class MaskNet(ModelBase):
                  activity_regularizer_hidden_layers=None,
                  activity_regularizer_output_layers=None,
                  name="mask_net", **kwargs):
-
         num_outputs = 1
 
         # Masking vector
         masking_vector = tf.Variable(masking_vector, trainable=False, name="masking_vector")
 
-        # Quantitative (mask anything below threshold but keep original values for above threshold values)
-        # masking_vector.assign(tf.where(masking_vector > threshold,
-        #                                x=masking_vector,
-        #                                y=tf.zeros_like(masking_vector),
-        #                                name="threshold_masking_vector"))
-
-        # Qualitative (only 0s and 1s)
+        # Threshold masking vector
         masking_vector.assign(tf.where(masking_vector > threshold,
                                        x=tf.ones_like(masking_vector),
                                        y=tf.zeros_like(masking_vector),
@@ -82,6 +113,8 @@ class MaskNet(ModelBase):
 
         outputs = output_layer(hidden_outputs)
 
+        # We have to initialize this way in order for Tensorflow to treat the model as subclassed
+        # function model (which it only realizes when super.__init__ is called with input and output tensor)
         super(MaskNet, self).__init__(num_x_inputs=num_x_inputs, hidden_layers=hidden_layers,
                                       activation=activation, seed=seed,
                                       kernel_initializer_hidden_layers=kernel_initializer_hidden_layers,
@@ -131,6 +164,16 @@ class MaskNet(ModelBase):
         return tf.reduce_mean(tf.keras.losses.mse(y_true, yx_pred), name="prediction_loss_reduce_mean")
 
     def get_config(self):
+        """Returns the config of `MaskNet`.
+        Overrides base method.
+
+        Config is a Python dictionary (serializable) containing theconfiguration of a `MaskNet` model.
+        This allows the model to be re-instantiated later (without its trained weights)
+        from this configuration.
+
+        Returns:
+            Python dictionary containing the configuration of `MaskNet`.
+       """
         config = super(MaskNet, self).get_config()
         # These are the constructor arguments
         config.update(
@@ -145,6 +188,17 @@ class MaskNet(ModelBase):
 
     @classmethod
     def from_config(cls, config):
+        """Creates a model from its config.
+
+       This method is the reverse of `get_config`, capable of instantiating the same model
+       from the config dictionary.
+
+       Args:
+           config: A Python dictionary, typically the output of get_config.
+
+       Returns:
+           A model instance.
+        """
         masking_vector = config.pop("masking_vector")
         masking_vector = keras.saving.serialization_lib.deserialize_keras_object(masking_vector)
         return cls(**config, masking_vector=masking_vector)
