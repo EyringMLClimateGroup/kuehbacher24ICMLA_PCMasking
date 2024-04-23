@@ -1,7 +1,3 @@
-# Implementation for CASTLE neural network
-# Paper: Kyono et al. 2020. CASTLE: Regularization via Auxiliary Causal Graph Discovery. https://doi.org/10/grw6pt
-# Original code at https://github.com/vanderschaarlab/mlforhealthlabpub/tree/main/alg/castle and
-# https://github.com/trentkyono/CASTLE
 import pickle
 from pathlib import Path
 
