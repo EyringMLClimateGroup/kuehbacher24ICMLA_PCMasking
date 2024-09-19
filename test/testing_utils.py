@@ -7,10 +7,10 @@ import numpy as np
 import tensorflow as tf
 from scipy import stats as stats
 
-from neural_networks.data_generator import build_valid_generator
-from neural_networks.models import generate_models
-from neural_networks.training import train_all_models
-from utils.variable import Variable_Lev_Metadata
+from pcmasking.neural_networks.data_generator import build_valid_generator
+from pcmasking.neural_networks.models import generate_models
+from pcmasking.neural_networks.training import train_all_models
+from pcmasking.utils.variable import Variable_Lev_Metadata
 
 
 def delete_output_dirs(model_description, setup):
@@ -73,7 +73,6 @@ def build_test_gen(model_description, setup):
     setup.val_batch_size = 32
 
     return build_valid_generator(input_vars_dict, output_vars_dict, setup,
-                                 input_pca_vars_dict=setup.input_pca_vars_dict,
                                  num_replicas_distributed=num_replicas)
 
 

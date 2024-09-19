@@ -3,9 +3,9 @@ import os
 import pytest
 from mock import patch
 
-from neural_networks.load_models import load_models
-from neural_networks.models import generate_models, ModelDescription
-from neural_networks.training import train_all_models
+from pcmasking.neural_networks.load_models import load_models
+from pcmasking.neural_networks.models import generate_models, ModelDescription
+from pcmasking.neural_networks.training import train_all_models
 from test.testing_utils import delete_output_dirs, set_memory_growth_gpu, train_model_if_not_exists, set_strategy
 
 try:

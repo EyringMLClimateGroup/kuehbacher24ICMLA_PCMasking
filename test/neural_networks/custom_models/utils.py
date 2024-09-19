@@ -33,7 +33,7 @@ def assert_identical_attributes(loaded_model, model):
     assert (len(loaded_model.get_weights()) == len(model.get_weights()))
 
 
-def train_castle(model, num_inputs, epochs=2, n_samples=160, batch_size=16, strategy=None):
+def train_model(model, num_inputs, epochs=2, n_samples=160, batch_size=16, strategy=None):
     train_ds = create_dataset(num_inputs, n_samples=n_samples, batch_size=batch_size, strategy=strategy)
     val_ds = create_dataset(num_inputs, n_samples=n_samples, batch_size=batch_size, strategy=strategy)
 

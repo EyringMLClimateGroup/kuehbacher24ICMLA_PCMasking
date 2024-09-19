@@ -1,5 +1,4 @@
 # NN_Creation
-# cfg_castle_adapted.yml
 ---
 documentation:
   description: Options (specifications) for the "NN_Creation" script.
@@ -30,15 +29,14 @@ spcam_parents: [ 'ps', 'lhflx' ] # [ 'tbp','qbp','vbp','ps','solin','shflx','lhf
 spcam_children: [ 'flnt', 'prect' ] # [ 'tphystnd','phq','fsns','flns','fsnt','flnt','prect' ]
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
-# PCA. independence_test : "pca"
-independence_test: "None" # todo: If PCA, the code doesn't work because of l. 21 in neural_networks/data_generator.py: if setup.ind_test_name == "pca":
+
+independence_test: "None" 
 pc_alphas: [ 0.01 ] # [0.001,0.01,0.1]; [0.01,0.05]
 region: [ [ -90,90 ] , [ 0.,359. ] ]
 lim_levels: False
 # Model levels : [3.64, 7.59, 14.36, 24.61, 38.27, 54.6, 72.01, 87.82, 103.32, 121.55, 142.99, 168.23, 197.91, 232.83, 273.91, 322.24, 379.1, 445.99, 524.69, 609.78, 691.39, 763.4, 820.86, 859.53, 887.02, 912.64, 936.2, 957.49, 976.33, 992.56]
 target_levels: False # [197.91] # False
-# Rasp. TB: "./SPCAM_Rasp_causal_links_3mth"; "./SPCAM_Rasp_causal_links_3mth_v2";
-#           "./SPCAM_Rasp_causal_links_3mth_pearsonr_v2"
+
 output_folder: "./SPCAM_Rasp_causal_links_3mth_v2"
 plots_folder: "plots"
 verbosity: 1
@@ -67,7 +65,7 @@ plot_file_pattern:
 # Neural Network configuration
 # ============================
 
-nn_type: "MaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEOriginal" ; "CASTLEAdapted"
+nn_type: "MaskNet" 
 
 # Paths are relative to project root
 nn_output_path: test/output/models
@@ -76,7 +74,7 @@ input_order: [ ps, lhflx ] # [ qbp, tbp, vbp, ps, solin, shflx, lhflx ]
 output_order: [ flnt, prect ] # [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ]
 
 hidden_layers: [ 32, 32 ]  # [ 256,256,256,256,256,256,256,256,256 ]
-activation: LeakyReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
+activation: LeakyReLU 
 
 
 # Training configuration
@@ -84,8 +82,7 @@ activation: LeakyReLU # LeakyReLU. Use ReLU as in original CASTLE implementation
 ## DATASETS.
 # Tom's: SPCAM_tb_prepoc
 train_data_folder: "test/test_data/"  #"./SPCAM_tb_preproc", "test/test_data/"
-# Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TRAIN_For_Nando_shuffle.nc
-#                                 2021_09_02_VALID_For_Nando.nc
+
 train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle_perc0-0001.nc  # 2021_09_02_TRAIN_For_Nando_shuffle.nc
 valid_data_fn: 2021_09_02_VALID_For_Nando_perc0-0002.nc  #2021_09_02_VALID_For_Nando.nc
 epochs: 2
@@ -98,7 +95,7 @@ normalization_fn: 001_norm_for_tb_dataset.nc
 
 input_sub: mean
 input_div: maxrs
-out_scale_dict_folder: ./nn_config/scale_dicts/ # ./nn_config/scale_dicts/
+out_scale_dict_folder: ./config/scale_dicts/ # ./config/scale_dicts/
 out_scale_dict_fn: 002_pnas_scaling.pkl
 batch_size: 256  #1024
 val_batch_size: 256
@@ -187,13 +184,7 @@ kernel_initializer_output_layers: "HeUniform"
 # Gunnar's: SPCAM_gb_prepoc; Tom's: SPCAM_tb_preproc
 # Tom's: SPCAM_tb_prepoc; Aqua_Generalization_Test_Sets
 test_data_folder: "test/test_data/" # "./SPCAM_tb_preproc"
-# Gunnar's. Train (year/month): 002_train_1_<year/month>.nc 002_train_1_<year/month>_shuffle.nc
-#           Valid (year/month): 000_valid_1_<year/month>.nc
-# Tom's. Case: TRAIN/VALID. Rasp: 2021_09_02_TEST_For_Nando_shuffle.nc
-#                                 2021_09_02_TEST_For_Nando.nc
-#                          Gener: 2022_02_07_TEST_For_Nando_m4K.nc; 2022_02_07_TEST_For_Nando_p4K.nc
-#                          ClInv: 2021_09_03_TEST_For_Nando_ClInv_shuffle.nc
-#                                 2021_09_03_TEST_For_Nando_ClInv.nc
+
 test_data_fn: 2021_09_02_TEST_For_Nando_shuffle_perc0-0001.nc # 2021_09_02_VALID_For_Nando.nc #
 # Diagnostics
 diagnostics: [ 'map' ]  # 'map'

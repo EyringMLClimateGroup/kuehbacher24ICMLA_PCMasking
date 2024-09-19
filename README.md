@@ -1,168 +1,42 @@
-# CASTLE Branch for Spurious Links Project
+# Towards Physically Consistent Deep Learning for Climate Model Parameterizations
 
+Developers: Birgit K&uuml;hbacher.   
 
-### Requirements
+Original [CI-NN](https://github.com/EyringMLClimateGroup/iglesias-suarez23jgr_CausalNNCAM)[^1] code by Fernando Iglesias-Suarez, Breixo Soliño Fernández.  
+Original CBRAIN-CAM[^2] code by Stephan Rasp.  
 
-Requirements are listed in `dependencies.yml`.
+This repository provides the source code used in the paper [Towards Physically Consistent Deep Learning for Climate Model Parameterization](https://arxiv.org/abs/2406.03920) by K&uuml;hbacher et al. 
 
-### Parallel and Distributed Training
+[//]: # (Corresponding DOI: todo)
 
-There are two options for parallelization of training CASTLE models:
+## Installation
 
-- Splitting the training of a list of models **across multiple nodes**.  
-  The training runs for the individual models are independent of each other. Therefore, this
-  form of parallelization is simply done by splitting the list of models and running the
-  training on multiple SLURM nodes. You can do this with `train_castle_split_nodes_wrapper.sh`
+To install the dependencies, it is recommended to use Anaconda or Conda. An environment file is provided in `dependencies.yml`.
 
-- Splitting the training of a single model **across multiple GPUs**.  
-  This form of parallelization happens internally
-  using [tf.distributed.MirroredStrategy](https://www.tensorflow.org/guide/distributed_training#mirroredstrategy)
-  and is done when `do_mirrored_strategy=True` in the configuration file.
+## How to reproduce the results
 
-  > ⚠️ Currently, `do_mirrored_strategy` is only read for CASTLE models in `SetupNeuralNetworks`.
+The results described in the paper where obtained by executing the following steps:
 
-### Start Training Runs
+1. Specify network and training configuration in configuration files for PreMaskNet (pre-masking phase) and MaskNet (masking phase). <br>Example configuration files can be found in `config`. 
+    <p> <br> </p>
+2. Run [main_train_pcmasking.py](main_train_pcmasking.py) for PreMaskNet. <br>Usage:`$ python main_train_pcmasking.py -c config.yml -s 42`
+    * [main_train_pcmasking.py](main_train_pcmasking.py) trains all 65 models. It is possible to train just a subset of models by using [main_train_pcmasking_subset.py](main_train_pcmasking_subset.py). <br>Usage: `$ python main_train_pcmasking_subset.py -c config.yml -i inputs.txt -o outputs.txt -x "1-10" -s 42` <br>This call will train only networks for the variables with indices 1-10 in `outputs.txt`.
+    * The lists of input and output variables can be generated with [main_generate_inputs_outputs_lists.py](main_generate_inputs_outputs_lists.py). <br>Usage: `$ python create_inputs_outputs.py -c config.yml`
+    <p> <br> </p>
+3. (Optional) Update the masking vector directory in the MaskNet configuration. 
+    <p> <br> </p>
+4. Run [main_train_mask_net_thresholds.py](main_train_mask_net_thresholds.py) to train MaskNet for multiple thresholds based on the masking vector values. <br>Usage: `$ python main_train_mask_net_thresholds.py -c config.yml -i inputs.txt -o outputs.txt -x 0 -r 75 -f fine_tune_cfg.yml -s 42` <br>This call will train only the variable with index 0 in `outputs.txt` for 20 threshold values between 0.001 and the 75th percentile of the values in the masking vector. <br>The model weights are reloaded from `fine_tune_cfg.yml`.  
+    * If training is to be done with a single threshold, use [main_train_pcmasking.py](main_train_pcmasking.py) or [main_train_pcmasking_subset.py](main_train_pcmasking_subset.py). 
+    <p> <br> </p>
+5. Evaluate trained PCMasking networks.
+    * To compute SHAP values: [main_compute_shap_values.py](pcmasking%2Foffline_evaluation%2Fmain_compute_shap_values.py). <br>Usage: `$ python main_compute_shap_values.py -c config.yml -o outputs.txt -m map.txt --plot_directory ./output --n_time 1440 --n_samples 1000 --metric abs_mean` 
+    * To plot SHAP values: Run the notebook [offline_evaluation_shap.ipynb](notebooks%2Foffline_evaluation_shap.ipynb)
+    * To compute vertical cross-sections (including $R^2$): [main_plot_cross_section.py](pcmasking%2Foffline_evaluation%2Fmain_plot_cross_section.py). <br>Usage: `$ python main_plot_cross_section.py -c config.yml --plot_directory ./output`
+    * To compute vertical profiles (including $R^2$): [main_plot_profiles.py](pcmasking%2Foffline_evaluation%2Fmain_plot_profiles.py). <br>Usage: `$ python main_plot_profiles.py -c config.yml --plot_directory ./output`
+    * To plot vertical cross-sections and profiles (including $R^2$): Run the notebook [offline_evaluation_profile_cross_section_r2.ipynb](notebooks%2Foffline_evaluation_profile_cross_section_r2.ipynb).
+    * To plot physical drivers: Run the notebook [offline_evaluation_physical_drivers.ipynb](notebooks%2Foffline_evaluation_physical_drivers.ipynb). 
+   
+<p> <br><br> </p>
 
-There are three shell scripts, which can be used for training:
-
-- `train_castle_batch.sh`
-- `train_castle_split_nodes_wrapper.sh`
-- `train_castle_split_nodes_batch.sh`
-
-`train_castle_batch.sh` is used for training all networks on one SLURM nodes, while the latter two
-can be used to parallelize training across multiple SLURM nodes.
-All three scripts support distributed training
-via [tf.distributed.MirroredStrategy](https://www.tensorflow.org/guide/distributed_training#mirroredstrategy)
-if `do_mirrored_strategy=True` in the given configuration file.
-
-> ℹ️ The following commands must be run from the root directory of the repository,
-> i.e. `iglesias-suarez2yxx_spuriouslinks/`.
->
-
-#### Simple Training
-
-`train_castle_batch.sh` is a SLURM run script that calls `main_train_castle.py`.
-The configuration file for the run has to be set in the main file and there are no other arguments required.
-To start training, run
-
-```shell
-sbatch train_castle_batch.sh
-```
-
-#### Parallel Training
-
-In order to split the training across multiple SLURM nodes, you can use the shell
-script `train_castle_split_nodes_wrapper.sh`.
-You can make it executable with
-
-```shell
-chmod +x train_castle_split_nodes_wrapper.sh
-```
-
-and then run
-
-```shell
-./train_castle_split_nodes_wrapper -h
-```
-
-for usage instructions.
-
-`train_castle_split_nodes_wrapper.sh` calls the SLURM run script `train_castle_split_nodes_batch.sh`.
-In the latter you have to specify the output files for SLURM and Python logging.
-
-You can also call `train_castle_split_nodes_batch.sh` directly, but check the expected command line arguments
-in the file. There is no help for this script and the arguments are not checked for correctness.
-
-In order to generate input/output lists in the form of .txt files automatically from the config file, run:
-
-```shell
-python -m main_generate_inputs_outputs_lists -i input_list.txt -o output_list.txt -c castle_config.yml -o outputs_mapping.txt
-```
-
-### Offline Evaluation
-
-Jupyter notebooks with offline evaluation for CASTLE models can be found  `notebooks_castle_offline_evaluation/`.
-Additionally, you can use Python scripts to run the same evaluations.
-These scripts are located in `castle_offline_evaluation/`.
-To run offline evaluation with Python scripts in the background, you can use
-
-```shell
-nohup python -m offline_eval_script > log_file.txt 2&>1 &
-```
-
-### Tests
-
-You can find some tests for the CASTLE implementation in `notebooks_castle/test/`.
-These are by no means complete and don't follow strict unit testing guidelines,
-but they are useful for testing whether functionality has been destroyed after code changes.  
-
-`notebooks_castle/test/config/` contains two configuration files that can be used for testing 
-(they allow for quicker test runs, as the number of network inputs/outputs, hidden layers etc. 
-is reduced).   
-
-You can use the notebook `notebooks_castle/split_data.ipynb` to generate small datasets for 
-testing from the normal training data. The path to the test data has to be specified in the 
-config files. 
-
-### Git Branch
-
-To switch to this branch, run the command
-
-```shell
-git checkout castle
-```
-
-To pull or push on this branch, use
-
-```shell
-git pull origin castle
-```
-
-and
-
-```shell
-git push origin castle
-```  
-
-&nbsp;
-
-
-> ℹ️ You can ommit `origin castle` if your branch pointer is currently on `castle`.
-> You can check this with
-> ```shell
-> git log --oneline --decorate --graph --all
-> ```
-> or
-> ```shell
-> git status
-> ```
-> For more information on branches see
-> this [Git branches guide](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell).
-
-
-### SHAP package
-
-Two lines in the SHAP (version 0.42.1) package are changed:  
-```diff
-   112  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
--  113  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
-+  113  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(self.model_output.shape) == 3), "The model output must be a vector or a single value!"
-```
-
-```diff
-   744  op_handlers["Relu"] = nonlinearity_1d(0)
-+  745  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
-```
-
-
-If you are using SHAP package version 0.43.0, the following lines need to be changed:   
-```diff
-   106  assert type(self.model_output) != list, "The model output to be explained must be a single tensor!"
--  107  assert len(self.model_output.shape) < 3, "The model output must be a vector or a single value!"
-+  107  assert len(self.model_output.shape) < 3 or (self.model_output.shape[-1] == 1 and len(self.model_output.shape) == 3), "The model output must be a vector or a single value!"
-```
-
-```diff
-   727  op_handlers["Relu"] = nonlinearity_1d(0)
-+  728  op_handlers["LeakyRelu"] = nonlinearity_1d(0)
-```
+[^1]: F. Iglesias-Suarez et al., “Causally-Informed Deep Learning to Improve Climate Models and Projections,” Journal of Geophysical Research: Atmospheres, vol. 129, no. 4, 2024, doi: 10/gtmfpk.  
+[^2]: S. Rasp, M. S. Pritchard, and P. Gentine, “Deep learning to represent subgrid processes in climate models,” Proc. Natl. Acad. Sci. U.S.A., vol. 115, no. 39, pp. 9684–9689, Sep. 2018, doi: 10/gfcpxb.

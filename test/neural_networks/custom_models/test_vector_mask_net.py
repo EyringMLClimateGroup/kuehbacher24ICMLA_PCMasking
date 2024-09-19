@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from neural_networks.custom_models.building_custom_model import build_custom_model
-from neural_networks.custom_models.mask_model import MaskNet
-from test.neural_networks.custom_models.utils import assert_identical_attributes, train_castle, create_dataset, \
+from pcmasking.neural_networks.custom_models.building_custom_model import build_custom_model
+from pcmasking.neural_networks.custom_models.mask_model import MaskNet
+from test.neural_networks.custom_models.utils import assert_identical_attributes, train_model, create_dataset, \
     print_plot_model_summary
 from test.testing_utils import set_memory_growth_gpu, generate_output_var_list
 
@@ -39,7 +39,7 @@ def test_create_mask_net(setup_str, strategy, seed, request):
 
     var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
     model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
-                               eager_execution=True, strategy=strategy, seed=seed)
+                               eager_execution=False, strategy=strategy, seed=seed)
 
     assert (isinstance(model, MaskNet))
     assert (isinstance(model.outputs, list))
@@ -58,11 +58,11 @@ def test_train_mask_net(setup_str, strategy, seed, request):
 
     var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
     model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
-                               eager_execution=True, strategy=strategy, seed=seed)
+                               eager_execution=False, strategy=strategy, seed=seed)
 
     epochs = 2
     network_inputs = num_inputs
-    history = train_castle(model, network_inputs, epochs=epochs, strategy=strategy)
+    history = train_model(model, network_inputs, epochs=epochs, strategy=strategy)
 
     assert (isinstance(history, tf.keras.callbacks.History))
 
@@ -84,7 +84,7 @@ def test_predict_mask_net(setup_str, strategy, seed, request):
 
     var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
     model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
-                               eager_execution=True, strategy=strategy, seed=seed)
+                               eager_execution=False, strategy=strategy, seed=seed)
 
     n_samples = 160
     batch_size = 16
@@ -109,9 +109,9 @@ def test_save_load_mask_net(setup_str, strategy, seed, request):
 
     var = generate_output_var_list(setup)[0] if "threshold_file" in setup_str else None
     model = build_custom_model(setup, num_inputs, setup.init_lr, output_var=var,
-                               eager_execution=True, strategy=strategy, seed=seed)
+                               eager_execution=False, strategy=strategy, seed=seed)
 
-    _ = train_castle(model, num_inputs, epochs=1, strategy=strategy)
+    _ = train_model(model, num_inputs, epochs=1, strategy=strategy)
 
     model_save_name = "model_" + setup_str + ".keras"
     weights_save_name = "model_" + setup_str + "_weights.h5"

@@ -1,9 +1,9 @@
 import pytest
 
-from neural_networks.load_models import load_model_weights_from_checkpoint, \
+from pcmasking.neural_networks.load_models import load_model_weights_from_checkpoint, \
     load_model_from_previous_training
-from neural_networks.models import generate_models
-from neural_networks.training import train_all_models
+from pcmasking.neural_networks.models import generate_models
+from pcmasking.neural_networks.training import train_all_models
 from test.testing_utils import set_memory_growth_gpu, train_model_if_not_exists, \
     build_test_gen, set_strategy
 

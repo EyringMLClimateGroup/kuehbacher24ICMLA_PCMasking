@@ -1,4 +1,4 @@
-from neural_networks.custom_models.layers.masked_dense_layer import MaskedDenseLayer
+from pcmasking.neural_networks.custom_models.layers.masked_dense_layer import MaskedDenseLayer
 import numpy as np
 from test.testing_utils import set_memory_growth_gpu
 
