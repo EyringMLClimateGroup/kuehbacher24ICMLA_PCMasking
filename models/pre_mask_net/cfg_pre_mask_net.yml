@@ -68,7 +68,7 @@ plot_file_pattern:
 
 nn_type: "PreMaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEAdapted" ; "CASTLEOriginal"
 
-nn_output_path: /p/scratch/icon-a-ml/kuehbacher1/output/training_74_pre_mask_net_spars0.001/models
+nn_output_path: models/pre_mask_net/training
 
 input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ] # [ qbp ]
 output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ] #[ fsnt, fsns ]
@@ -87,7 +87,7 @@ train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle.nc  # 2021_09_02_TRAIN_For_Nan
 valid_data_fn: 2021_09_02_VALID_For_Nando.nc  #2021_09_02_VALID_For_Nando.nc
 epochs: 9
 train_verbose: 2 # 0:Silent; 1:Continuous update; 2:Summary on epochs
-tensorboard_folder: /p/scratch/icon-a-ml/kuehbacher1/output/training_74_pre_mask_net_spars0.001/tensorboard
+tensorboard_folder: models/pre_mask_net/tensorboard
 
 # From Tom https://github.com/tbeucler/CBRAIN-CAM/tree/master/notebooks/tbeucler_devlog/UW_DATA
 normalization_folder: "./SPCAM_tb_preproc"  #./SPCAM_tb_preproc, "test/test_data/"
@@ -107,7 +107,7 @@ step_lr: 3 # From 006_8col_pnas_exact.yml
 divide_lr: 5 # From train.py (default)
 
 # Early Stopping
-train_patience: 5 # TODO: This number was chosen arbitrarily
+train_patience: 5
 
 
 # PreMaskNet

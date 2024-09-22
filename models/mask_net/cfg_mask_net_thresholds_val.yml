@@ -30,7 +30,7 @@ spcam_children: [ 'phq','tphystnd','fsnt','fsns','flnt','flns','prect' ] # [ 'fs
 # PCMCI. independence_test : "parcorr"
 # Correlation. independence_test : "pearsonr"
 # PCA. independence_test : "pca"
-independence_test: "None" # todo: If PCA, the code doesn't work because of l. 21 in neural_networks/data_generator.py: if setup.ind_test_name == "pca":
+independence_test: "None"
 pc_alphas: [ 0.01 ] # [0.001,0.01,0.1]; [0.01,0.05]
 region: [ [ -90,90 ] , [ 0.,359. ] ]
 lim_levels: False
@@ -68,7 +68,7 @@ plot_file_pattern:
 
 nn_type: "MaskNet" # "all"; SingleNN"; "CausalSingleNN"; "CorrSingleNN"; "pcaNN"; "CASTLEAdapted" ; "CASTLEOriginal"
 
-nn_output_path: /p/scratch/icon-a-ml/kuehbacher1/output_castle/training_91_mask_net_prediction_thresholds_spars0.001/models
+nn_output_path: models/mask_net/training
 
 input_order: [ qbp, tbp, vbp, ps, solin, shflx, lhflx ] # [ qbp ]
 output_order: [ phq, tphystnd, fsnt, fsns, flnt, flns, prect ] #[ fsnt, fsns ]
@@ -87,7 +87,7 @@ train_data_fn: 2021_09_02_TRAIN_For_Nando_shuffle.nc  # 2021_09_02_TRAIN_For_Nan
 valid_data_fn: 2021_09_02_VALID_For_Nando.nc  #2021_09_02_VALID_For_Nando.nc
 epochs: 9
 train_verbose: 2 # 0:Silent; 1:Continuous update; 2:Summary on epochs
-tensorboard_folder: /p/scratch/icon-a-ml/kuehbacher1/output_castle/training_91_mask_net_prediction_thresholds_spars0.001/tensorboard
+tensorboard_folder: models/mask_net/tensorboard
 
 # From Tom https://github.com/tbeucler/CBRAIN-CAM/tree/master/notebooks/tbeucler_devlog/UW_DATA
 normalization_folder: "./SPCAM_tb_preproc"  #./SPCAM_tb_preproc, "test/test_data/"
@@ -107,13 +107,13 @@ step_lr: 3 # From 006_8col_pnas_exact.yml
 divide_lr: 5 # From train.py (default)
 
 # Early Stopping
-train_patience: 5 # TODO: This number was chosen arbitrarily
+train_patience: 5
 
 
 # MaskNet
 # ----------------------
-mask_threshold_file: "/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_91_mask_net_prediction_thresholds_spars0.001/threshold_performance/threshold_per_var_val.p"
-masking_vector_file: "/p/scratch/icon-a-ml/kuehbacher1/output_castle/training_74_pre_mask_net_spars0.001/masking_vectors/masking_vector_{var}.npy"
+mask_threshold_file: "models/mask_net/threshold_performance/threshold_per_var_val.p"
+masking_vector_file: "model/pre_mask_net/masking_vectors/masking_vector_{var}.npy"
 relu_alpha: 0.3
 
 distribute_strategy: "" # mirrored or nothing for normal training
