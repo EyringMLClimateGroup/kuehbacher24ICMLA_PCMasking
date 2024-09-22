@@ -103,10 +103,10 @@ if __name__ == "__main__":
     metric = "none"  # 'mean', 'abs_mean', 'abs_mean_sign'
     n_time = 5  # 1440 # about month
     n_samples = 5  # 1024; 2048; 4096; 8192
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
 
-    training_dir = Path("output/training_73_vector_mask_net_prediction_thresholds")
-    config_file = os.path.join(project_root, training_dir, "cfg_vector_mask_net_thresholds_train.yml")
+    training_dir = Path("models/mask_net")
+    config_file = os.path.join(project_root, training_dir, "cfg_mask_net_thresholds_train.yml")
     plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/shap/")
     outputs_map = os.path.join(project_root, training_dir, "outputs_map.txt")
 

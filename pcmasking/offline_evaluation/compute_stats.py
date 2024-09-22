@@ -1,4 +1,5 @@
 import datetime
+import os
 import pickle
 import time
 from pathlib import Path
@@ -60,12 +61,11 @@ if __name__ == "__main__":
     i_time = "range"
     n_time = 1440
 
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
 
-    config_file = Path(project_root,
-                       "output/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root,
-                    "output/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/stats/")
+    training_dir = Path("models/mask_net")
+    config_file = os.path.join(project_root, training_dir, "cfg_mask_net_thresholds_train.yml")
+    plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/stats/")
     ##########################################
 
     print(f"\n\n{datetime.datetime.now()} --- Start computing stats.", flush=True)

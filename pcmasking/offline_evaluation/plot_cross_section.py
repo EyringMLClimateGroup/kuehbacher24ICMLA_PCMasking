@@ -1,6 +1,5 @@
-
-
 import gc
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -77,15 +76,11 @@ if __name__ == "__main__":
     vmin = False  # False, -3e-7
     vmax = False  # False, 3e-7
 
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
 
-    config_file = Path(project_root,
-                       "output/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root,
-                    "output/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/plots_cross_section/")
-
+    training_dir = Path("models/mask_net")
+    config_file = os.path.join(project_root, training_dir, "cfg_mask_net_thresholds_train.yml")
+    plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/cross_sections/")
     variable = "tphystnd-0"  # tphystnd-0, phq-0 (any level will do here, but it has to be specified)
-    # variables = ["tphystnd-0", "phq-0"]
 
     plot_single_variable(variable, config_file, i_time, n_time, ilon, stats, vmin, vmax, plot_dir)
-    # plot_multiple_variables(variables, config_file, i_time, n_time, ilon, stats, vim, vmax, plot_dir)

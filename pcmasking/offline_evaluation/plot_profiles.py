@@ -1,5 +1,6 @@
 import datetime
 import gc
+import os
 import time
 from pathlib import Path
 
@@ -58,12 +59,11 @@ if __name__ == "__main__":
     lons = [0., 359.]
     stats = ["r2", "mse"]
 
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
 
-    config_file = Path(project_root,
-                       "output/training_28_custom_mirrored_functional/cfg_castle_training_run_2.yml")
-    plot_dir = Path(project_root,
-                    "output/training_28_custom_mirrored_functional/plots_offline_evaluation/debug/plots_profiles/")
+    training_dir = Path("models/mask_net")
+    config_file = os.path.join(project_root, training_dir, "cfg_mask_net_thresholds_train.yml")
+    plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/profiles/")
     ##########################################
 
     print(f"\n\n{datetime.datetime.now()} --- Start plotting profiles.", flush=True)

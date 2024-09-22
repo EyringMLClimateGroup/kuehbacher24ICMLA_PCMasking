@@ -62,12 +62,11 @@ if __name__ == "__main__":
     vmin = False  # False, -3e-7
     vmax = False  # False, 3e-7
 
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(__file__).parent.parent.parent.resolve()
 
-    base_dir = os.path.join(project_root, "output", "training_30_castle_original")
-
-    config_file = os.path.join(base_dir, "cfg_castle_original.yml")
-    plot_dir = os.path.join("plots_offline_evaluation", "debug", "plots_lat_lon")
+    training_dir = Path("models/mask_net")
+    config_file = os.path.join(project_root, training_dir, "cfg_mask_net_thresholds_train.yml")
+    plot_dir = os.path.join(project_root, "plots_offline_evaluation/debug/lat_lon/")
 
     variable = "prect"  # prect
 
