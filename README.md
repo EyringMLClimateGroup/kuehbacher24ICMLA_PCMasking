@@ -35,7 +35,11 @@ The results described in the paper where obtained by executing the following ste
     * To compute vertical profiles (including $R^2$): [main_plot_profiles.py](pcmasking%2Foffline_evaluation%2Fmain_plot_profiles.py). <br>Usage: `$ python main_plot_profiles.py -c config.yml --plot_directory ./output`
     * To plot vertical cross-sections and profiles (including $R^2$): Run the notebook [offline_evaluation_profile_cross_section_r2.ipynb](notebooks%2Foffline_evaluation_profile_cross_section_r2.ipynb).
     * To plot physical drivers: Run the notebook [offline_evaluation_physical_drivers.ipynb](notebooks%2Foffline_evaluation_physical_drivers.ipynb). 
-   
+
+## Models
+
+Saved models used to produce the results presented in the paper are provided in `models.`
+
 <p> <br><br> </p>
 
 [^1]: F. Iglesias-Suarez et al., “Causally-Informed Deep Learning to Improve Climate Models and Projections,” Journal of Geophysical Research: Atmospheres, vol. 129, no. 4, 2024, doi: 10/gtmfpk.  
