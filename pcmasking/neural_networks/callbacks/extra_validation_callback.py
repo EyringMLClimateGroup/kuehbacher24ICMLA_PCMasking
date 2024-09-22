@@ -11,18 +11,25 @@ import os
 
 class ExtraValidation(keras.callbacks.Callback):
     """
-    Callback for logging extra validation datasets. This functionality is useful for model training scenarios
-    where validation on multiple validation is desirable (Keras by default, provides functionality for
-    evaluating on a single validation set only).
+    Custom Keras callback to log evaluation metrics for additional validation datasets.
 
-    The evaluation metrics are printed during training but are only logged to Tensorboard,
-    if this callback is added to the list of callbacks passed to the model in
-    ``model.fit`` **before** the Tensorboard callback.
+    This callback allows evaluation on multiple validation datasets during the training
+    process. It complements the default Keras functionality which only supports one validation
+    dataset by logging additional metrics to TensorBoard. This is particularly useful when
+    you have several validation datasets that represent different data distributions or
+    task-specific subsets.
 
+    The additional evaluation metrics will be logged and printed during training. To ensure
+    they are properly recorded in TensorBoard, this callback should be placed **before**
+    the TensorBoard callback in the `model.fit` callback list
     Args:
-        validation_sets (dict): Dictionary of the form {"name": dataset_name, "data": dataset}, where
-            the dataset is an extra validation dataset.
-        tensorboard_path: Path to the TensorBoard logging directory.
+        validation_sets (dict): A dictionary containing additional validation datasets.
+            The format is `{"name": dataset_name, "data": dataset}`, where `dataset` is a TensorFlow
+            dataset or generator that can be evaluated using `model.evaluate`.
+        tensorboard_path (str): The file path where the TensorBoard logs should be stored.
+        log_iterations (bool, optional): If True, logs evaluation metrics against training
+            iterations to TensorBoard. This will track the changes of evaluation metrics over time.
+            Default is True.
     """
 
     def __init__(self, validation_sets, tensorboard_path, log_iterations=True):
