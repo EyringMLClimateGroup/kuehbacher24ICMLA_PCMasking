@@ -5,9 +5,11 @@ Developers: Birgit K&uuml;hbacher.
 Original [CI-NN](https://github.com/EyringMLClimateGroup/iglesias-suarez23jgr_CausalNNCAM)[^1] code by Fernando Iglesias-Suarez, Breixo Soliño Fernández.  
 Original CBRAIN-CAM[^2] code by Stephan Rasp.  
 
-This repository provides the source code used in the paper [Towards Physically Consistent Deep Learning for Climate Model Parameterization](https://arxiv.org/abs/2406.03920) by K&uuml;hbacher et al., which has been accepted at ICMLA'24
+This repository provides the source code used in the paper [Towards Physically Consistent Deep Learning for Climate Model Parameterization](https://arxiv.org/abs/2406.03920) by K&uuml;hbacher et al., which has been accepted at ICMLA'24.  
+
 
 [![DOI](https://zenodo.org/badge/861371150.svg)](https://zenodo.org/badge/latestdoi/861371150)
+
 
 ## Installation
 
