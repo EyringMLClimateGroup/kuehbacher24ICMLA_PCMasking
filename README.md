@@ -5,9 +5,9 @@ Developers: Birgit K&uuml;hbacher.
 Original [CI-NN](https://github.com/EyringMLClimateGroup/iglesias-suarez23jgr_CausalNNCAM)[^1] code by Fernando Iglesias-Suarez, Breixo Soliño Fernández.  
 Original CBRAIN-CAM[^2] code by Stephan Rasp.  
 
-This repository provides the source code used in the paper [Towards Physically Consistent Deep Learning for Climate Model Parameterization](https://arxiv.org/abs/2406.03920) by K&uuml;hbacher et al. 
+This repository provides the source code used in the paper [Towards Physically Consistent Deep Learning for Climate Model Parameterization](https://arxiv.org/abs/2406.03920) by K&uuml;hbacher et al., which has been accepted at ICMLA'24
 
-[//]: # (Corresponding DOI: todo)
+[![DOI](https://zenodo.org/badge/861371150.svg)](https://zenodo.org/badge/latestdoi/861371150)
 
 ## Installation
 
@@ -43,4 +43,4 @@ Saved models used to produce the results presented in the paper are provided in 
 <p> <br><br> </p>
 
 [^1]: F. Iglesias-Suarez et al., “Causally-Informed Deep Learning to Improve Climate Models and Projections,” Journal of Geophysical Research: Atmospheres, vol. 129, no. 4, 2024, doi: 10/gtmfpk.  
-[^2]: S. Rasp, M. S. Pritchard, and P. Gentine, “Deep learning to represent subgrid processes in climate models,” Proc. Natl. Acad. Sci. U.S.A., vol. 115, no. 39, pp. 9684–9689, Sep. 2018, doi: 10/gfcpxb.
+[^2]: S. Rasp, M. S. Pritchar d, and P. Gentine, “Deep learning to represent subgrid processes in climate models,” Proc. Natl. Acad. Sci. U.S.A., vol. 115, no. 39, pp. 9684–9689, Sep. 2018, doi: 10/gfcpxb.
